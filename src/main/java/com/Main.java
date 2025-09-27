@@ -1,17 +1,47 @@
 package com;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+import com.connectDB.ConnectDB;
+import com.gui.test;
+
+import javax.swing.*;
+import java.sql.SQLException;
+
 public class Main {
     public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
-
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
+        // Connect to the database first
+        try {
+            ConnectDB.getInstance().connect();
+        } catch (SQLException ex) {
+            // Show a dialog and print stack trace; continue to show GUI even if DB fails
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
+                    "Failed to connect to database: " + ex.getMessage(),
+                    "DB Connection Error",
+                    JOptionPane.ERROR_MESSAGE));
+            ex.printStackTrace();
         }
+
+        // Ensure DB disconnects when the app exits
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                ConnectDB.getInstance().disconnect();
+            } catch (Exception ignored) {
+            }
+        }));
+
+        // Launch GUI on Event Dispatch Thread
+        SwingUtilities.invokeLater(() -> {
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception ignored) {
+            }
+
+            JFrame frame = new JFrame("MediWOW");
+            test gui = new test();
+            frame.setContentPane(new test().panel1);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
     }
 }
