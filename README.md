@@ -38,8 +38,7 @@ Dự án MediWOW được xây dựng nhằm mục đích hỗ trợ công tác 
 2. Mở IntelliJ IDEA, chọn **Open** và trỏ tới thư mục dự án vừa clone.
 3. Đảm bảo IntelliJ đã nhận diện dự án là Maven Project (có file `pom.xml`).
 4. Chờ Maven tải dependencies (thư viện) tự động.
-5. Cấu hình kết nối cơ sở dữ liệu SQL Server trong file cấu hình (nếu có).
-6. Nhấn chuột phải vào file `Main.java` và chọn **Run** để chạy chương trình.
+5. Nhấn chuột phải vào file `Main.java` và chọn **Run** để chạy chương trình.
 
 ## Sinh viên thực hiện
 
