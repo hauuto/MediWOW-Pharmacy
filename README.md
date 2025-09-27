@@ -26,7 +26,7 @@ Dự án MediWOW được xây dựng nhằm mục đích hỗ trợ công tác 
 ## Yêu cầu hệ thống
 
 - Hệ điều hành: Windows
-- Java 21 (tuỳ công nghệ sử dụng)
+- Java 21 (JDK21)
 - Cơ sở dữ liệu: Microsoft SQL Server
 
 ## Cài đặt & chạy dự án
