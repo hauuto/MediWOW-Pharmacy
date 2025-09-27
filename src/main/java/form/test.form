@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="form.test">
+  <grid id="27dc6" binding="panel1" default-binding="true" layout-manager="BorderLayout" hgap="0" vgap="0">
+    <constraints>
+      <xy x="91" y="111" width="710" height="430"/>
+    </constraints>
+    <properties>
+      <background color="-15919312"/>
+      <preferredSize width="1920" height="1080"/>
+    </properties>
+    <border type="none"/>
+    <children>
+      <component id="a1014" class="javax.swing.JLabel" binding="lblTop">
+        <constraints border-constraint="Center"/>
+        <properties>
+          <background color="-1286"/>
+          <focusable value="true"/>
+          <font size="28"/>
+          <foreground color="-1712155"/>
+          <horizontalAlignment value="0"/>
+          <horizontalTextPosition value="11"/>
+          <minimumSize width="200" height="17"/>
+          <preferredSize width="161" height="17"/>
+          <text value="Hello các nô lệ MediWOW"/>
+          <toolTipText value="TestToolTip"/>
+          <visible value="true"/>
+        </properties>
+        <clientProperties>
+          <html.disable class="java.lang.Boolean" value="false"/>
+        </clientProperties>
+      </component>
+    </children>
+  </grid>
+</form>
