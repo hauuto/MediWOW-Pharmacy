@@ -43,10 +43,10 @@ Dự án MediWOW được xây dựng nhằm mục đích hỗ trợ công tác 
 
 ## Sinh viên thực hiện
 
-- Họ và tên: Tô Thanh Hậu - MSSV: 23660471 - Facilitator
-- Họ và tên: Nguyễn Thanh Khôi - MSSV: 23655801 - Reporter
-- Họ và tên: Thái Nguyễn Tuệ Minh - MSSV: 23630701 - Recorder
-- Họ và tên: Bùi Quốc Trụ - MSSV: 23735771 - Timekeeper
+- Tô Thanh Hậu - MSSV: 23660471 - Facilitator
+- Nguyễn Thanh Khôi - MSSV: 23655801 - Reporter
+- Thái Nguyễn Tuệ Minh - MSSV: 23630701 - Recorder
+- Bùi Quốc Trụ - MSSV: 23735771 - Timekeeper
 
 ## Giảng viên hướng dẫn
 
