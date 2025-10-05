@@ -1,7 +1,6 @@
 package com;
 
 import com.connectDB.ConnectDB;
-import com.gui.test;
 
 import javax.swing.*;
 import java.sql.SQLException;
@@ -35,13 +34,9 @@ public class Main {
             } catch (Exception ignored) {
             }
 
-            JFrame frame = new JFrame("MediWOW");
-            test gui = new test();
-            frame.setContentPane(new test().panel1);
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.pack();
-            frame.setLocationRelativeTo(null);
-            frame.setVisible(true);
+
+
+
         });
     }
 }
