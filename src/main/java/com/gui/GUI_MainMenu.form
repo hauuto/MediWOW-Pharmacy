@@ -50,12 +50,13 @@
               <alignmentY value="0.5"/>
               <autoscrolls value="false"/>
               <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
               <enabled value="true"/>
               <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
+              <focusPainted value="true"/>
               <font name="Segoe UI" size="16" style="1"/>
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
@@ -65,7 +66,7 @@
               <margin top="0" left="0" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
-              <selected value="true"/>
+              <selected value="false"/>
               <text value="Trang chủ"/>
               <toolTipText value="Nhấp để quay về trang chủ"/>
             </properties>
@@ -74,7 +75,7 @@
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="1dd24" class="javax.swing.JButton" binding="btnSelling">
+          <component id="f0892" class="javax.swing.JButton" binding="btnSelling">
             <constraints>
               <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
               <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
@@ -83,12 +84,13 @@
               <alignmentY value="0.5"/>
               <autoscrolls value="false"/>
               <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
               <enabled value="true"/>
               <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
+              <focusPainted value="true"/>
               <font name="Segoe UI" size="16" style="1"/>
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
@@ -98,16 +100,16 @@
               <margin top="0" left="0" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
-              <selected value="true"/>
+              <selected value="false"/>
               <text value="Bán hàng"/>
-              <toolTipText value="Nhấp để quay về trang chủ"/>
+              <toolTipText value="Nhấp vào để bắt đầu bán hàng"/>
             </properties>
             <clientProperties>
               <hideActionText class="java.lang.Boolean" value="false"/>
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="1da68" class="javax.swing.JButton" binding="btnProduct">
+          <component id="71496" class="javax.swing.JButton" binding="btnProduct">
             <constraints>
               <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
               <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
@@ -116,12 +118,13 @@
               <alignmentY value="0.5"/>
               <autoscrolls value="false"/>
               <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
               <enabled value="true"/>
               <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
+              <focusPainted value="true"/>
               <font name="Segoe UI" size="16" style="1"/>
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
@@ -131,16 +134,16 @@
               <margin top="0" left="0" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
-              <selected value="true"/>
+              <selected value="false"/>
               <text value="Sản phẩm"/>
-              <toolTipText value="Nhấp để quay về trang chủ"/>
+              <toolTipText value="Nhấp để quản lý sản phẩm"/>
             </properties>
             <clientProperties>
               <hideActionText class="java.lang.Boolean" value="false"/>
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="e590f" class="javax.swing.JButton" binding="btnPromotion">
+          <component id="58f5f" class="javax.swing.JButton" binding="btnPromotion">
             <constraints>
               <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
               <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
@@ -149,12 +152,13 @@
               <alignmentY value="0.5"/>
               <autoscrolls value="false"/>
               <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
               <enabled value="true"/>
               <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
+              <focusPainted value="true"/>
               <font name="Segoe UI" size="16" style="1"/>
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
@@ -164,16 +168,16 @@
               <margin top="0" left="0" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
-              <selected value="true"/>
+              <selected value="false"/>
               <text value="Khuyến mại"/>
-              <toolTipText value="Nhấp để quay về trang chủ"/>
+              <toolTipText value="Nhấp vào để quản lý khuyến mại"/>
             </properties>
             <clientProperties>
               <hideActionText class="java.lang.Boolean" value="false"/>
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="8a416" class="javax.swing.JButton" binding="btnStatistic">
+          <component id="87802" class="javax.swing.JButton" binding="btnStatistic">
             <constraints>
               <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
               <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
@@ -182,12 +186,13 @@
               <alignmentY value="0.5"/>
               <autoscrolls value="false"/>
               <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
               <enabled value="true"/>
               <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
+              <focusPainted value="true"/>
               <font name="Segoe UI" size="16" style="1"/>
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
@@ -197,16 +202,16 @@
               <margin top="0" left="0" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
-              <selected value="true"/>
+              <selected value="false"/>
               <text value="Thống kê"/>
-              <toolTipText value="Nhấp để quay về trang chủ"/>
+              <toolTipText value="Nhấp vào để bắt đầu thống kê"/>
             </properties>
             <clientProperties>
               <hideActionText class="java.lang.Boolean" value="false"/>
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="25979" class="javax.swing.JButton" binding="btnStaff">
+          <component id="3c907" class="javax.swing.JButton" binding="btnStaff">
             <constraints>
               <grid row="5" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
               <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
@@ -215,12 +220,13 @@
               <alignmentY value="0.5"/>
               <autoscrolls value="false"/>
               <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
               <enabled value="true"/>
               <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
+              <focusPainted value="true"/>
               <font name="Segoe UI" size="16" style="1"/>
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
@@ -230,63 +236,31 @@
               <margin top="0" left="0" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
-              <selected value="true"/>
+              <selected value="false"/>
               <text value="Nhân viên"/>
-              <toolTipText value="Nhấp để quay về trang chủ"/>
+              <toolTipText value="Nhấp vào để quản lý thông tin nhân viên"/>
             </properties>
             <clientProperties>
               <hideActionText class="java.lang.Boolean" value="false"/>
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="6e91b" class="javax.swing.JButton" binding="btnCustomer">
-            <constraints>
-              <grid row="6" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
-              <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
-            </constraints>
-            <properties>
-              <alignmentY value="0.5"/>
-              <autoscrolls value="false"/>
-              <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
-              <enabled value="true"/>
-              <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
-              <font name="Segoe UI" size="16" style="1"/>
-              <foreground color="-16027943"/>
-              <hideActionText value="false"/>
-              <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
-              <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
-              <preferredSize width="150" height="50"/>
-              <rolloverEnabled value="true"/>
-              <selected value="true"/>
-              <text value="Khách hàng"/>
-              <toolTipText value="Nhấp để quay về trang chủ"/>
-            </properties>
-            <clientProperties>
-              <hideActionText class="java.lang.Boolean" value="false"/>
-              <html.disable class="java.lang.Boolean" value="false"/>
-            </clientProperties>
-          </component>
-          <component id="f6ca9" class="javax.swing.JButton" binding="btnGuideLine">
+          <component id="80b06" class="javax.swing.JButton" binding="btnGuideLine">
             <constraints>
               <grid row="7" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
-              <gridbag top="0" left="0" bottom="60" right="0" weightx="0.0" weighty="0.0"/>
+              <gridbag top="0" left="0" bottom="50" right="0" weightx="0.0" weighty="0.0"/>
             </constraints>
             <properties>
               <alignmentY value="0.5"/>
               <autoscrolls value="false"/>
               <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
               <enabled value="true"/>
               <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
+              <focusPainted value="true"/>
               <font name="Segoe UI" size="16" style="1"/>
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
@@ -296,16 +270,16 @@
               <margin top="0" left="0" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
-              <selected value="true"/>
+              <selected value="false"/>
               <text value="Hướng dẫn"/>
-              <toolTipText value="Nhấp để quay về trang chủ"/>
+              <toolTipText value="Nhấp vào để xem hướng dẫn"/>
             </properties>
             <clientProperties>
               <hideActionText class="java.lang.Boolean" value="false"/>
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="8d7c6" class="javax.swing.JButton" binding="btnLogOut" custom-create="true">
+          <component id="f9bab" class="javax.swing.JButton" binding="btnLogout">
             <constraints>
               <grid row="8" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
               <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
@@ -314,24 +288,59 @@
               <alignmentY value="0.5"/>
               <autoscrolls value="false"/>
               <background color="-1"/>
-              <contentAreaFilled value="false"/>
-              <defaultCapable value="false"/>
-              <doubleBuffered value="true"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
               <enabled value="true"/>
               <focusCycleRoot value="false"/>
-              <focusPainted value="false"/>
+              <focusPainted value="true"/>
               <font name="Segoe UI" size="16" style="1"/>
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_logout.png"/>
+              <icon value="icons/btn_home.png"/>
               <iconTextGap value="10"/>
               <margin top="0" left="0" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
-              <selected value="true"/>
+              <selected value="false"/>
               <text value="Đăng xuất"/>
-              <toolTipText value="Nhấp để quay về đăng xuất khỏi chương trình"/>
+              <toolTipText value="Nhấp vào để đăng xuất"/>
+            </properties>
+            <clientProperties>
+              <hideActionText class="java.lang.Boolean" value="false"/>
+              <html.disable class="java.lang.Boolean" value="false"/>
+            </clientProperties>
+          </component>
+          <component id="16980" class="javax.swing.JButton" binding="btnCustomer">
+            <constraints>
+              <grid row="6" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+              <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
+            </constraints>
+            <properties>
+              <alignmentY value="0.5"/>
+              <autoscrolls value="false"/>
+              <background color="-1"/>
+              <borderPainted value="true"/>
+              <contentAreaFilled value="true"/>
+              <defaultCapable value="true"/>
+              <doubleBuffered value="false"/>
+              <enabled value="true"/>
+              <focusCycleRoot value="false"/>
+              <focusPainted value="true"/>
+              <font name="Segoe UI" size="16" style="1"/>
+              <foreground color="-16027943"/>
+              <hideActionText value="false"/>
+              <horizontalAlignment value="2"/>
+              <icon value="icons/btn_home.png"/>
+              <iconTextGap value="10"/>
+              <margin top="0" left="0" bottom="0" right="0"/>
+              <preferredSize width="150" height="50"/>
+              <rolloverEnabled value="true"/>
+              <selected value="false"/>
+              <text value="Khách hàng"/>
+              <toolTipText value="Nhấp vào để quản lý thông tin khách hàng"/>
             </properties>
             <clientProperties>
               <hideActionText class="java.lang.Boolean" value="false"/>
@@ -340,7 +349,7 @@
           </component>
         </children>
       </grid>
-      <grid id="37296" binding="pMain" layout-manager="BorderLayout" hgap="0" vgap="0">
+      <grid id="37296" binding="pMain" layout-manager="CardLayout" hgap="0" vgap="0">
         <constraints>
           <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
           <gridbag weightx="100.0" weighty="100.0"/>
@@ -363,7 +372,32 @@
           <background color="-2236963"/>
         </properties>
         <border type="none"/>
-        <children/>
+        <children>
+          <grid id="f76de" binding="pOption" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="30">
+            <margin top="0" left="0" bottom="0" right="50"/>
+            <constraints border-constraint="East"/>
+            <properties>
+              <background color="-2236963"/>
+            </properties>
+            <border type="none"/>
+            <children>
+              <component id="f4da1" class="javax.swing.JComboBox" binding="cbbOption">
+                <constraints>
+                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="2" anchor="8" fill="1" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <alignmentX value="0.5"/>
+                  <alignmentY value="0.5"/>
+                  <background color="-1"/>
+                  <foreground color="-16012317"/>
+                  <model>
+                    <item value="Xin chào, Tô Thanh Hậu"/>
+                  </model>
+                </properties>
+              </component>
+            </children>
+          </grid>
+        </children>
       </grid>
     </children>
   </grid>

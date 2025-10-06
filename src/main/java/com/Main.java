@@ -1,6 +1,8 @@
 package com;
 
 import com.connectDB.ConnectDB;
+import com.formdev.flatlaf.themes.FlatMacLightLaf;
+import com.gui.GUI_Login;
 
 import javax.swing.*;
 import java.sql.SQLException;
@@ -27,16 +29,25 @@ public class Main {
             }
         }));
 
+
+        try {
+            UIManager.setLookAndFeel(new FlatMacLightLaf());
+        } catch (Exception ignored) {
+        }
+
+
+
         // Launch GUI on Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
-            try {
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception ignored) {
-            }
+            JFrame frame = new JFrame();
+            frame.setContentPane(new GUI_Login().panel1);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setSize(800, 600);
+            frame.setLocationRelativeTo(null);
 
+            SwingUtilities.updateComponentTreeUI(frame);
 
-
-
+            frame.setVisible(true);
         });
     }
 }
