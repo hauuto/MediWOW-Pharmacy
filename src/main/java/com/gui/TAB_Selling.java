@@ -25,7 +25,7 @@ public class TAB_Selling {
         pSelling = new JPanel();
         pSelling.setLayout(new BorderLayout(0, 0));
         lblDelete = new JLabel();
-        lblDelete.setText("Tuệ Minh");
+        lblDelete.setText("Trụ - Bán hàng");
         pSelling.add(lblDelete, BorderLayout.CENTER);
     }
 
@@ -35,4 +35,5 @@ public class TAB_Selling {
     public JComponent $$$getRootComponent$$$() {
         return pSelling;
     }
+
 }

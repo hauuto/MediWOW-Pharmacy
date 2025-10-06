@@ -37,8 +37,7 @@ public class GUI_MainMenu implements ActionListener {
 
     public GUI_MainMenu() {
 
-        cardLayout = new CardLayout();
-        pMain.setLayout(cardLayout);
+        cardLayout = (CardLayout) pMain.getLayout();
 
 
         btnHome.addActionListener(this);
@@ -51,14 +50,23 @@ public class GUI_MainMenu implements ActionListener {
         btnLogout.addActionListener(this);
         btnCustomer.addActionListener(this);
 
-        TAB_Selling sales = new TAB_Selling();
+
         TAB_Dashboard dashboard = new TAB_Dashboard();
+        TAB_Selling sales = new TAB_Selling();
         TAB_Promotion promotion = new TAB_Promotion();
+        TAB_Statistic statistic = new TAB_Statistic();
+        TAB_Product product = new TAB_Product();
+        TAB_Staff staff = new TAB_Staff();
+        TAB_Customer customer = new TAB_Customer();
 
-
-        pMain.add(sales.pSelling, "selling");
         pMain.add(dashboard.pDashboard, "dashboard");
+        pMain.add(sales.pSelling, "selling");
         pMain.add(promotion.pPromotion, "promotion");
+        pMain.add(statistic.pStatistic, "statistic");
+        pMain.add(product.pProduct, "product");
+        pMain.add(staff.pStaff, "staff");
+        pMain.add(customer.pCustomer, "customer");
+
 
         setActiveButton(btnHome);
         cardLayout.show(pMain, "dashboard");
@@ -73,14 +81,13 @@ public class GUI_MainMenu implements ActionListener {
         if (src == btnHome) {
             setActiveButton(btnHome);
             cardLayout.show(pMain, "dashboard");
-
         } else if (src == btnSelling) {
             setActiveButton(btnSelling);
             cardLayout.show(pMain, "selling");
 
-
         } else if (src == btnProduct) {
             setActiveButton(btnProduct);
+            cardLayout.show(pMain, "product");
 
         } else if (src == btnPromotion) {
             setActiveButton(btnPromotion);
@@ -88,9 +95,11 @@ public class GUI_MainMenu implements ActionListener {
 
         } else if (src == btnStatistic) {
             setActiveButton(btnStatistic);
+            cardLayout.show(pMain, "statistic");
 
         } else if (src == btnStaff) {
             setActiveButton(btnStaff);
+            cardLayout.show(pMain, "staff");
 
         } else if (src == btnGuideLine) {
             setActiveButton(btnGuideLine);
@@ -113,6 +122,7 @@ public class GUI_MainMenu implements ActionListener {
 
         } else if (src == btnCustomer) {
             setActiveButton(btnCustomer);
+            cardLayout.show(pMain, "customer");
 
         }
 
@@ -154,7 +164,8 @@ public class GUI_MainMenu implements ActionListener {
         pMainMenu.setPreferredSize(new Dimension(1920, 1080));
         pLeftHeader = new JPanel();
         pLeftHeader.setLayout(new BorderLayout(0, 0));
-        pLeftHeader.setBackground(new Color(-2236963));
+        pLeftHeader.setBackground(new Color(-16724789));
+        pLeftHeader.setForeground(new Color(-16012317));
         GridBagConstraints gbc;
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -429,7 +440,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridx = 0;
         gbc.gridy = 8;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(0, 0, 20, 0);
+        gbc.insets = new Insets(150, 0, 20, 0);
         pMenu.add(btnLogout, gbc);
         btnCustomer = new JButton();
         btnCustomer.setAlignmentY(0.5f);
@@ -466,6 +477,7 @@ public class GUI_MainMenu implements ActionListener {
         pMain = new JPanel();
         pMain.setLayout(new CardLayout(0, 0));
         pMain.setBackground(new Color(-2236963));
+        pMain.setEnabled(true);
         pMain.putClientProperty("html.disable", Boolean.FALSE);
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
@@ -474,9 +486,11 @@ public class GUI_MainMenu implements ActionListener {
         gbc.weighty = 100.0;
         gbc.fill = GridBagConstraints.BOTH;
         pMainMenu.add(pMain, gbc);
+        final JScrollPane scrollPane1 = new JScrollPane();
+        pMain.add(scrollPane1, "Card1");
         pRightHeader = new JPanel();
         pRightHeader.setLayout(new BorderLayout(0, 0));
-        pRightHeader.setBackground(new Color(-2236963));
+        pRightHeader.setBackground(new Color(-16724789));
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 0;
@@ -484,12 +498,16 @@ public class GUI_MainMenu implements ActionListener {
         pMainMenu.add(pRightHeader, gbc);
         pOption = new JPanel();
         pOption.setLayout(new com.intellij.uiDesigner.core.GridLayoutManager(1, 1, new Insets(0, 0, 0, 50), -1, 30));
-        pOption.setBackground(new Color(-2236963));
+        pOption.setBackground(new Color(-16724789));
         pRightHeader.add(pOption, BorderLayout.EAST);
         cbbOption = new JComboBox();
         cbbOption.setAlignmentX(0.5f);
         cbbOption.setAlignmentY(0.5f);
         cbbOption.setBackground(new Color(-1));
+        cbbOption.setEditable(false);
+        cbbOption.setEnabled(true);
+        Font cbbOptionFont = this.$$$getFont$$$(null, -1, 16, cbbOption.getFont());
+        if (cbbOptionFont != null) cbbOption.setFont(cbbOptionFont);
         cbbOption.setForeground(new Color(-16012317));
         final DefaultComboBoxModel defaultComboBoxModel1 = new DefaultComboBoxModel();
         defaultComboBoxModel1.addElement("Xin chào, Tô Thanh Hậu");

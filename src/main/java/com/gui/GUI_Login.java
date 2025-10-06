@@ -21,12 +21,11 @@ public class GUI_Login {
     private JPasswordField txtPassword;
     private JPanel pButton;
     private JButton btnForgotPassword;
+    private JLabel lblFooter;
     public JPanel panel1;
 
 
     public GUI_Login() {
-
-
         btnLogin.addActionListener(e -> handleLogin());
     }
 
@@ -109,7 +108,7 @@ public class GUI_Login {
         gbc.ipady = 20;
         pLogin.add(pRight, gbc);
         lblWelcome = new JLabel();
-        Font lblWelcomeFont = this.$$$getFont$$$(null, -1, 28, lblWelcome.getFont());
+        Font lblWelcomeFont = this.$$$getFont$$$(null, Font.BOLD, 36, lblWelcome.getFont());
         if (lblWelcomeFont != null) lblWelcome.setFont(lblWelcomeFont);
         lblWelcome.setForeground(new Color(-16012317));
         lblWelcome.setText("Chào mừng trở lại!");
@@ -119,7 +118,7 @@ public class GUI_Login {
         gbc.anchor = GridBagConstraints.WEST;
         pRight.add(lblWelcome, gbc);
         lblSubWelcome = new JLabel();
-        Font lblSubWelcomeFont = this.$$$getFont$$$(null, Font.PLAIN, 16, lblSubWelcome.getFont());
+        Font lblSubWelcomeFont = this.$$$getFont$$$(null, Font.PLAIN, 20, lblSubWelcome.getFont());
         if (lblSubWelcomeFont != null) lblSubWelcome.setFont(lblSubWelcomeFont);
         lblSubWelcome.setForeground(new Color(-16012317));
         lblSubWelcome.setText("Vui lòng đăng nhập để tiếp tục");
@@ -127,7 +126,7 @@ public class GUI_Login {
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(30, 0, 50, 0);
+        gbc.insets = new Insets(20, 0, 50, 0);
         pRight.add(lblSubWelcome, gbc);
         lblLogin = new JLabel();
         Font lblLoginFont = this.$$$getFont$$$(null, -1, 16, lblLogin.getFont());
@@ -144,6 +143,7 @@ public class GUI_Login {
         Font txtLoginFont = this.$$$getFont$$$(null, -1, 16, txtLogin.getFont());
         if (txtLoginFont != null) txtLogin.setFont(txtLoginFont);
         txtLogin.setPreferredSize(new Dimension(70, 30));
+        txtLogin.setToolTipText("Nhập tài khoản");
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 3;
@@ -164,6 +164,7 @@ public class GUI_Login {
         pRight.add(lblPassword, gbc);
         txtPassword = new JPasswordField();
         txtPassword.setPreferredSize(new Dimension(70, 30));
+        txtPassword.setToolTipText("Nhập mật khẩu");
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 5;
@@ -171,7 +172,7 @@ public class GUI_Login {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         pRight.add(txtPassword, gbc);
         pButton = new JPanel();
-        pButton.setLayout(new com.intellij.uiDesigner.core.GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
+        pButton.setLayout(new com.intellij.uiDesigner.core.GridLayoutManager(1, 2, new Insets(30, 0, 0, 0), -1, -1));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 6;
@@ -179,15 +180,30 @@ public class GUI_Login {
         pRight.add(pButton, gbc);
         btnLogin = new JButton();
         btnLogin.setBackground(new Color(-16012317));
+        Font btnLoginFont = this.$$$getFont$$$(null, -1, 16, btnLogin.getFont());
+        if (btnLoginFont != null) btnLogin.setFont(btnLoginFont);
         btnLogin.setForeground(new Color(-1286));
         btnLogin.setText("Đăng nhập");
-        pButton.add(btnLogin, new com.intellij.uiDesigner.core.GridConstraints(0, 0, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        btnLogin.setToolTipText("Nhấp vào để đăng nhập");
+        pButton.add(btnLogin, new com.intellij.uiDesigner.core.GridConstraints(0, 0, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
         btnForgotPassword = new JButton();
         btnForgotPassword.setBackground(new Color(-16012317));
         btnForgotPassword.setDoubleBuffered(true);
+        Font btnForgotPasswordFont = this.$$$getFont$$$(null, -1, 16, btnForgotPassword.getFont());
+        if (btnForgotPasswordFont != null) btnForgotPassword.setFont(btnForgotPasswordFont);
         btnForgotPassword.setForeground(new Color(-1286));
         btnForgotPassword.setText("Quên mật khẩu");
-        pButton.add(btnForgotPassword, new com.intellij.uiDesigner.core.GridConstraints(0, 1, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        btnForgotPassword.setToolTipText("Đặt lại mật khẩu");
+        pButton.add(btnForgotPassword, new com.intellij.uiDesigner.core.GridConstraints(0, 1, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
+        lblFooter = new JLabel();
+        Font lblFooterFont = this.$$$getFont$$$(null, -1, 16, lblFooter.getFont());
+        if (lblFooterFont != null) lblFooter.setFont(lblFooterFont);
+        lblFooter.setText("© 2025 MediWOW");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 7;
+        gbc.insets = new Insets(100, 0, 0, 0);
+        pRight.add(lblFooter, gbc);
         lblLogin.setLabelFor(txtLogin);
         lblPassword.setLabelFor(txtPassword);
     }
