@@ -1,14 +1,32 @@
 package com.gui;
 
 import javax.swing.*;
+import javax.swing.plaf.FontUIResource;
+import javax.swing.text.StyleContext;
 import java.awt.*;
+import java.util.Locale;
 
 public class GUI_Login {
     private JButton btnLogin;
+    public JPanel pLogin;
+    private JPanel pLeft;
+    private JPanel pRight;
+    private JLabel lblLogo;
+    private JLabel lblBanner;
+    private JLabel lblWelcome;
+    private JLabel lblSubWelcome;
+    private JLabel lblLogin;
+    private JTextField txtLogin;
+    private JLabel lblPassword;
+    private JPasswordField txtPassword;
+    private JPanel pButton;
+    private JButton btnForgotPassword;
     public JPanel panel1;
 
 
     public GUI_Login() {
+
+
         btnLogin.addActionListener(e -> handleLogin());
     }
 
@@ -17,7 +35,7 @@ public class GUI_Login {
     }
 
     private void openMainMenu() {
-        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(panel1);
+        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(pLogin);
         frame.dispose();
 
 
@@ -46,17 +64,161 @@ public class GUI_Login {
      * @noinspection ALL
      */
     private void $$$setupUI$$$() {
-        panel1 = new JPanel();
-        panel1.setLayout(new BorderLayout(0, 0));
+        pLogin = new JPanel();
+        pLogin.setLayout(new GridBagLayout());
+        pLogin.setBackground(new Color(-2236963));
+        pLogin.setOpaque(false);
+        pLogin.setPreferredSize(new Dimension(1080, 600));
+        pLeft = new JPanel();
+        pLeft.setLayout(new GridBagLayout());
+        pLeft.setBackground(new Color(-2236963));
+        GridBagConstraints gbc;
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        pLogin.add(pLeft, gbc);
+        lblLogo = new JLabel();
+        lblLogo.setIcon(new ImageIcon(getClass().getResource("/images/logo.png")));
+        lblLogo.setText("");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.EAST;
+        gbc.ipadx = 200;
+        pLeft.add(lblLogo, gbc);
+        lblBanner = new JLabel();
+        lblBanner.setIcon(new ImageIcon(getClass().getResource("/images/login_banner.png")));
+        lblBanner.setText("");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        pLeft.add(lblBanner, gbc);
+        pRight = new JPanel();
+        pRight.setLayout(new GridBagLayout());
+        pRight.setAutoscrolls(false);
+        pRight.setForeground(new Color(-2236963));
+        gbc = new GridBagConstraints();
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        gbc.weightx = 1000.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.ipady = 20;
+        pLogin.add(pRight, gbc);
+        lblWelcome = new JLabel();
+        Font lblWelcomeFont = this.$$$getFont$$$(null, -1, 28, lblWelcome.getFont());
+        if (lblWelcomeFont != null) lblWelcome.setFont(lblWelcomeFont);
+        lblWelcome.setForeground(new Color(-16012317));
+        lblWelcome.setText("Chào mừng trở lại!");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        pRight.add(lblWelcome, gbc);
+        lblSubWelcome = new JLabel();
+        Font lblSubWelcomeFont = this.$$$getFont$$$(null, Font.PLAIN, 16, lblSubWelcome.getFont());
+        if (lblSubWelcomeFont != null) lblSubWelcome.setFont(lblSubWelcomeFont);
+        lblSubWelcome.setForeground(new Color(-16012317));
+        lblSubWelcome.setText("Vui lòng đăng nhập để tiếp tục");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(30, 0, 50, 0);
+        pRight.add(lblSubWelcome, gbc);
+        lblLogin = new JLabel();
+        Font lblLoginFont = this.$$$getFont$$$(null, -1, 16, lblLogin.getFont());
+        if (lblLoginFont != null) lblLogin.setFont(lblLoginFont);
+        lblLogin.setForeground(new Color(-16027943));
+        lblLogin.setText("Tên đăng nhập");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(0, 0, 10, 0);
+        pRight.add(lblLogin, gbc);
+        txtLogin = new JTextField();
+        Font txtLoginFont = this.$$$getFont$$$(null, -1, 16, txtLogin.getFont());
+        if (txtLoginFont != null) txtLogin.setFont(txtLoginFont);
+        txtLogin.setPreferredSize(new Dimension(70, 30));
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 20, 0);
+        pRight.add(txtLogin, gbc);
+        lblPassword = new JLabel();
+        Font lblPasswordFont = this.$$$getFont$$$(null, -1, 16, lblPassword.getFont());
+        if (lblPasswordFont != null) lblPassword.setFont(lblPasswordFont);
+        lblPassword.setForeground(new Color(-16027943));
+        lblPassword.setText("Mật khẩu");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(0, 0, 10, 0);
+        pRight.add(lblPassword, gbc);
+        txtPassword = new JPasswordField();
+        txtPassword.setPreferredSize(new Dimension(70, 30));
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        pRight.add(txtPassword, gbc);
+        pButton = new JPanel();
+        pButton.setLayout(new com.intellij.uiDesigner.core.GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        gbc.fill = GridBagConstraints.BOTH;
+        pRight.add(pButton, gbc);
         btnLogin = new JButton();
-        btnLogin.setText("Button");
-        panel1.add(btnLogin, BorderLayout.SOUTH);
+        btnLogin.setBackground(new Color(-16012317));
+        btnLogin.setForeground(new Color(-1286));
+        btnLogin.setText("Đăng nhập");
+        pButton.add(btnLogin, new com.intellij.uiDesigner.core.GridConstraints(0, 0, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        btnForgotPassword = new JButton();
+        btnForgotPassword.setBackground(new Color(-16012317));
+        btnForgotPassword.setDoubleBuffered(true);
+        btnForgotPassword.setForeground(new Color(-1286));
+        btnForgotPassword.setText("Quên mật khẩu");
+        pButton.add(btnForgotPassword, new com.intellij.uiDesigner.core.GridConstraints(0, 1, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        lblLogin.setLabelFor(txtLogin);
+        lblPassword.setLabelFor(txtPassword);
+    }
+
+    /**
+     * @noinspection ALL
+     */
+    private Font $$$getFont$$$(String fontName, int style, int size, Font currentFont) {
+        if (currentFont == null) return null;
+        String resultName;
+        if (fontName == null) {
+            resultName = currentFont.getName();
+        } else {
+            Font testFont = new Font(fontName, Font.PLAIN, 10);
+            if (testFont.canDisplay('a') && testFont.canDisplay('1')) {
+                resultName = fontName;
+            } else {
+                resultName = currentFont.getName();
+            }
+        }
+        Font font = new Font(resultName, style >= 0 ? style : currentFont.getStyle(), size >= 0 ? size : currentFont.getSize());
+        boolean isMac = System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).startsWith("mac");
+        Font fontWithFallback = isMac ? new Font(font.getFamily(), font.getStyle(), font.getSize()) : new StyleContext().getFont(font.getFamily(), font.getStyle(), font.getSize());
+        return fontWithFallback instanceof FontUIResource ? fontWithFallback : new FontUIResource(fontWithFallback);
     }
 
     /**
      * @noinspection ALL
      */
     public JComponent $$$getRootComponent$$$() {
-        return panel1;
+        return pLogin;
     }
+
 }
