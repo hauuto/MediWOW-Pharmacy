@@ -53,10 +53,12 @@ public class GUI_MainMenu implements ActionListener {
 
         TAB_Selling sales = new TAB_Selling();
         TAB_Dashboard dashboard = new TAB_Dashboard();
+        TAB_Promotion promotion = new TAB_Promotion();
 
 
         pMain.add(sales.pSelling, "selling");
         pMain.add(dashboard.pDashboard, "dashboard");
+        pMain.add(promotion.pPromotion, "promotion");
 
         setActiveButton(btnHome);
         cardLayout.show(pMain, "dashboard");
@@ -82,6 +84,7 @@ public class GUI_MainMenu implements ActionListener {
 
         } else if (src == btnPromotion) {
             setActiveButton(btnPromotion);
+            cardLayout.show(pMain, "promotion");
 
         } else if (src == btnStatistic) {
             setActiveButton(btnStatistic);
