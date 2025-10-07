@@ -120,6 +120,7 @@ public class GUI_MainMenu implements ActionListener {
                 loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 loginFrame.setSize(1080, 600);
                 loginFrame.setLocationRelativeTo(null);
+                loginFrame.setResizable(false);
                 loginFrame.setVisible(true);
             }
 
@@ -136,7 +137,6 @@ public class GUI_MainMenu implements ActionListener {
         for (Component comp : pMenu.getComponents()) {
             if (comp instanceof JButton) {
                 JButton btn = (JButton) comp;
-                btn.setEnabled(true);
                 btn.setBackground(UIManager.getColor("Button.background"));
             }
         }
