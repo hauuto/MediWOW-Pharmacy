@@ -1,5 +1,8 @@
 package com.gui;
 
+import com.intellij.uiDesigner.core.GridConstraints;
+import com.intellij.uiDesigner.core.GridLayoutManager;
+
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
@@ -61,7 +64,7 @@ public class GUI_MainMenu implements ActionListener {
 
         pMain.add(dashboard.pDashboard, "dashboard");
         pMain.add(sales.pSelling, "selling");
-        pMain.add(promotion.pPromotion, "promotion");
+        pMain.add(promotion, "promotion");
         pMain.add(statistic.pStatistic, "statistic");
         pMain.add(product.pProduct, "product");
         pMain.add(staff.pStaff, "staff");
@@ -497,7 +500,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.fill = GridBagConstraints.BOTH;
         pMainMenu.add(pRightHeader, gbc);
         pOption = new JPanel();
-        pOption.setLayout(new com.intellij.uiDesigner.core.GridLayoutManager(1, 1, new Insets(0, 0, 0, 50), -1, 30));
+        pOption.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 50), -1, 30));
         pOption.setBackground(new Color(-16724789));
         pRightHeader.add(pOption, BorderLayout.EAST);
         cbbOption = new JComboBox();
@@ -512,7 +515,7 @@ public class GUI_MainMenu implements ActionListener {
         final DefaultComboBoxModel defaultComboBoxModel1 = new DefaultComboBoxModel();
         defaultComboBoxModel1.addElement("Xin chào, Tô Thanh Hậu");
         cbbOption.setModel(defaultComboBoxModel1);
-        pOption.add(cbbOption, new com.intellij.uiDesigner.core.GridConstraints(0, 0, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_WEST, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        pOption.add(cbbOption, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**
