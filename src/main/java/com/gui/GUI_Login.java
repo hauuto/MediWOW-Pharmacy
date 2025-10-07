@@ -236,5 +236,4 @@ public class GUI_Login {
     public JComponent $$$getRootComponent$$$() {
         return pLogin;
     }
-
 }
