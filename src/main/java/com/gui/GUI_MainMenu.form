@@ -65,10 +65,10 @@
               <icon value="icons/btn_home.png"/>
               <iconTextGap value="10"/>
               <margin top="0" left="0" bottom="0" right="0"/>
-              <preferredSize width="150" height="50"/>
+              <preferredSize width="180" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
-              <text value="Trang chủ"/>
+              <text value="Màn hình chính"/>
               <toolTipText value="Nhấp để quay về trang chủ"/>
             </properties>
             <clientProperties>
@@ -353,7 +353,7 @@
       <grid id="37296" binding="pMain" layout-manager="CardLayout" hgap="0" vgap="0">
         <constraints>
           <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
-          <gridbag weightx="100.0" weighty="100.0"/>
+          <gridbag weightx="10.0" weighty="100.0"/>
         </constraints>
         <properties>
           <background color="-2236963"/>

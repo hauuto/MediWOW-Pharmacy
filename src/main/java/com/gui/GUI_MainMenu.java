@@ -208,10 +208,10 @@ public class GUI_MainMenu implements ActionListener {
         btnHome.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
         btnHome.setIconTextGap(10);
         btnHome.setMargin(new Insets(0, 0, 0, 0));
-        btnHome.setPreferredSize(new Dimension(150, 50));
+        btnHome.setPreferredSize(new Dimension(180, 50));
         btnHome.setRolloverEnabled(true);
         btnHome.setSelected(false);
-        btnHome.setText("Trang chủ");
+        btnHome.setText("Màn hình chính");
         btnHome.setToolTipText("Nhấp để quay về trang chủ");
         btnHome.putClientProperty("hideActionText", Boolean.FALSE);
         btnHome.putClientProperty("html.disable", Boolean.FALSE);
@@ -485,7 +485,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 1;
-        gbc.weightx = 100.0;
+        gbc.weightx = 10.0;
         gbc.weighty = 100.0;
         gbc.fill = GridBagConstraints.BOTH;
         pMainMenu.add(pMain, gbc);
