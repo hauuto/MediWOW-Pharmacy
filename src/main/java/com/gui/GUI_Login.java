@@ -1,5 +1,8 @@
 package com.gui;
 
+import com.intellij.uiDesigner.core.GridConstraints;
+import com.intellij.uiDesigner.core.GridLayoutManager;
+
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
@@ -172,7 +175,7 @@ public class GUI_Login {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         pRight.add(txtPassword, gbc);
         pButton = new JPanel();
-        pButton.setLayout(new com.intellij.uiDesigner.core.GridLayoutManager(1, 2, new Insets(30, 0, 0, 0), -1, -1));
+        pButton.setLayout(new GridLayoutManager(1, 2, new Insets(30, 0, 0, 0), -1, -1));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 6;
@@ -185,7 +188,7 @@ public class GUI_Login {
         btnLogin.setForeground(new Color(-1286));
         btnLogin.setText("Đăng nhập");
         btnLogin.setToolTipText("Nhấp vào để đăng nhập");
-        pButton.add(btnLogin, new com.intellij.uiDesigner.core.GridConstraints(0, 0, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
+        pButton.add(btnLogin, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
         btnForgotPassword = new JButton();
         btnForgotPassword.setBackground(new Color(-16012317));
         btnForgotPassword.setDoubleBuffered(true);
@@ -194,7 +197,7 @@ public class GUI_Login {
         btnForgotPassword.setForeground(new Color(-1286));
         btnForgotPassword.setText("Quên mật khẩu");
         btnForgotPassword.setToolTipText("Đặt lại mật khẩu");
-        pButton.add(btnForgotPassword, new com.intellij.uiDesigner.core.GridConstraints(0, 1, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
+        pButton.add(btnForgotPassword, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
         lblFooter = new JLabel();
         Font lblFooterFont = this.$$$getFont$$$(null, -1, 16, lblFooter.getFont());
         if (lblFooterFont != null) lblFooter.setFont(lblFooterFont);
@@ -236,4 +239,5 @@ public class GUI_Login {
     public JComponent $$$getRootComponent$$$() {
         return pLogin;
     }
+
 }
