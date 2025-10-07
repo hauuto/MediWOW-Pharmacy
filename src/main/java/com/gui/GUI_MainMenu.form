@@ -64,7 +64,7 @@
               <horizontalAlignment value="2"/>
               <icon value="icons/btn_home.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="180" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -96,9 +96,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_selling.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -130,9 +130,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_product.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -164,9 +164,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_promotion.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -198,9 +198,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_statistic.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -232,9 +232,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_staff.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -266,9 +266,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_help.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -300,9 +300,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_logout.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -334,9 +334,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_customer.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
