@@ -39,6 +39,7 @@
         <properties>
           <alignmentY value="0.5"/>
           <background color="-2236963"/>
+          <foreground color="-16027943"/>
         </properties>
         <border type="none"/>
         <children>
@@ -64,11 +65,11 @@
               <horizontalAlignment value="2"/>
               <icon value="icons/btn_home.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
-              <preferredSize width="150" height="50"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
+              <preferredSize width="180" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
-              <text value="Trang chủ"/>
+              <text value="Màn hình chính"/>
               <toolTipText value="Nhấp để quay về trang chủ"/>
             </properties>
             <clientProperties>
@@ -96,9 +97,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_selling.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -130,9 +131,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_product.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -164,9 +165,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_promotion.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -198,9 +199,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_statistic.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -232,9 +233,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_staff.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -266,9 +267,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_help.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -300,9 +301,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_logout.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -334,9 +335,9 @@
               <foreground color="-16027943"/>
               <hideActionText value="false"/>
               <horizontalAlignment value="2"/>
-              <icon value="icons/btn_home.png"/>
+              <icon value="icons/btn_customer.png"/>
               <iconTextGap value="10"/>
-              <margin top="0" left="0" bottom="0" right="0"/>
+              <margin top="0" left="10" bottom="0" right="0"/>
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
@@ -353,7 +354,7 @@
       <grid id="37296" binding="pMain" layout-manager="CardLayout" hgap="0" vgap="0">
         <constraints>
           <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
-          <gridbag weightx="100.0" weighty="100.0"/>
+          <gridbag weightx="10.0" weighty="100.0"/>
         </constraints>
         <properties>
           <background color="-2236963"/>
@@ -385,7 +386,7 @@
         <border type="none"/>
         <children>
           <grid id="f76de" binding="pOption" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="30">
-            <margin top="0" left="0" bottom="0" right="50"/>
+            <margin top="0" left="50" bottom="0" right="50"/>
             <constraints border-constraint="East"/>
             <properties>
               <background color="-16724789"/>
@@ -411,6 +412,17 @@
               </component>
             </children>
           </grid>
+          <component id="7e5" class="javax.swing.JLabel" binding="lblTime">
+            <constraints border-constraint="Center"/>
+            <properties>
+              <alignmentY value="0.5"/>
+              <font size="22" style="1"/>
+              <foreground color="-15774605"/>
+              <horizontalAlignment value="4"/>
+              <horizontalTextPosition value="11"/>
+              <text value=""/>
+            </properties>
+          </component>
         </children>
       </grid>
     </children>

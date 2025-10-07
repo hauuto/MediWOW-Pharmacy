@@ -9,6 +9,9 @@ import javax.swing.text.StyleContext;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Locale;
 
 public class GUI_MainMenu implements ActionListener {
@@ -29,6 +32,7 @@ public class GUI_MainMenu implements ActionListener {
     private JButton btnGuideLine;
     private JButton btnLogout;
     private JButton btnCustomer;
+    private JLabel lblTime;
     private CardLayout cardLayout;
 
     private void createUIComponents() {
@@ -39,6 +43,7 @@ public class GUI_MainMenu implements ActionListener {
 
 
     public GUI_MainMenu() {
+
 
         cardLayout = (CardLayout) pMain.getLayout();
 
@@ -75,7 +80,16 @@ public class GUI_MainMenu implements ActionListener {
         cardLayout.show(pMain, "dashboard");
 
 
+        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss EEEE, dd/MM/yyyy", new Locale("vi", "VN"));
+        Timer timer = new Timer(1000, e -> {
+            Date now = new Date();
+            lblTime.setText(timeFormat.format(now));
+        });
+        timer.start();
+
+
     }
+
 
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -120,6 +134,7 @@ public class GUI_MainMenu implements ActionListener {
                 loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 loginFrame.setSize(1080, 600);
                 loginFrame.setLocationRelativeTo(null);
+                loginFrame.setResizable(false);
                 loginFrame.setVisible(true);
             }
 
@@ -136,7 +151,6 @@ public class GUI_MainMenu implements ActionListener {
         for (Component comp : pMenu.getComponents()) {
             if (comp instanceof JButton) {
                 JButton btn = (JButton) comp;
-                btn.setEnabled(true);
                 btn.setBackground(UIManager.getColor("Button.background"));
             }
         }
@@ -184,6 +198,7 @@ public class GUI_MainMenu implements ActionListener {
         pMenu.setLayout(new GridBagLayout());
         pMenu.setAlignmentY(0.5f);
         pMenu.setBackground(new Color(-2236963));
+        pMenu.setForeground(new Color(-16027943));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 1;
@@ -207,11 +222,11 @@ public class GUI_MainMenu implements ActionListener {
         btnHome.setHorizontalAlignment(2);
         btnHome.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
         btnHome.setIconTextGap(10);
-        btnHome.setMargin(new Insets(0, 0, 0, 0));
-        btnHome.setPreferredSize(new Dimension(150, 50));
+        btnHome.setMargin(new Insets(0, 10, 0, 0));
+        btnHome.setPreferredSize(new Dimension(180, 50));
         btnHome.setRolloverEnabled(true);
         btnHome.setSelected(false);
-        btnHome.setText("Trang chủ");
+        btnHome.setText("Màn hình chính");
         btnHome.setToolTipText("Nhấp để quay về trang chủ");
         btnHome.putClientProperty("hideActionText", Boolean.FALSE);
         btnHome.putClientProperty("html.disable", Boolean.FALSE);
@@ -237,9 +252,9 @@ public class GUI_MainMenu implements ActionListener {
         btnSelling.setForeground(new Color(-16027943));
         btnSelling.setHideActionText(false);
         btnSelling.setHorizontalAlignment(2);
-        btnSelling.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
+        btnSelling.setIcon(new ImageIcon(getClass().getResource("/icons/btn_selling.png")));
         btnSelling.setIconTextGap(10);
-        btnSelling.setMargin(new Insets(0, 0, 0, 0));
+        btnSelling.setMargin(new Insets(0, 10, 0, 0));
         btnSelling.setPreferredSize(new Dimension(150, 50));
         btnSelling.setRolloverEnabled(true);
         btnSelling.setSelected(false);
@@ -269,9 +284,9 @@ public class GUI_MainMenu implements ActionListener {
         btnProduct.setForeground(new Color(-16027943));
         btnProduct.setHideActionText(false);
         btnProduct.setHorizontalAlignment(2);
-        btnProduct.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
+        btnProduct.setIcon(new ImageIcon(getClass().getResource("/icons/btn_product.png")));
         btnProduct.setIconTextGap(10);
-        btnProduct.setMargin(new Insets(0, 0, 0, 0));
+        btnProduct.setMargin(new Insets(0, 10, 0, 0));
         btnProduct.setPreferredSize(new Dimension(150, 50));
         btnProduct.setRolloverEnabled(true);
         btnProduct.setSelected(false);
@@ -301,9 +316,9 @@ public class GUI_MainMenu implements ActionListener {
         btnPromotion.setForeground(new Color(-16027943));
         btnPromotion.setHideActionText(false);
         btnPromotion.setHorizontalAlignment(2);
-        btnPromotion.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
+        btnPromotion.setIcon(new ImageIcon(getClass().getResource("/icons/btn_promotion.png")));
         btnPromotion.setIconTextGap(10);
-        btnPromotion.setMargin(new Insets(0, 0, 0, 0));
+        btnPromotion.setMargin(new Insets(0, 10, 0, 0));
         btnPromotion.setPreferredSize(new Dimension(150, 50));
         btnPromotion.setRolloverEnabled(true);
         btnPromotion.setSelected(false);
@@ -333,9 +348,9 @@ public class GUI_MainMenu implements ActionListener {
         btnStatistic.setForeground(new Color(-16027943));
         btnStatistic.setHideActionText(false);
         btnStatistic.setHorizontalAlignment(2);
-        btnStatistic.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
+        btnStatistic.setIcon(new ImageIcon(getClass().getResource("/icons/btn_statistic.png")));
         btnStatistic.setIconTextGap(10);
-        btnStatistic.setMargin(new Insets(0, 0, 0, 0));
+        btnStatistic.setMargin(new Insets(0, 10, 0, 0));
         btnStatistic.setPreferredSize(new Dimension(150, 50));
         btnStatistic.setRolloverEnabled(true);
         btnStatistic.setSelected(false);
@@ -365,9 +380,9 @@ public class GUI_MainMenu implements ActionListener {
         btnStaff.setForeground(new Color(-16027943));
         btnStaff.setHideActionText(false);
         btnStaff.setHorizontalAlignment(2);
-        btnStaff.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
+        btnStaff.setIcon(new ImageIcon(getClass().getResource("/icons/btn_staff.png")));
         btnStaff.setIconTextGap(10);
-        btnStaff.setMargin(new Insets(0, 0, 0, 0));
+        btnStaff.setMargin(new Insets(0, 10, 0, 0));
         btnStaff.setPreferredSize(new Dimension(150, 50));
         btnStaff.setRolloverEnabled(true);
         btnStaff.setSelected(false);
@@ -397,9 +412,9 @@ public class GUI_MainMenu implements ActionListener {
         btnGuideLine.setForeground(new Color(-16027943));
         btnGuideLine.setHideActionText(false);
         btnGuideLine.setHorizontalAlignment(2);
-        btnGuideLine.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
+        btnGuideLine.setIcon(new ImageIcon(getClass().getResource("/icons/btn_help.png")));
         btnGuideLine.setIconTextGap(10);
-        btnGuideLine.setMargin(new Insets(0, 0, 0, 0));
+        btnGuideLine.setMargin(new Insets(0, 10, 0, 0));
         btnGuideLine.setPreferredSize(new Dimension(150, 50));
         btnGuideLine.setRolloverEnabled(true);
         btnGuideLine.setSelected(false);
@@ -429,9 +444,9 @@ public class GUI_MainMenu implements ActionListener {
         btnLogout.setForeground(new Color(-16027943));
         btnLogout.setHideActionText(false);
         btnLogout.setHorizontalAlignment(2);
-        btnLogout.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
+        btnLogout.setIcon(new ImageIcon(getClass().getResource("/icons/btn_logout.png")));
         btnLogout.setIconTextGap(10);
-        btnLogout.setMargin(new Insets(0, 0, 0, 0));
+        btnLogout.setMargin(new Insets(0, 10, 0, 0));
         btnLogout.setPreferredSize(new Dimension(150, 50));
         btnLogout.setRolloverEnabled(true);
         btnLogout.setSelected(false);
@@ -461,9 +476,9 @@ public class GUI_MainMenu implements ActionListener {
         btnCustomer.setForeground(new Color(-16027943));
         btnCustomer.setHideActionText(false);
         btnCustomer.setHorizontalAlignment(2);
-        btnCustomer.setIcon(new ImageIcon(getClass().getResource("/icons/btn_home.png")));
+        btnCustomer.setIcon(new ImageIcon(getClass().getResource("/icons/btn_customer.png")));
         btnCustomer.setIconTextGap(10);
-        btnCustomer.setMargin(new Insets(0, 0, 0, 0));
+        btnCustomer.setMargin(new Insets(0, 10, 0, 0));
         btnCustomer.setPreferredSize(new Dimension(150, 50));
         btnCustomer.setRolloverEnabled(true);
         btnCustomer.setSelected(false);
@@ -485,7 +500,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 1;
-        gbc.weightx = 100.0;
+        gbc.weightx = 10.0;
         gbc.weighty = 100.0;
         gbc.fill = GridBagConstraints.BOTH;
         pMainMenu.add(pMain, gbc);
@@ -500,7 +515,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.fill = GridBagConstraints.BOTH;
         pMainMenu.add(pRightHeader, gbc);
         pOption = new JPanel();
-        pOption.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 50), -1, 30));
+        pOption.setLayout(new GridLayoutManager(1, 1, new Insets(0, 50, 0, 50), -1, 30));
         pOption.setBackground(new Color(-16724789));
         pRightHeader.add(pOption, BorderLayout.EAST);
         cbbOption = new JComboBox();
@@ -516,6 +531,15 @@ public class GUI_MainMenu implements ActionListener {
         defaultComboBoxModel1.addElement("Xin chào, Tô Thanh Hậu");
         cbbOption.setModel(defaultComboBoxModel1);
         pOption.add(cbbOption, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        lblTime = new JLabel();
+        lblTime.setAlignmentY(0.5f);
+        Font lblTimeFont = this.$$$getFont$$$(null, Font.BOLD, 22, lblTime.getFont());
+        if (lblTimeFont != null) lblTime.setFont(lblTimeFont);
+        lblTime.setForeground(new Color(-15774605));
+        lblTime.setHorizontalAlignment(4);
+        lblTime.setHorizontalTextPosition(11);
+        lblTime.setText("");
+        pRightHeader.add(lblTime, BorderLayout.CENTER);
     }
 
     /**

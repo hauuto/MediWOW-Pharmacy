@@ -44,6 +44,7 @@ public class Main {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(1080, 600);
             frame.setLocationRelativeTo(null);
+            frame.setResizable(false);
 
 
             frame.setVisible(true);
