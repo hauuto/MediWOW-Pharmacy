@@ -9,6 +9,9 @@ import javax.swing.text.StyleContext;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Locale;
 
 public class GUI_MainMenu implements ActionListener {
@@ -40,6 +43,7 @@ public class GUI_MainMenu implements ActionListener {
 
 
     public GUI_MainMenu() {
+
 
         cardLayout = (CardLayout) pMain.getLayout();
 
@@ -76,7 +80,16 @@ public class GUI_MainMenu implements ActionListener {
         cardLayout.show(pMain, "dashboard");
 
 
+        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss EEEE, dd/MM/yyyy", new Locale("vi", "VN"));
+        Timer timer = new Timer(1000, e -> {
+            Date now = new Date();
+            lblTime.setText(timeFormat.format(now));
+        });
+        timer.start();
+
+
     }
+
 
     @Override
     public void actionPerformed(ActionEvent e) {
@@ -525,7 +538,7 @@ public class GUI_MainMenu implements ActionListener {
         lblTime.setForeground(new Color(-15774605));
         lblTime.setHorizontalAlignment(4);
         lblTime.setHorizontalTextPosition(11);
-        lblTime.setText("10:56:43 Thứ ba, 07/10/2025");
+        lblTime.setText("");
         pRightHeader.add(lblTime, BorderLayout.CENTER);
     }
 
