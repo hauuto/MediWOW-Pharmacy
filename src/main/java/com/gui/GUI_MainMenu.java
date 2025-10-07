@@ -29,6 +29,7 @@ public class GUI_MainMenu implements ActionListener {
     private JButton btnGuideLine;
     private JButton btnLogout;
     private JButton btnCustomer;
+    private JLabel lblTime;
     private CardLayout cardLayout;
 
     private void createUIComponents() {
@@ -184,6 +185,7 @@ public class GUI_MainMenu implements ActionListener {
         pMenu.setLayout(new GridBagLayout());
         pMenu.setAlignmentY(0.5f);
         pMenu.setBackground(new Color(-2236963));
+        pMenu.setForeground(new Color(-16027943));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 1;
@@ -500,7 +502,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.fill = GridBagConstraints.BOTH;
         pMainMenu.add(pRightHeader, gbc);
         pOption = new JPanel();
-        pOption.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 50), -1, 30));
+        pOption.setLayout(new GridLayoutManager(1, 1, new Insets(0, 50, 0, 50), -1, 30));
         pOption.setBackground(new Color(-16724789));
         pRightHeader.add(pOption, BorderLayout.EAST);
         cbbOption = new JComboBox();
@@ -516,6 +518,15 @@ public class GUI_MainMenu implements ActionListener {
         defaultComboBoxModel1.addElement("Xin chào, Tô Thanh Hậu");
         cbbOption.setModel(defaultComboBoxModel1);
         pOption.add(cbbOption, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        lblTime = new JLabel();
+        lblTime.setAlignmentY(0.5f);
+        Font lblTimeFont = this.$$$getFont$$$(null, Font.BOLD, 22, lblTime.getFont());
+        if (lblTimeFont != null) lblTime.setFont(lblTimeFont);
+        lblTime.setForeground(new Color(-15774605));
+        lblTime.setHorizontalAlignment(4);
+        lblTime.setHorizontalTextPosition(11);
+        lblTime.setText("10:56:43 Thứ ba, 07/10/2025");
+        pRightHeader.add(lblTime, BorderLayout.CENTER);
     }
 
     /**

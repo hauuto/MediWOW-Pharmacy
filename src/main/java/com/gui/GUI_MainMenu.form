@@ -39,6 +39,7 @@
         <properties>
           <alignmentY value="0.5"/>
           <background color="-2236963"/>
+          <foreground color="-16027943"/>
         </properties>
         <border type="none"/>
         <children>
@@ -385,7 +386,7 @@
         <border type="none"/>
         <children>
           <grid id="f76de" binding="pOption" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="30">
-            <margin top="0" left="0" bottom="0" right="50"/>
+            <margin top="0" left="50" bottom="0" right="50"/>
             <constraints border-constraint="East"/>
             <properties>
               <background color="-16724789"/>
@@ -411,6 +412,17 @@
               </component>
             </children>
           </grid>
+          <component id="7e5" class="javax.swing.JLabel" binding="lblTime">
+            <constraints border-constraint="Center"/>
+            <properties>
+              <alignmentY value="0.5"/>
+              <font size="22" style="1"/>
+              <foreground color="-15774605"/>
+              <horizontalAlignment value="4"/>
+              <horizontalTextPosition value="11"/>
+              <text value="10:56:43 Thứ ba, 07/10/2025"/>
+            </properties>
+          </component>
         </children>
       </grid>
     </children>
