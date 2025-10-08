@@ -68,7 +68,7 @@ public class GUI_MainMenu implements ActionListener {
         TAB_Customer customer = new TAB_Customer();
 
         pMain.add(dashboard.pDashboard, "dashboard");
-        pMain.add(sales.pSelling, "selling");
+        pMain.add(sales.pnlSelling, "selling");
         pMain.add(promotion, "promotion");
         pMain.add(statistic.pStatistic, "statistic");
         pMain.add(product.pProduct, "product");
