@@ -1,18 +1,426 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="com.gui.TAB_Selling">
-  <grid id="27dc6" binding="pSelling" layout-manager="BorderLayout" hgap="0" vgap="0">
+  <grid id="27dc6" binding="pnlSelling" layout-manager="BorderLayout" hgap="0" vgap="0">
     <constraints>
-      <xy x="20" y="20" width="500" height="400"/>
+      <xy x="20" y="20" width="1329" height="834"/>
     </constraints>
-    <properties/>
+    <properties>
+      <background color="-16777216"/>
+    </properties>
     <border type="none"/>
     <children>
-      <component id="d9b35" class="javax.swing.JLabel" binding="lblDelete">
+      <scrollpane id="69985" binding="scrCatalogue">
         <constraints border-constraint="Center"/>
         <properties>
-          <text value="Trụ - Bán hàng"/>
+          <background color="-1"/>
         </properties>
-      </component>
+        <border type="none"/>
+        <children>
+          <grid id="5fbe7" binding="pnlCatalogue" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="1">
+            <constraints/>
+            <properties>
+              <background color="-1"/>
+              <preferredSize width="2" height="2"/>
+            </properties>
+            <border type="none"/>
+            <children>
+              <grid id="a0b9" binding="pnlBottomBar" layout-manager="BorderLayout" hgap="0" vgap="0">
+                <constraints/>
+                <properties>
+                  <background color="-1"/>
+                  <preferredSize width="2" height="50"/>
+                </properties>
+                <border type="line"/>
+                <children/>
+              </grid>
+            </children>
+          </grid>
+        </children>
+      </scrollpane>
+      <grid id="e99a6" binding="pnlInvoice" layout-manager="BorderLayout" hgap="0" vgap="0">
+        <constraints border-constraint="East"/>
+        <properties>
+          <autoscrolls value="false"/>
+          <background color="-1"/>
+          <focusCycleRoot value="false"/>
+          <focusTraversalPolicyProvider value="false"/>
+          <preferredSize width="700" height="500"/>
+        </properties>
+        <border type="empty">
+          <size top="20" left="10" bottom="20" right="10"/>
+        </border>
+        <children>
+          <grid id="ee90a" binding="pnlGeneralInfo" layout-manager="GridBagLayout">
+            <constraints border-constraint="North"/>
+            <properties>
+              <alignmentX value="0.0"/>
+              <background color="-1"/>
+            </properties>
+            <border type="none"/>
+            <children>
+              <component id="e4da5" class="javax.swing.JLabel" binding="lblTitle">
+                <constraints>
+                  <grid row="0" column="0" row-span="1" col-span="2" vsize-policy="3" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag top="0" left="0" bottom="20" right="0" weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="24" style="1"/>
+                  <foreground color="-15185268"/>
+                  <horizontalAlignment value="2"/>
+                  <horizontalTextPosition value="2"/>
+                  <text value="Hóa đơn bán"/>
+                  <verticalAlignment value="1"/>
+                  <verticalTextPosition value="1"/>
+                </properties>
+              </component>
+              <component id="1f5e8" class="javax.swing.JTextField" binding="txtPrescriptionCode">
+                <constraints>
+                  <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                </properties>
+              </component>
+              <component id="ec4be" class="javax.swing.JLabel" binding="lblPrescriptionCode">
+                <constraints>
+                  <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="Mã đơn kê thuốc:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="6a886" class="javax.swing.JLabel" binding="lblCustomerName">
+                <constraints>
+                  <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="Tên khách hàng:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="ee077" class="javax.swing.JTextField" binding="txtCustomerName">
+                <constraints>
+                  <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                </properties>
+              </component>
+              <component id="d9be4" class="javax.swing.JTextField" binding="txtCustomerTeleNo">
+                <constraints>
+                  <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                </properties>
+              </component>
+              <component id="bd5dc" class="javax.swing.JLabel" binding="lblCustomerTeleNo">
+                <constraints>
+                  <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="Số điện thoại khách hàng:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="b4beb" class="javax.swing.JLabel" binding="lblCustomerAddress">
+                <constraints>
+                  <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag top="0" left="0" bottom="10" right="0" weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="Địa chỉ khách hàng:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="db39e" class="javax.swing.JTextField" binding="txtCustomerAdress">
+                <constraints>
+                  <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag top="0" left="0" bottom="10" right="0" weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                </properties>
+              </component>
+            </children>
+          </grid>
+          <scrollpane id="6f114" binding="scrtblInvoiceLine">
+            <constraints border-constraint="Center"/>
+            <properties>
+              <font size="16"/>
+            </properties>
+            <border type="none"/>
+            <children>
+              <component id="2c0bf" class="javax.swing.JTable" binding="tblInvoiceLine" custom-create="true">
+                <constraints/>
+                <properties>
+                  <autoCreateColumnsFromModel value="true"/>
+                  <cellSelectionEnabled value="true"/>
+                  <columnSelectionAllowed value="true"/>
+                  <dropMode value="USE_SELECTION"/>
+                  <enabled value="false"/>
+                  <font size="16"/>
+                  <name value="test"/>
+                </properties>
+              </component>
+            </children>
+          </scrollpane>
+          <grid id="a284f" binding="pnlBillingInfo" layout-manager="GridBagLayout">
+            <constraints border-constraint="South"/>
+            <properties>
+              <alignmentX value="0.0"/>
+              <background color="-1"/>
+            </properties>
+            <border type="none"/>
+            <children>
+              <component id="21c1e" class="javax.swing.JLabel" binding="lblPromotionID">
+                <constraints>
+                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag top="10" left="0" bottom="0" right="0" weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="Mã khuyến mãi:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="35af8" class="javax.swing.JLabel" binding="lblVAT">
+                <constraints>
+                  <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="VAT:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="d66ab" class="javax.swing.JLabel" binding="lblVATNumber">
+                <constraints>
+                  <grid row="2" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <text value=""/>
+                </properties>
+              </component>
+              <component id="bb189" class="javax.swing.JLabel" binding="lblTotalNumber">
+                <constraints>
+                  <grid row="3" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <text value=""/>
+                </properties>
+              </component>
+              <component id="ee136" class="javax.swing.JLabel" binding="lblTotal">
+                <constraints>
+                  <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="Tổng tiền:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="add42" class="javax.swing.JLabel" binding="lblPayment">
+                <constraints>
+                  <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="Phương thức thanh toán:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="ff5de" class="javax.swing.JRadioButton" binding="radCash" custom-create="true">
+                <constraints>
+                  <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.5" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <selected value="true"/>
+                  <text value="Tiền mặt"/>
+                </properties>
+              </component>
+              <component id="8d0e5" class="javax.swing.JRadioButton" binding="radBank" custom-create="true">
+                <constraints>
+                  <grid row="4" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.5" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <text value="Ngân hàng/Ví điện tử"/>
+                </properties>
+              </component>
+              <component id="c1577" class="javax.swing.JTextField" binding="txtPromotionID">
+                <constraints>
+                  <grid row="0" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag top="10" left="0" bottom="0" right="0" weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                </properties>
+              </component>
+              <grid id="4ad4a" binding="pnlCashPayment" custom-create="true" layout-manager="BorderLayout" hgap="0" vgap="0">
+                <constraints>
+                  <grid row="5" column="0" row-span="1" col-span="3" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="0.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                </properties>
+                <border type="none"/>
+                <children>
+                  <component id="4552d" class="javax.swing.JLabel" binding="lblCashPaid">
+                    <constraints border-constraint="North"/>
+                    <properties>
+                      <font size="16"/>
+                      <foreground color="-16777216"/>
+                      <text value="Tiền khách đưa:"/>
+                    </properties>
+                  </component>
+                  <scrollpane id="99487" binding="scrCashAmountList">
+                    <constraints border-constraint="Center"/>
+                    <properties>
+                      <horizontalScrollBarPolicy value="31"/>
+                      <preferredSize width="100" height="150"/>
+                      <verticalScrollBarPolicy value="20"/>
+                    </properties>
+                    <border type="none"/>
+                    <children>
+                      <grid id="3b221" binding="pnlCashAmountList" custom-create="true" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="0">
+                        <constraints/>
+                        <properties>
+                          <background color="-1"/>
+                          <preferredSize width="100" height="500"/>
+                        </properties>
+                        <border type="none"/>
+                        <children>
+                          <component id="54a5" class="javax.swing.JButton" binding="btnCashAmount" custom-create="true">
+                            <constraints/>
+                            <properties>
+                              <background color="-11812950"/>
+                              <font size="16" style="1"/>
+                              <foreground color="-16777216"/>
+                              <maximumSize width="200" height="34"/>
+                              <preferredSize width="127" height="50"/>
+                              <text value="100,000"/>
+                            </properties>
+                          </component>
+                        </children>
+                      </grid>
+                    </children>
+                  </scrollpane>
+                </children>
+              </grid>
+              <component id="28f29" class="javax.swing.JLabel" binding="lblPromotionDetail">
+                <constraints>
+                  <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <focusCycleRoot value="false"/>
+                  <focusTraversalPolicyProvider value="false"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <text value="Nội dung khuyến mãi:"/>
+                  <verifyInputWhenFocusTarget value="true"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="bc2d5" class="javax.swing.JLabel" binding="lblPromotionDetailText">
+                <constraints>
+                  <grid row="1" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <text value=""/>
+                </properties>
+              </component>
+            </children>
+          </grid>
+        </children>
+      </grid>
     </children>
   </grid>
 </form>

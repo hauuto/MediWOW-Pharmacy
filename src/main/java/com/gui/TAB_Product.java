@@ -37,5 +37,4 @@ public class TAB_Product {
     public JComponent $$$getRootComponent$$$() {
         return pProduct;
     }
-
 }
