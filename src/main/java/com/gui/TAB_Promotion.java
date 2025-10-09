@@ -69,23 +69,33 @@ public class TAB_Promotion extends JPanel {
     @Thanh Khôi
      */
     private JComponent buildToolbar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
-//        bar.add(new JButton("+ Thêm khuyến mãi")); # Loại bỏ nút này
+        // Use BorderLayout so the search box can expand in the center
+        JPanel bar = new JPanel(new BorderLayout(8, 4));
 
-        // --- Search field (added) ---
-        txtSearch = new JTextField(16);
-        btnSearch = new JButton("Tìm");
-        // Pressing Enter in text field triggers search
+        // --- Search field (larger font, wider, expandable) ---
+        txtSearch = new JTextField();
+        txtSearch.setColumns(24); // preferred column count
+        txtSearch.setFont(txtSearch.getFont().deriveFont(Font.PLAIN, 16f)); // larger text
+        // give a sensible preferred width; BorderLayout.CENTER will allow expansion
+        txtSearch.setPreferredSize(new Dimension(420, txtSearch.getPreferredSize().height));
         txtSearch.addActionListener(e -> applyFilter());
+
+        btnSearch = new JButton("Tìm");
+        btnSearch.setFont(btnSearch.getFont().deriveFont(Font.PLAIN, 14f));
         btnSearch.addActionListener(e -> applyFilter());
 
-        // Add search controls to toolbar (placed before other buttons)
-        bar.add(txtSearch);
-        bar.add(btnSearch);
+        // Put search input + button into a small wrapper on the left/center
+        JPanel searchWrap = new JPanel(new BorderLayout(4, 0));
+        searchWrap.add(txtSearch, BorderLayout.CENTER);
+        searchWrap.add(btnSearch, BorderLayout.EAST);
+        bar.add(searchWrap, BorderLayout.CENTER);
 
-        bar.add(pillCombo("Trạng thái", new String[]{"Tất cả","Đang áp dụng","Sắp tới","Hết hạn"}));
-        bar.add(pillCombo("Loại hành động", new String[]{"Tất cả","PERCENT_DISCOUNT","FIXED_DISCOUNT","PRODUCT_GIFT"}));
-        bar.add(pillCombo("Mục tiêu", new String[]{"Tất cả","ORDER_SUBTOTAL","PRODUCT","PRODUCT_QTY"})); //Chắc cần sửa lại
+        // Right-side controls (kept in a flow layout)
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+        right.add(pillCombo("Trạng thái", new String[]{"Tất cả","Đang áp dụng","Sắp tới","Hết hạn"}));
+        right.add(pillCombo("Loại hành động", new String[]{"Tất cả","PERCENT_DISCOUNT","FIXED_DISCOUNT","PRODUCT_GIFT"}));
+        right.add(pillCombo("Mục tiêu", new String[]{"Tất cả","ORDER_SUBTOTAL","PRODUCT","PRODUCT_QTY"}));
+        bar.add(right, BorderLayout.EAST);
 
         return bar;
     }
