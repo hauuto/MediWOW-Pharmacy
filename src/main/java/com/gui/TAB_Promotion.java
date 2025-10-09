@@ -67,8 +67,8 @@ public class TAB_Promotion extends JPanel {
     @Thanh Khôi
      */
     private JComponent buildToolbar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        bar.add(new JButton("+ Thêm khuyến mãi"));
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+//        bar.add(new JButton("+ Thêm khuyến mãi")); # Loại bỏ nút này
         bar.add(new JButton("Sao chép"));
         bar.add(new JButton("Xuất Excel"));
 
@@ -308,7 +308,7 @@ public class TAB_Promotion extends JPanel {
                 case 2 -> fmtRange(p.getStart(), p.getEnd());
                 case 3 -> summarizeConditions(p.getConditions());
                 case 4 -> summarizeActions(p.getActions());
-                case 5 -> switch (p.getStatus()) {
+                    case 5 -> switch (p.getStatus()) {
                     case DANG_AP_DUNG -> "Đang áp dụng";
                     case SAP_TOI -> "Sắp tới";
                     default -> "Hết hạn";
