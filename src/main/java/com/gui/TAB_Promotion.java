@@ -16,8 +16,6 @@ import com.entities.PromotionAction;
 /** Trang trung tâm: Khuyến mãi — Danh sách & Chi tiết (SplitView) */
 public class TAB_Promotion extends JPanel {
 
-
-
     // ====== UI: trái (JTable) ======
     private JTable tblPromotions;
     private PromotionsTableModel promotionsModel;
@@ -31,6 +29,10 @@ public class TAB_Promotion extends JPanel {
     private JTable tblConds, tblActs;
     private ConditionsModel condsModel;
     private ActionsModel actsModel;
+
+    // --- new: search controls ---
+    private JTextField txtSearch;      // search input
+    private JButton btnSearch;         // search button
 
     private final JButton btnAddCond = new JButton("+ Thêm điều kiện");
     private final JButton btnDelCond = new JButton("Xóa điều kiện");
@@ -69,8 +71,17 @@ public class TAB_Promotion extends JPanel {
     private JComponent buildToolbar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
 //        bar.add(new JButton("+ Thêm khuyến mãi")); # Loại bỏ nút này
-        bar.add(new JButton("Sao chép"));
-        bar.add(new JButton("Xuất Excel"));
+
+        // --- Search field (added) ---
+        txtSearch = new JTextField(16);
+        btnSearch = new JButton("Tìm");
+        // Pressing Enter in text field triggers search
+        txtSearch.addActionListener(e -> applyFilter());
+        btnSearch.addActionListener(e -> applyFilter());
+
+        // Add search controls to toolbar (placed before other buttons)
+        bar.add(txtSearch);
+        bar.add(btnSearch);
 
         bar.add(pillCombo("Trạng thái", new String[]{"Tất cả","Đang áp dụng","Sắp tới","Hết hạn"}));
         bar.add(pillCombo("Loại hành động", new String[]{"Tất cả","PERCENT_DISCOUNT","FIXED_DISCOUNT","PRODUCT_GIFT"}));
@@ -492,5 +503,42 @@ public class TAB_Promotion extends JPanel {
         int modelRow = t.convertRowIndexToModel(row);
         if (m instanceof ConditionsModel cm) cm.removeRow(modelRow);
         if (m instanceof ActionsModel am) am.removeRow(modelRow);
+    }
+
+    // new: apply filter wrapper
+    private void applyFilter() {
+        String q = txtSearch.getText() != null ? txtSearch.getText().trim() : "";
+        filterPromotions(q);
+    }
+
+    // new: filter logic - searches id, name, description (case-insensitive)
+    private void filterPromotions(String q) {
+        if (q == null || q.isEmpty()) {
+            promotionsModel.setData(data);
+            if (!data.isEmpty()) {
+                tblPromotions.setRowSelectionInterval(0, 0);
+                loadDetail(getSelectedPromotion());
+            }
+            return;
+        }
+        String ql = q.toLowerCase(Locale.ROOT);
+        List<Promotion> filtered = new ArrayList<>();
+        for (Promotion p : data) {
+            boolean matches = false;
+            if (p.getId() != null && p.getId().toLowerCase(Locale.ROOT).contains(ql)) matches = true;
+            if (!matches && p.getName() != null && p.getName().toLowerCase(Locale.ROOT).contains(ql)) matches = true;
+            if (!matches && p.getDescription() != null && p.getDescription().toLowerCase(Locale.ROOT).contains(ql)) matches = true;
+            if (matches) filtered.add(p);
+        }
+        promotionsModel.setData(filtered);
+        if (!filtered.isEmpty()) {
+            // select first found item and load detail
+            tblPromotions.setRowSelectionInterval(0, 0);
+            loadDetail(getSelectedPromotion());
+        } else {
+            tblPromotions.clearSelection();
+            // optionally clear detail view; loadDetail(null) is safe (it returns early)
+            loadDetail(null);
+        }
     }
 }
