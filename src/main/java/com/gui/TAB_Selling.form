@@ -23,17 +23,7 @@
               <preferredSize width="2" height="2"/>
             </properties>
             <border type="none"/>
-            <children>
-              <grid id="a0b9" binding="pnlBottomBar" layout-manager="BorderLayout" hgap="0" vgap="0">
-                <constraints/>
-                <properties>
-                  <background color="-1"/>
-                  <preferredSize width="2" height="50"/>
-                </properties>
-                <border type="line"/>
-                <children/>
-              </grid>
-            </children>
+            <children/>
           </grid>
         </children>
       </scrollpane>
@@ -79,10 +69,11 @@
                   <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>
                   </grid>
-                  <gridbag weightx="3.0" weighty="0.0"/>
+                  <gridbag weightx="13.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <font size="16"/>
+                  <toolTipText value="Điền mã đơn kê thuốc"/>
                 </properties>
               </component>
               <component id="ec4be" class="javax.swing.JLabel" binding="lblPrescriptionCode">
@@ -126,6 +117,7 @@
                 </constraints>
                 <properties>
                   <font size="16"/>
+                  <toolTipText value="Điền tên khách hàng"/>
                 </properties>
               </component>
               <component id="d9be4" class="javax.swing.JTextField" binding="txtCustomerTeleNo">
@@ -137,6 +129,7 @@
                 </constraints>
                 <properties>
                   <font size="16"/>
+                  <toolTipText value="Điền số điện thoại khách hàng"/>
                 </properties>
               </component>
               <component id="bd5dc" class="javax.swing.JLabel" binding="lblCustomerTeleNo">
@@ -180,6 +173,8 @@
                 </constraints>
                 <properties>
                   <font size="16"/>
+                  <text value=""/>
+                  <toolTipText value="Điền địa chỉ khách hàng"/>
                 </properties>
               </component>
             </children>
@@ -195,12 +190,13 @@
                 <constraints/>
                 <properties>
                   <autoCreateColumnsFromModel value="true"/>
-                  <cellSelectionEnabled value="true"/>
-                  <columnSelectionAllowed value="true"/>
+                  <cellSelectionEnabled value="false"/>
+                  <columnSelectionAllowed value="false"/>
                   <dropMode value="USE_SELECTION"/>
-                  <enabled value="false"/>
+                  <enabled value="true"/>
                   <font size="16"/>
                   <name value="test"/>
+                  <rowSelectionAllowed value="true"/>
                 </properties>
               </component>
             </children>
@@ -255,6 +251,7 @@
                 <properties>
                   <font size="16"/>
                   <text value=""/>
+                  <toolTipText value="Số thuế hóa đơn"/>
                 </properties>
               </component>
               <component id="bb189" class="javax.swing.JLabel" binding="lblTotalNumber">
@@ -267,6 +264,7 @@
                 <properties>
                   <font size="16"/>
                   <text value=""/>
+                  <toolTipText value="Tổng tiền hóa đơn"/>
                 </properties>
               </component>
               <component id="ee136" class="javax.swing.JLabel" binding="lblTotal">
@@ -312,6 +310,7 @@
                   <foreground color="-16777216"/>
                   <selected value="true"/>
                   <text value="Tiền mặt"/>
+                  <toolTipText value="Thanh toán tiền mặt"/>
                 </properties>
               </component>
               <component id="8d0e5" class="javax.swing.JRadioButton" binding="radBank" custom-create="true">
@@ -324,6 +323,7 @@
                   <font size="16"/>
                   <foreground color="-16777216"/>
                   <text value="Ngân hàng/Ví điện tử"/>
+                  <toolTipText value="Thanh toán chuyển khoản"/>
                 </properties>
               </component>
               <component id="c1577" class="javax.swing.JTextField" binding="txtPromotionID">
@@ -335,60 +335,9 @@
                 </constraints>
                 <properties>
                   <font size="16"/>
+                  <toolTipText value="Điền mã khuyến mãi"/>
                 </properties>
               </component>
-              <grid id="4ad4a" binding="pnlCashPayment" custom-create="true" layout-manager="BorderLayout" hgap="0" vgap="0">
-                <constraints>
-                  <grid row="5" column="0" row-span="1" col-span="3" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="0.0" weighty="0.0"/>
-                </constraints>
-                <properties>
-                  <background color="-1"/>
-                </properties>
-                <border type="none"/>
-                <children>
-                  <component id="4552d" class="javax.swing.JLabel" binding="lblCashPaid">
-                    <constraints border-constraint="North"/>
-                    <properties>
-                      <font size="16"/>
-                      <foreground color="-16777216"/>
-                      <text value="Tiền khách đưa:"/>
-                    </properties>
-                  </component>
-                  <scrollpane id="99487" binding="scrCashAmountList">
-                    <constraints border-constraint="Center"/>
-                    <properties>
-                      <horizontalScrollBarPolicy value="31"/>
-                      <preferredSize width="100" height="150"/>
-                      <verticalScrollBarPolicy value="20"/>
-                    </properties>
-                    <border type="none"/>
-                    <children>
-                      <grid id="3b221" binding="pnlCashAmountList" custom-create="true" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="0">
-                        <constraints/>
-                        <properties>
-                          <background color="-1"/>
-                          <preferredSize width="100" height="500"/>
-                        </properties>
-                        <border type="none"/>
-                        <children>
-                          <component id="54a5" class="javax.swing.JButton" binding="btnCashAmount" custom-create="true">
-                            <constraints/>
-                            <properties>
-                              <background color="-11812950"/>
-                              <font size="16" style="1"/>
-                              <foreground color="-16777216"/>
-                              <maximumSize width="200" height="34"/>
-                              <preferredSize width="127" height="50"/>
-                              <text value="100,000"/>
-                            </properties>
-                          </component>
-                        </children>
-                      </grid>
-                    </children>
-                  </scrollpane>
-                </children>
-              </grid>
               <component id="28f29" class="javax.swing.JLabel" binding="lblPromotionDetail">
                 <constraints>
                   <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
@@ -415,6 +364,116 @@
                 <properties>
                   <font size="16"/>
                   <text value=""/>
+                  <toolTipText value="Nội dung khuyến mãi"/>
+                </properties>
+              </component>
+              <component id="ff7b1" class="javax.swing.JLabel" binding="lblCashPaid">
+                <constraints>
+                  <grid row="5" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag top="0" left="0" bottom="10" right="0" weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="4"/>
+                  <horizontalTextPosition value="2"/>
+                  <text value="Tiền khách đưa:"/>
+                  <verticalAlignment value="1"/>
+                </properties>
+              </component>
+              <component id="d5536" class="javax.swing.JButton" binding="btnCreateInvoice">
+                <constraints>
+                  <grid row="7" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                  <gridbag top="0" left="10" bottom="0" right="0" weightx="0.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-11812950"/>
+                  <font size="16" style="1"/>
+                  <foreground color="-16777216"/>
+                  <maximumSize width="50" height="34"/>
+                  <minimumSize width="50" height="34"/>
+                  <preferredSize width="50" height="50"/>
+                  <text value="Tạo hóa đơn"/>
+                  <toolTipText value="Tạo hóa đơn"/>
+                </properties>
+              </component>
+              <grid id="fe8b4" binding="pnlCashPayment" custom-create="true" layout-manager="BorderLayout" hgap="0" vgap="0">
+                <constraints>
+                  <grid row="6" column="0" row-span="1" col-span="3" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="0.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                </properties>
+                <border type="none"/>
+                <children>
+                  <scrollpane id="46016" binding="scrCashAmountList">
+                    <constraints border-constraint="Center"/>
+                    <properties>
+                      <horizontalScrollBarPolicy value="31"/>
+                      <preferredSize width="100" height="150"/>
+                      <verticalScrollBarPolicy value="20"/>
+                    </properties>
+                    <border type="none"/>
+                    <children>
+                      <grid id="c138c" binding="pnlCashAmountList" custom-create="true" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="0">
+                        <constraints/>
+                        <properties>
+                          <background color="-1"/>
+                          <preferredSize width="100" height="500"/>
+                        </properties>
+                        <border type="none"/>
+                        <children>
+                          <component id="f8026" class="javax.swing.JButton" binding="btnCashAmount" custom-create="true">
+                            <constraints/>
+                            <properties>
+                              <background color="-11812950"/>
+                              <font size="16" style="1"/>
+                              <foreground color="-16777216"/>
+                              <maximumSize width="200" height="34"/>
+                              <preferredSize width="127" height="50"/>
+                              <text value="100,000"/>
+                              <toolTipText value="Chọn giá trị tiền khách đưa"/>
+                            </properties>
+                          </component>
+                        </children>
+                      </grid>
+                    </children>
+                  </scrollpane>
+                </children>
+              </grid>
+              <component id="2bc71" class="javax.swing.JButton" binding="btnDeleteInvoiceLine" custom-create="true">
+                <constraints>
+                  <grid row="7" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                  <gridbag top="0" left="10" bottom="0" right="0" weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <actionCommand value="Xóa chi tiết hóa đơn"/>
+                  <background color="-11812950"/>
+                  <contentAreaFilled value="true"/>
+                  <font size="16" style="1"/>
+                  <foreground color="-16777216"/>
+                  <maximumSize width="50" height="34"/>
+                  <minimumSize width="50" height="34"/>
+                  <preferredSize width="50" height="50"/>
+                  <text value="Xóa chi tiết hóa đơn"/>
+                  <toolTipText value="Xóa chi tiết hóa đơn được chọn"/>
+                </properties>
+              </component>
+              <component id="b6a77" class="javax.swing.JFormattedTextField" binding="txtCashPaidAmount" custom-create="true">
+                <constraints>
+                  <grid row="5" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag top="0" left="0" bottom="10" right="0" weightx="0.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <autoscrolls value="true"/>
+                  <background color="-1"/>
+                  <disabledTextColor color="-16777216"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <toolTipText value="Số tiền khách đưa"/>
                 </properties>
               </component>
             </children>

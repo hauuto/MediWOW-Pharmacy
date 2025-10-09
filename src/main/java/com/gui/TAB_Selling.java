@@ -6,6 +6,8 @@ import javax.swing.plaf.FontUIResource;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableColumnModel;
+import javax.swing.text.NumberFormatter;
 import javax.swing.text.StyleContext;
 import java.awt.*;
 import java.text.DecimalFormat;
@@ -13,7 +15,6 @@ import java.util.Locale;
 
 public class TAB_Selling {
     JPanel pnlSelling;
-    private JPanel pnlBottomBar;
     private JScrollPane scrCatalogue;
     private JPanel pnlCatalogue;
     private JTable tblInvoiceLine;
@@ -40,18 +41,39 @@ public class TAB_Selling {
     private JTextField txtPromotionID;
     private JPanel pnlCashPayment;
     private JPanel pnlBillingInfo;
-    private JLabel lblCashPaid;
     private JLabel lblPromotionDetail;
     private JLabel lblPromotionDetailText;
     private JPanel pnlCashAmountList;
     private JButton btnCashAmount;
+    private JLabel lblCashPaid;
+    private JButton btnCreateInvoice;
     private JScrollPane scrCashAmountList;
+    private JButton btnDeleteInvoiceLine;
+    private JFormattedTextField txtCashPaidAmount;
 
     private void createUIComponents() {
         String[] columnNames = {"Mã thuốc", "Tên thuốc", "Số lượng", "Đơn vị", "Đơn giá", "Thành tiền"};
         Object[][] data = {
                 {"T001", "Paracetamol", 2, "Viên", 5000, 10000},
-                {"T002", "Amoxicillin", 1, "Hộp", 20000, 20000}
+                {"T002", "Amoxicillin", 1, "Hộp", 20000, 20000},
+                {"T003", "Ibuprofen", 3, "Viên", 8000, 24000},
+                {"T004", "Cetirizine", 1, "Hộp", 15000, 15000},
+                {"T005", "Loratadine", 2, "Viên", 7000, 14000},
+                {"T006", "Azithromycin", 1, "Hộp", 25000, 25000},
+                {"T007", "Metformin", 2, "Viên", 12000, 24000},
+                {"T008", "Aspirin", 1, "Hộp", 18000, 18000},
+                {"T009", "Omeprazole", 3, "Viên", 9000, 27000},
+                {"T010", "Simvastatin", 1, "Hộp", 22000, 22000},
+                {"T011", "Ciprofloxacin", 2, "Viên", 11000, 22000},
+                {"T012", "Doxycycline", 1, "Hộp", 16000, 16000},
+                {"T013", "Clindamycin", 3, "Viên", 13000, 39000},
+                {"T014", "Ranitidine", 1, "Hộp", 14000, 14000},
+                {"T015", "Fexofenadine", 2, "Viên", 6000, 12000},
+                {"T016", "Levofloxacin", 1, "Hộp", 23000, 23000},
+                {"T017", "Nitrofurantoin", 3, "Viên", 10000, 30000},
+                {"T018", "Hydrochlorothiazide", 1, "Hộp", 17000, 17000},
+                {"T019", "Warfarin", 2, "Viên", 8000, 16000},
+                {"T020", "Clopidogrel", 1, "Hộp", 21000, 21000}
         };
 
         DefaultTableModel tableModel = new DefaultTableModel(data, columnNames) {
@@ -66,21 +88,41 @@ public class TAB_Selling {
         header.setFont(new Font(header.getFont().getName(), Font.BOLD, 16));
         // Prevent column reordering
         header.setReorderingAllowed(false);
+
+        // Configure for row selection
+        tblInvoiceLine.setEnabled(true);
+        tblInvoiceLine.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tblInvoiceLine.setRowSelectionAllowed(true);
+        tblInvoiceLine.setColumnSelectionAllowed(false);
+        tblInvoiceLine.setCellSelectionEnabled(false);
+
         // Set odd row color to blue
         tblInvoiceLine.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            private final Color oddRowColor = new Color(75, 191, 170);
+            private final Color evenRowColor = Color.WHITE;
+
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                if (!isSelected) {
-                    if (row % 2 == 1) {
-                        c.setBackground(new Color(75, 191, 170)); // Light blue
-                    } else {
-                        c.setBackground(Color.WHITE);
-                    }
+                Color base = (row % 2 == 1) ? oddRowColor : evenRowColor;
+                if (isSelected) {
+                    c.setBackground(base.darker());
+                    c.setForeground(Color.WHITE);
+                } else {
+                    c.setBackground(base);
+                    c.setForeground(Color.BLACK);
                 }
+                if (c instanceof JComponent) ((JComponent) c).setOpaque(true);
                 return c;
             }
         });
+
+        // Make columns unresizable
+        tblInvoiceLine.getTableHeader().setResizingAllowed(false);
+        TableColumnModel cm = tblInvoiceLine.getColumnModel();
+        for (int i = 0; i < cm.getColumnCount(); i++) {
+            cm.getColumn(i).setResizable(false);
+        }
 
         radCash = new JRadioButton();
         radBank = new JRadioButton();
@@ -91,11 +133,28 @@ public class TAB_Selling {
 
         pnlCashPayment = new JPanel();
 
+        // Add listeners for payment method changes
         radCash.addItemListener(e -> {
             boolean selected = radCash.isSelected();
             pnlCashPayment.setVisible(selected);
             pnlCashPayment.revalidate();
             pnlCashPayment.repaint();
+
+            // Handle txtCashPaidAmount state
+            if (selected) {
+                txtCashPaidAmount.setValue(0L);
+                txtCashPaidAmount.setEnabled(true);
+            }
+        });
+
+        radBank.addItemListener(e -> {
+            boolean selected = radBank.isSelected();
+
+            // Handle txtCashPaidAmount state
+            if (selected) {
+                txtCashPaidAmount.setValue(0L);
+                txtCashPaidAmount.setEnabled(false);
+            }
         });
 
         pnlCashAmountList = new JPanel();
@@ -108,6 +167,7 @@ public class TAB_Selling {
         btnCashAmount.setMaximumSize(new Dimension(200, 34));
         btnCashAmount.setPreferredSize(new Dimension(127, 50));
         btnCashAmount.setText("100,000");
+        btnCashAmount.setToolTipText("Chọn giá trị tiền khách đưa");
         pnlCashAmountList.add(btnCashAmount);
 
         for (int i = 1; i <= 20; i++) {
@@ -116,6 +176,33 @@ public class TAB_Selling {
         }
 
         btnCashAmount.setVisible(false);
+
+        btnDeleteInvoiceLine = new JButton();
+
+        // Wire up the delete button
+        btnDeleteInvoiceLine.addActionListener(e -> {
+            int selectedRow = tblInvoiceLine.getSelectedRow();
+            if (selectedRow >= 0) {
+                // Convert view row to model row in case of sorting
+                int modelRow = tblInvoiceLine.convertRowIndexToModel(selectedRow);
+                DefaultTableModel model = (DefaultTableModel) tblInvoiceLine.getModel();
+                model.removeRow(modelRow);
+            }
+        });
+
+        // Create formatted text field for Vietnamese currency
+        DecimalFormat currencyFormat = new DecimalFormat("#,000 'Đ'");
+        currencyFormat.setGroupingUsed(true);
+        currencyFormat.setGroupingSize(3);
+
+        NumberFormatter formatter = new NumberFormatter(currencyFormat);
+        formatter.setValueClass(Long.class);
+        formatter.setMinimum(0L);
+        formatter.setAllowsInvalid(false);
+        formatter.setCommitsOnValidEdit(true);
+
+        txtCashPaidAmount = new JFormattedTextField(formatter);
+        txtCashPaidAmount.setValue(0L);
     }
 
     private JButton cloneButton(JButton template, double amount) {
@@ -134,6 +221,7 @@ public class TAB_Selling {
         b.setPreferredSize(template.getPreferredSize());
         b.setMinimumSize(template.getMinimumSize());
         b.setMaximumSize(template.getMaximumSize());
+        b.setToolTipText(template.getToolTipText());
         b.setEnabled(template.isEnabled());
         return b;
     }
@@ -166,12 +254,6 @@ public class TAB_Selling {
         pnlCatalogue.setBackground(new Color(-1));
         pnlCatalogue.setPreferredSize(new Dimension(2, 2));
         scrCatalogue.setViewportView(pnlCatalogue);
-        pnlBottomBar = new JPanel();
-        pnlBottomBar.setLayout(new BorderLayout(0, 0));
-        pnlBottomBar.setBackground(new Color(-1));
-        pnlBottomBar.setPreferredSize(new Dimension(2, 50));
-        pnlCatalogue.add(pnlBottomBar);
-        pnlBottomBar.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.black), null, TitledBorder.DEFAULT_JUSTIFICATION, TitledBorder.DEFAULT_POSITION, null, null));
         pnlInvoice = new JPanel();
         pnlInvoice.setLayout(new BorderLayout(0, 0));
         pnlInvoice.setAutoscrolls(false);
@@ -207,10 +289,11 @@ public class TAB_Selling {
         txtPrescriptionCode = new JTextField();
         Font txtPrescriptionCodeFont = this.$$$getFont$$$(null, -1, 16, txtPrescriptionCode.getFont());
         if (txtPrescriptionCodeFont != null) txtPrescriptionCode.setFont(txtPrescriptionCodeFont);
+        txtPrescriptionCode.setToolTipText("Điền mã đơn kê thuốc");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 1;
-        gbc.weightx = 3.0;
+        gbc.weightx = 13.0;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         pnlGeneralInfo.add(txtPrescriptionCode, gbc);
@@ -249,6 +332,7 @@ public class TAB_Selling {
         txtCustomerName = new JTextField();
         Font txtCustomerNameFont = this.$$$getFont$$$(null, -1, 16, txtCustomerName.getFont());
         if (txtCustomerNameFont != null) txtCustomerName.setFont(txtCustomerNameFont);
+        txtCustomerName.setToolTipText("Điền tên khách hàng");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 2;
@@ -259,6 +343,7 @@ public class TAB_Selling {
         txtCustomerTeleNo = new JTextField();
         Font txtCustomerTeleNoFont = this.$$$getFont$$$(null, -1, 16, txtCustomerTeleNo.getFont());
         if (txtCustomerTeleNoFont != null) txtCustomerTeleNo.setFont(txtCustomerTeleNoFont);
+        txtCustomerTeleNo.setToolTipText("Điền số điện thoại khách hàng");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 3;
@@ -302,6 +387,8 @@ public class TAB_Selling {
         txtCustomerAdress = new JTextField();
         Font txtCustomerAdressFont = this.$$$getFont$$$(null, -1, 16, txtCustomerAdress.getFont());
         if (txtCustomerAdressFont != null) txtCustomerAdress.setFont(txtCustomerAdressFont);
+        txtCustomerAdress.setText("");
+        txtCustomerAdress.setToolTipText("Điền địa chỉ khách hàng");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 4;
@@ -315,13 +402,14 @@ public class TAB_Selling {
         if (scrtblInvoiceLineFont != null) scrtblInvoiceLine.setFont(scrtblInvoiceLineFont);
         pnlInvoice.add(scrtblInvoiceLine, BorderLayout.CENTER);
         tblInvoiceLine.setAutoCreateColumnsFromModel(true);
-        tblInvoiceLine.setCellSelectionEnabled(true);
-        tblInvoiceLine.setColumnSelectionAllowed(true);
+        tblInvoiceLine.setCellSelectionEnabled(false);
+        tblInvoiceLine.setColumnSelectionAllowed(false);
         tblInvoiceLine.setDropMode(DropMode.USE_SELECTION);
-        tblInvoiceLine.setEnabled(false);
+        tblInvoiceLine.setEnabled(true);
         Font tblInvoiceLineFont = this.$$$getFont$$$(null, -1, 16, tblInvoiceLine.getFont());
         if (tblInvoiceLineFont != null) tblInvoiceLine.setFont(tblInvoiceLineFont);
         tblInvoiceLine.setName("test");
+        tblInvoiceLine.setRowSelectionAllowed(true);
         scrtblInvoiceLine.setViewportView(tblInvoiceLine);
         pnlBillingInfo = new JPanel();
         pnlBillingInfo.setLayout(new GridBagLayout());
@@ -365,6 +453,7 @@ public class TAB_Selling {
         Font lblVATNumberFont = this.$$$getFont$$$(null, -1, 16, lblVATNumber.getFont());
         if (lblVATNumberFont != null) lblVATNumber.setFont(lblVATNumberFont);
         lblVATNumber.setText("");
+        lblVATNumber.setToolTipText("Số thuế hóa đơn");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 2;
@@ -377,6 +466,7 @@ public class TAB_Selling {
         Font lblTotalNumberFont = this.$$$getFont$$$(null, -1, 16, lblTotalNumber.getFont());
         if (lblTotalNumberFont != null) lblTotalNumber.setFont(lblTotalNumberFont);
         lblTotalNumber.setText("");
+        lblTotalNumber.setToolTipText("Tổng tiền hóa đơn");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 3;
@@ -423,6 +513,7 @@ public class TAB_Selling {
         radCash.setForeground(new Color(-16777216));
         radCash.setSelected(true);
         radCash.setText("Tiền mặt");
+        radCash.setToolTipText("Thanh toán tiền mặt");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 4;
@@ -434,6 +525,7 @@ public class TAB_Selling {
         if (radBankFont != null) radBank.setFont(radBankFont);
         radBank.setForeground(new Color(-16777216));
         radBank.setText("Ngân hàng/Ví điện tử");
+        radBank.setToolTipText("Thanh toán chuyển khoản");
         gbc = new GridBagConstraints();
         gbc.gridx = 2;
         gbc.gridy = 4;
@@ -443,6 +535,7 @@ public class TAB_Selling {
         txtPromotionID = new JTextField();
         Font txtPromotionIDFont = this.$$$getFont$$$(null, -1, 16, txtPromotionID.getFont());
         if (txtPromotionIDFont != null) txtPromotionID.setFont(txtPromotionIDFont);
+        txtPromotionID.setToolTipText("Điền mã khuyến mãi");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 0;
@@ -452,37 +545,6 @@ public class TAB_Selling {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(10, 0, 0, 0);
         pnlBillingInfo.add(txtPromotionID, gbc);
-        pnlCashPayment.setLayout(new BorderLayout(0, 0));
-        pnlCashPayment.setBackground(new Color(-1));
-        gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 5;
-        gbc.gridwidth = 3;
-        gbc.fill = GridBagConstraints.BOTH;
-        pnlBillingInfo.add(pnlCashPayment, gbc);
-        lblCashPaid = new JLabel();
-        Font lblCashPaidFont = this.$$$getFont$$$(null, -1, 16, lblCashPaid.getFont());
-        if (lblCashPaidFont != null) lblCashPaid.setFont(lblCashPaidFont);
-        lblCashPaid.setForeground(new Color(-16777216));
-        lblCashPaid.setText("Tiền khách đưa:");
-        pnlCashPayment.add(lblCashPaid, BorderLayout.NORTH);
-        scrCashAmountList = new JScrollPane();
-        scrCashAmountList.setHorizontalScrollBarPolicy(31);
-        scrCashAmountList.setPreferredSize(new Dimension(100, 150));
-        scrCashAmountList.setVerticalScrollBarPolicy(20);
-        pnlCashPayment.add(scrCashAmountList, BorderLayout.CENTER);
-        pnlCashAmountList.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        pnlCashAmountList.setBackground(new Color(-1));
-        pnlCashAmountList.setPreferredSize(new Dimension(100, 500));
-        scrCashAmountList.setViewportView(pnlCashAmountList);
-        btnCashAmount.setBackground(new Color(-11812950));
-        Font btnCashAmountFont = this.$$$getFont$$$(null, Font.BOLD, 16, btnCashAmount.getFont());
-        if (btnCashAmountFont != null) btnCashAmount.setFont(btnCashAmountFont);
-        btnCashAmount.setForeground(new Color(-16777216));
-        btnCashAmount.setMaximumSize(new Dimension(200, 34));
-        btnCashAmount.setPreferredSize(new Dimension(127, 50));
-        btnCashAmount.setText("100,000");
-        pnlCashAmountList.add(btnCashAmount);
         lblPromotionDetail = new JLabel();
         lblPromotionDetail.setFocusCycleRoot(false);
         lblPromotionDetail.setFocusTraversalPolicyProvider(false);
@@ -503,6 +565,7 @@ public class TAB_Selling {
         Font lblPromotionDetailTextFont = this.$$$getFont$$$(null, -1, 16, lblPromotionDetailText.getFont());
         if (lblPromotionDetailTextFont != null) lblPromotionDetailText.setFont(lblPromotionDetailTextFont);
         lblPromotionDetailText.setText("");
+        lblPromotionDetailText.setToolTipText("Nội dung khuyến mãi");
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 1;
@@ -511,6 +574,96 @@ public class TAB_Selling {
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         pnlBillingInfo.add(lblPromotionDetailText, gbc);
+        lblCashPaid = new JLabel();
+        Font lblCashPaidFont = this.$$$getFont$$$(null, -1, 16, lblCashPaid.getFont());
+        if (lblCashPaidFont != null) lblCashPaid.setFont(lblCashPaidFont);
+        lblCashPaid.setForeground(new Color(-16777216));
+        lblCashPaid.setHorizontalAlignment(4);
+        lblCashPaid.setHorizontalTextPosition(2);
+        lblCashPaid.setText("Tiền khách đưa:");
+        lblCashPaid.setVerticalAlignment(1);
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 5;
+        gbc.weightx = 1.0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(0, 0, 10, 0);
+        pnlBillingInfo.add(lblCashPaid, gbc);
+        btnCreateInvoice = new JButton();
+        btnCreateInvoice.setBackground(new Color(-11812950));
+        Font btnCreateInvoiceFont = this.$$$getFont$$$(null, Font.BOLD, 16, btnCreateInvoice.getFont());
+        if (btnCreateInvoiceFont != null) btnCreateInvoice.setFont(btnCreateInvoiceFont);
+        btnCreateInvoice.setForeground(new Color(-16777216));
+        btnCreateInvoice.setMaximumSize(new Dimension(50, 34));
+        btnCreateInvoice.setMinimumSize(new Dimension(50, 34));
+        btnCreateInvoice.setPreferredSize(new Dimension(50, 50));
+        btnCreateInvoice.setText("Tạo hóa đơn");
+        btnCreateInvoice.setToolTipText("Tạo hóa đơn");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 2;
+        gbc.gridy = 7;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 10, 0, 0);
+        pnlBillingInfo.add(btnCreateInvoice, gbc);
+        pnlCashPayment.setLayout(new BorderLayout(0, 0));
+        pnlCashPayment.setBackground(new Color(-1));
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        gbc.gridwidth = 3;
+        gbc.fill = GridBagConstraints.BOTH;
+        pnlBillingInfo.add(pnlCashPayment, gbc);
+        scrCashAmountList = new JScrollPane();
+        scrCashAmountList.setHorizontalScrollBarPolicy(31);
+        scrCashAmountList.setPreferredSize(new Dimension(100, 150));
+        scrCashAmountList.setVerticalScrollBarPolicy(20);
+        pnlCashPayment.add(scrCashAmountList, BorderLayout.CENTER);
+        pnlCashAmountList.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
+        pnlCashAmountList.setBackground(new Color(-1));
+        pnlCashAmountList.setPreferredSize(new Dimension(100, 500));
+        scrCashAmountList.setViewportView(pnlCashAmountList);
+        btnCashAmount.setBackground(new Color(-11812950));
+        Font btnCashAmountFont = this.$$$getFont$$$(null, Font.BOLD, 16, btnCashAmount.getFont());
+        if (btnCashAmountFont != null) btnCashAmount.setFont(btnCashAmountFont);
+        btnCashAmount.setForeground(new Color(-16777216));
+        btnCashAmount.setMaximumSize(new Dimension(200, 34));
+        btnCashAmount.setPreferredSize(new Dimension(127, 50));
+        btnCashAmount.setText("100,000");
+        btnCashAmount.setToolTipText("Chọn giá trị tiền khách đưa");
+        pnlCashAmountList.add(btnCashAmount);
+        btnDeleteInvoiceLine.setActionCommand("Xóa chi tiết hóa đơn");
+        btnDeleteInvoiceLine.setBackground(new Color(-11812950));
+        btnDeleteInvoiceLine.setContentAreaFilled(true);
+        Font btnDeleteInvoiceLineFont = this.$$$getFont$$$(null, Font.BOLD, 16, btnDeleteInvoiceLine.getFont());
+        if (btnDeleteInvoiceLineFont != null) btnDeleteInvoiceLine.setFont(btnDeleteInvoiceLineFont);
+        btnDeleteInvoiceLine.setForeground(new Color(-16777216));
+        btnDeleteInvoiceLine.setMaximumSize(new Dimension(50, 34));
+        btnDeleteInvoiceLine.setMinimumSize(new Dimension(50, 34));
+        btnDeleteInvoiceLine.setPreferredSize(new Dimension(50, 50));
+        btnDeleteInvoiceLine.setText("Xóa chi tiết hóa đơn");
+        btnDeleteInvoiceLine.setToolTipText("Xóa chi tiết hóa đơn được chọn");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 1;
+        gbc.gridy = 7;
+        gbc.weightx = 3.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 10, 0, 0);
+        pnlBillingInfo.add(btnDeleteInvoiceLine, gbc);
+        txtCashPaidAmount.setAutoscrolls(true);
+        txtCashPaidAmount.setBackground(new Color(-1));
+        txtCashPaidAmount.setDisabledTextColor(new Color(-16777216));
+        Font txtCashPaidAmountFont = this.$$$getFont$$$(null, -1, 16, txtCashPaidAmount.getFont());
+        if (txtCashPaidAmountFont != null) txtCashPaidAmount.setFont(txtCashPaidAmountFont);
+        txtCashPaidAmount.setForeground(new Color(-16777216));
+        txtCashPaidAmount.setToolTipText("Số tiền khách đưa");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 1;
+        gbc.gridy = 5;
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 0, 10, 0);
+        pnlBillingInfo.add(txtCashPaidAmount, gbc);
     }
 
     /**
