@@ -79,6 +79,18 @@ public class GUI_MainMenu implements ActionListener {
         pMain.add(staff.pStaff, "staff");
         pMain.add(customer.pCustomer, "customer");
 
+        cbbOption.addActionListener(e -> {
+            if (cbbOption.getSelectedIndex() == 1) {
+                JDialog changePasswordDialog = new DialogChangePassword();
+                changePasswordDialog.setTitle("Đổi mật khẩu");
+                changePasswordDialog.setSize(600, 300);
+                changePasswordDialog.setLocationRelativeTo(pMainMenu);
+                changePasswordDialog.setResizable(false);
+                changePasswordDialog.setVisible(true);
+                cbbOption.setSelectedIndex(0);
+            }
+        });
+
 
         setActiveButton(btnHome);
         cardLayout.show(pMain, "dashboard");
