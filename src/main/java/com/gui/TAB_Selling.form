@@ -2,31 +2,13 @@
 <form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="com.gui.TAB_Selling">
   <grid id="27dc6" binding="pnlSelling" layout-manager="BorderLayout" hgap="0" vgap="0">
     <constraints>
-      <xy x="20" y="20" width="1329" height="834"/>
+      <xy x="20" y="20" width="1708" height="1006"/>
     </constraints>
     <properties>
       <background color="-16777216"/>
     </properties>
     <border type="none"/>
     <children>
-      <scrollpane id="69985" binding="scrCatalogue">
-        <constraints border-constraint="Center"/>
-        <properties>
-          <background color="-1"/>
-        </properties>
-        <border type="none"/>
-        <children>
-          <grid id="5fbe7" binding="pnlCatalogue" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="1">
-            <constraints/>
-            <properties>
-              <background color="-1"/>
-              <preferredSize width="2" height="2"/>
-            </properties>
-            <border type="none"/>
-            <children/>
-          </grid>
-        </children>
-      </scrollpane>
       <grid id="e99a6" binding="pnlInvoice" layout-manager="BorderLayout" hgap="0" vgap="0">
         <constraints border-constraint="East"/>
         <properties>
@@ -45,6 +27,7 @@
             <properties>
               <alignmentX value="0.0"/>
               <background color="-1"/>
+              <preferredSize width="245" height="196"/>
             </properties>
             <border type="none"/>
             <children>
@@ -228,7 +211,7 @@
               <component id="35af8" class="javax.swing.JLabel" binding="lblVAT">
                 <constraints>
                   <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.0" weighty="0.0"/>
+                  <gridbag top="5" left="0" bottom="5" right="0" weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <focusCycleRoot value="false"/>
@@ -246,7 +229,7 @@
                   <grid row="2" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>
                   </grid>
-                  <gridbag weightx="3.0" weighty="0.0"/>
+                  <gridbag top="5" left="0" bottom="5" right="0" weightx="3.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <font size="16"/>
@@ -259,7 +242,7 @@
                   <grid row="3" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>
                   </grid>
-                  <gridbag weightx="3.0" weighty="0.0"/>
+                  <gridbag top="5" left="0" bottom="5" right="0" weightx="3.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <font size="16"/>
@@ -270,7 +253,7 @@
               <component id="ee136" class="javax.swing.JLabel" binding="lblTotal">
                 <constraints>
                   <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.0" weighty="0.0"/>
+                  <gridbag top="5" left="0" bottom="5" right="0" weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <focusCycleRoot value="false"/>
@@ -286,7 +269,7 @@
               <component id="add42" class="javax.swing.JLabel" binding="lblPayment">
                 <constraints>
                   <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.0" weighty="0.0"/>
+                  <gridbag top="2" left="0" bottom="2" right="0" weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <focusCycleRoot value="false"/>
@@ -302,7 +285,7 @@
               <component id="ff5de" class="javax.swing.JRadioButton" binding="radCash" custom-create="true">
                 <constraints>
                   <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.5" weighty="0.0"/>
+                  <gridbag top="2" left="0" bottom="2" right="0" weightx="1.5" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <background color="-1"/>
@@ -316,7 +299,7 @@
               <component id="8d0e5" class="javax.swing.JRadioButton" binding="radBank" custom-create="true">
                 <constraints>
                   <grid row="4" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.5" weighty="0.0"/>
+                  <gridbag top="2" left="0" bottom="2" right="0" weightx="1.5" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <background color="-1"/>
@@ -341,7 +324,7 @@
               <component id="28f29" class="javax.swing.JLabel" binding="lblPromotionDetail">
                 <constraints>
                   <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                  <gridbag weightx="1.0" weighty="0.0"/>
+                  <gridbag top="5" left="0" bottom="5" right="0" weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <focusCycleRoot value="false"/>
@@ -359,7 +342,7 @@
                   <grid row="1" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>
                   </grid>
-                  <gridbag weightx="3.0" weighty="0.0"/>
+                  <gridbag top="5" left="0" bottom="5" right="0" weightx="3.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <font size="16"/>
@@ -370,7 +353,7 @@
               <component id="ff7b1" class="javax.swing.JLabel" binding="lblCashPaid">
                 <constraints>
                   <grid row="5" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
-                  <gridbag top="0" left="0" bottom="10" right="0" weightx="1.0" weighty="0.0"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <font size="16"/>
@@ -384,7 +367,7 @@
               <component id="d5536" class="javax.swing.JButton" binding="btnCreateInvoice">
                 <constraints>
                   <grid row="7" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
-                  <gridbag top="0" left="10" bottom="0" right="0" weightx="0.0" weighty="0.0"/>
+                  <gridbag top="10" left="0" bottom="0" right="0" weightx="0.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <background color="-11812950"/>
@@ -407,7 +390,7 @@
                 </properties>
                 <border type="none"/>
                 <children>
-                  <scrollpane id="46016" binding="scrCashAmountList">
+                  <scrollpane id="46016" binding="scrCashAmountList" custom-create="true">
                     <constraints border-constraint="Center"/>
                     <properties>
                       <horizontalScrollBarPolicy value="31"/>
@@ -445,7 +428,7 @@
               <component id="2bc71" class="javax.swing.JButton" binding="btnDeleteInvoiceLine" custom-create="true">
                 <constraints>
                   <grid row="7" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
-                  <gridbag top="0" left="10" bottom="0" right="0" weightx="3.0" weighty="0.0"/>
+                  <gridbag top="10" left="0" bottom="0" right="0" weightx="3.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <actionCommand value="Xóa chi tiết hóa đơn"/>
@@ -465,7 +448,7 @@
                   <grid row="5" column="1" row-span="1" col-span="2" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>
                   </grid>
-                  <gridbag top="0" left="0" bottom="10" right="0" weightx="0.0" weighty="0.0"/>
+                  <gridbag weightx="0.0" weighty="0.0"/>
                 </constraints>
                 <properties>
                   <autoscrolls value="true"/>
@@ -478,6 +461,384 @@
               </component>
             </children>
           </grid>
+        </children>
+      </grid>
+      <grid id="aa69e" binding="pnlProduct" layout-manager="BorderLayout" hgap="0" vgap="0">
+        <constraints border-constraint="Center"/>
+        <properties>
+          <background color="-1"/>
+        </properties>
+        <border type="empty">
+          <size top="20" left="10" bottom="20" right="10"/>
+        </border>
+        <children>
+          <grid id="f477c" binding="pnlProductSort" layout-manager="GridBagLayout">
+            <constraints border-constraint="North"/>
+            <properties>
+              <background color="-1"/>
+              <preferredSize width="0" height="170"/>
+            </properties>
+            <border type="none"/>
+            <children>
+              <component id="f5c30" class="javax.swing.JLabel" binding="lblProductID">
+                <constraints>
+                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <horizontalTextPosition value="2"/>
+                  <text value="Mã sản phẩm:"/>
+                  <verticalAlignment value="1"/>
+                  <verticalTextPosition value="1"/>
+                </properties>
+              </component>
+              <component id="f1ada" class="javax.swing.JTextField" binding="txtProductID">
+                <constraints>
+                  <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag top="0" left="0" bottom="0" right="20" weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="16"/>
+                  <text value=""/>
+                  <toolTipText value="Điền mã sản phẩm"/>
+                </properties>
+              </component>
+              <component id="38f67" class="javax.swing.JLabel" binding="lblProductName">
+                <constraints>
+                  <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <horizontalTextPosition value="2"/>
+                  <text value="Tên sản phẩm:"/>
+                  <verticalAlignment value="1"/>
+                  <verticalTextPosition value="1"/>
+                </properties>
+              </component>
+              <component id="d8a61" class="javax.swing.JTextField" binding="txtProductName">
+                <constraints>
+                  <grid row="0" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="3.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="16"/>
+                  <text value=""/>
+                  <toolTipText value="Điền tên sản phẩm"/>
+                </properties>
+              </component>
+              <component id="fb0b2" class="javax.swing.JLabel" binding="lblManufacturer">
+                <constraints>
+                  <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <horizontalTextPosition value="2"/>
+                  <text value="Nhà sản xuất:"/>
+                  <verticalAlignment value="1"/>
+                  <verticalTextPosition value="1"/>
+                </properties>
+              </component>
+              <component id="c82a" class="javax.swing.JTextField" binding="txtManufacturer">
+                <constraints>
+                  <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag top="0" left="0" bottom="0" right="20" weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="16"/>
+                  <text value=""/>
+                  <toolTipText value="Điền nhà sản xuất sản phẩm"/>
+                </properties>
+              </component>
+              <component id="b044f" class="javax.swing.JLabel" binding="lblShortname">
+                <constraints>
+                  <grid row="1" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <horizontalTextPosition value="2"/>
+                  <text value="Tên viết tắt:"/>
+                  <verticalAlignment value="1"/>
+                  <verticalTextPosition value="1"/>
+                </properties>
+              </component>
+              <component id="409f1" class="javax.swing.JTextField" binding="txtShortname">
+                <constraints>
+                  <grid row="1" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="16"/>
+                  <text value=""/>
+                  <toolTipText value="Điền tên viết tắt của sản phẩm"/>
+                </properties>
+              </component>
+              <component id="f18ae" class="javax.swing.JLabel" binding="lblCategory">
+                <constraints>
+                  <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <horizontalTextPosition value="2"/>
+                  <text value="Loại thuốc:"/>
+                  <verticalAlignment value="1"/>
+                  <verticalTextPosition value="1"/>
+                </properties>
+              </component>
+              <component id="c2531" class="javax.swing.JComboBox" binding="cmbCategory" custom-create="true">
+                <constraints>
+                  <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag top="0" left="0" bottom="0" right="20" weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <toolTipText value="Chọn loại thuốc"/>
+                </properties>
+              </component>
+              <component id="8ac70" class="javax.swing.JLabel" binding="lblForm">
+                <constraints>
+                  <grid row="2" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <horizontalAlignment value="2"/>
+                  <horizontalTextPosition value="2"/>
+                  <text value="Dạng bào chế:"/>
+                  <verticalAlignment value="1"/>
+                  <verticalTextPosition value="1"/>
+                </properties>
+              </component>
+              <component id="6fb86" class="javax.swing.JComboBox" binding="cmbForm" custom-create="true">
+                <constraints>
+                  <grid row="2" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+                    <preferred-size width="150" height="-1"/>
+                  </grid>
+                  <gridbag weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-1"/>
+                  <font size="16"/>
+                  <foreground color="-16777216"/>
+                  <toolTipText value="Chọn dạng bào chế"/>
+                </properties>
+              </component>
+              <component id="975ae" class="javax.swing.JButton" binding="btnFilterProducts">
+                <constraints>
+                  <grid row="3" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                  <gridbag top="10" left="10" bottom="0" right="0" weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <background color="-11812950"/>
+                  <font size="16" style="1"/>
+                  <foreground color="-16777216"/>
+                  <maximumSize width="50" height="34"/>
+                  <minimumSize width="50" height="34"/>
+                  <preferredSize width="50" height="50"/>
+                  <text value="Lọc sản phẩm"/>
+                  <toolTipText value="Lọc danh sách sản phẩm"/>
+                </properties>
+              </component>
+              <component id="38dd0" class="javax.swing.JButton" binding="btnRefresh" custom-create="true">
+                <constraints>
+                  <grid row="3" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                  <gridbag top="10" left="0" bottom="0" right="0" weightx="1.0" weighty="0.0"/>
+                </constraints>
+                <properties>
+                  <actionCommand value="Làm mới"/>
+                  <background color="-11812950"/>
+                  <contentAreaFilled value="true"/>
+                  <font size="16" style="1"/>
+                  <foreground color="-16777216"/>
+                  <maximumSize width="50" height="34"/>
+                  <minimumSize width="50" height="34"/>
+                  <preferredSize width="50" height="50"/>
+                  <text value="Làm mới"/>
+                  <toolTipText value="Làm mới bộ lọc"/>
+                </properties>
+              </component>
+            </children>
+          </grid>
+          <scrollpane id="840e9" binding="scrProductList" custom-create="true">
+            <constraints border-constraint="Center"/>
+            <properties>
+              <background color="-1"/>
+              <horizontalScrollBarPolicy value="31"/>
+              <opaque value="true"/>
+            </properties>
+            <border type="none"/>
+            <children>
+              <grid id="b5fc9" binding="pnlProductList" custom-create="true" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="0">
+                <constraints/>
+                <properties>
+                  <autoscrolls value="false"/>
+                  <background color="-1"/>
+                  <preferredSize width="950" height="10000"/>
+                </properties>
+                <border type="none"/>
+                <children>
+                  <grid id="aceb1" binding="pnlProductCard" custom-create="true" layout-manager="BorderLayout" hgap="0" vgap="0">
+                    <constraints/>
+                    <properties>
+                      <preferredSize width="482" height="350"/>
+                    </properties>
+                    <border type="none"/>
+                    <children>
+                      <grid id="5d575" binding="pnlProductDescription" custom-create="true" layout-manager="GridBagLayout">
+                        <constraints border-constraint="South"/>
+                        <properties>
+                          <background color="-1"/>
+                          <minimumSize width="0" height="150"/>
+                          <preferredSize width="0" height="130"/>
+                        </properties>
+                        <border type="none"/>
+                        <children>
+                          <component id="15e03" class="javax.swing.JLabel" binding="lblProductCardName" custom-create="true">
+                            <constraints>
+                              <grid row="0" column="0" row-span="1" col-span="2" vsize-policy="0" hsize-policy="0" anchor="9" fill="0" indent="0" use-parent-layout="false"/>
+                              <gridbag top="10" left="10" bottom="10" right="0" weightx="1.0" weighty="0.0"/>
+                            </constraints>
+                            <properties>
+                              <font size="16"/>
+                              <foreground color="-16777216"/>
+                              <text value="Tên sản phẩm: Sản phẩm A"/>
+                            </properties>
+                          </component>
+                          <grid id="1fff0" binding="pnlProductAmount" custom-create="true" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="0">
+                            <constraints>
+                              <grid row="1" column="0" row-span="1" col-span="2" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                              <gridbag top="0" left="6" bottom="0" right="0" weightx="1.0" weighty="0.0"/>
+                            </constraints>
+                            <properties>
+                              <background color="-1"/>
+                            </properties>
+                            <border type="none"/>
+                            <children>
+                              <component id="6e8e2" class="javax.swing.JLabel" binding="lblProductAmount" custom-create="true">
+                                <constraints/>
+                                <properties>
+                                  <font size="16"/>
+                                  <foreground color="-16777216"/>
+                                  <text value="Số lượng sản phẩm: "/>
+                                </properties>
+                              </component>
+                              <component id="83fc9" class="javax.swing.JSpinner" binding="spnProductAmount" custom-create="true">
+                                <constraints/>
+                                <properties>
+                                  <background color="-1"/>
+                                  <focusCycleRoot value="false"/>
+                                  <font size="16"/>
+                                  <foreground color="-16777216"/>
+                                  <toolTipText value="Điều chỉnh số lượng sản phẩm"/>
+                                </properties>
+                              </component>
+                            </children>
+                          </grid>
+                          <grid id="82b7a" binding="pnlProductUnitOfMeasure" custom-create="true" layout-manager="FlowLayout" hgap="5" vgap="5" flow-align="0">
+                            <constraints>
+                              <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                              <gridbag top="0" left="6" bottom="0" right="0" weightx="1.0" weighty="0.0"/>
+                            </constraints>
+                            <properties>
+                              <background color="-1"/>
+                            </properties>
+                            <border type="none"/>
+                            <children>
+                              <component id="ed719" class="javax.swing.JLabel" binding="lblProductUnitOfMeasure" custom-create="true">
+                                <constraints/>
+                                <properties>
+                                  <font size="16"/>
+                                  <foreground color="-16777216"/>
+                                  <text value="Đơn vị: "/>
+                                </properties>
+                              </component>
+                              <component id="2a2a4" class="javax.swing.JComboBox" binding="cmbProductUnitOfMeasure" custom-create="true">
+                                <constraints/>
+                                <properties>
+                                  <background color="-1"/>
+                                  <focusCycleRoot value="false"/>
+                                  <font size="16"/>
+                                  <foreground color="-16777216"/>
+                                  <toolTipText value="Chọn đơn vị sản phẩm"/>
+                                </properties>
+                              </component>
+                            </children>
+                          </grid>
+                          <component id="deb0a" class="javax.swing.JButton" binding="btnAddProduct" custom-create="true">
+                            <constraints>
+                              <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+                              <gridbag weightx="0.0" weighty="0.0"/>
+                            </constraints>
+                            <properties>
+                              <actionCommand value="Làm mới"/>
+                              <background color="-11812950"/>
+                              <contentAreaFilled value="true"/>
+                              <font size="16" style="1"/>
+                              <foreground color="-16777216"/>
+                              <maximumSize width="50" height="34"/>
+                              <minimumSize width="50" height="34"/>
+                              <preferredSize width="100" height="28"/>
+                              <text value="Thêm"/>
+                              <toolTipText value="Thêm sản phẩm vào hóa đơn nháp"/>
+                            </properties>
+                          </component>
+                        </children>
+                      </grid>
+                      <grid id="812bd" binding="pnlProductImage" custom-create="true" layout-manager="BorderLayout" hgap="0" vgap="0">
+                        <constraints border-constraint="Center"/>
+                        <properties>
+                          <background color="-1"/>
+                        </properties>
+                        <border type="none"/>
+                        <children>
+                          <component id="9a160" class="javax.swing.JLabel" binding="lblProductImage" custom-create="true">
+                            <constraints border-constraint="Center"/>
+                            <properties>
+                              <font size="16"/>
+                              <foreground color="-16777216"/>
+                              <icon value="icons/btn_customer.png"/>
+                              <text value=""/>
+                            </properties>
+                          </component>
+                        </children>
+                      </grid>
+                    </children>
+                  </grid>
+                </children>
+              </grid>
+            </children>
+          </scrollpane>
         </children>
       </grid>
     </children>
