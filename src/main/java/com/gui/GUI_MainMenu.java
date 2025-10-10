@@ -11,6 +11,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Locale;
 
@@ -97,10 +99,10 @@ public class GUI_MainMenu implements ActionListener {
         setActiveButton(btnHome);
         cardLayout.show(pMain, "dashboard");
 
-
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss EEEE, dd/MM/yyyy", new Locale("vi", "VN"));
+        Locale locale = Locale.of("vi", "VN");
+        DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss E, dd/MM/yyyy", locale);
         Timer timer = new Timer(1000, e -> {
-            Date now = new Date();
+            LocalDateTime now = LocalDateTime.now();
             lblTime.setText(timeFormat.format(now));
         });
         timer.start();
