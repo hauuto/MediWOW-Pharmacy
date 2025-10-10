@@ -2,6 +2,7 @@ package com.gui;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import com.intellij.uiDesigner.core.Spacer;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -10,7 +11,6 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Locale;
 
@@ -33,6 +33,10 @@ public class GUI_MainMenu implements ActionListener {
     private JButton btnLogout;
     private JButton btnCustomer;
     private JLabel lblTime;
+    private JPanel pSearch;
+    private JTextField txtSearch;
+    private JLabel lblSearch;
+    private JComboBox comboBox1;
     private CardLayout cardLayout;
 
     private void createUIComponents() {
@@ -76,6 +80,18 @@ public class GUI_MainMenu implements ActionListener {
         pMain.add(product.pProduct, "product");
         pMain.add(staff.pStaff, "staff");
         pMain.add(customer.pCustomer, "customer");
+
+        cbbOption.addActionListener(e -> {
+            if (cbbOption.getSelectedIndex() == 1) {
+                JDialog changePasswordDialog = new DialogChangePassword();
+                changePasswordDialog.setTitle("Đổi mật khẩu");
+                changePasswordDialog.setSize(600, 300);
+                changePasswordDialog.setLocationRelativeTo(pMainMenu);
+                changePasswordDialog.setResizable(false);
+                changePasswordDialog.setVisible(true);
+                cbbOption.setSelectedIndex(0);
+            }
+        });
 
 
         setActiveButton(btnHome);
@@ -506,8 +522,6 @@ public class GUI_MainMenu implements ActionListener {
         gbc.weighty = 100.0;
         gbc.fill = GridBagConstraints.BOTH;
         pMainMenu.add(pMain, gbc);
-        final JScrollPane scrollPane1 = new JScrollPane();
-        pMain.add(scrollPane1, "Card1");
         pRightHeader = new JPanel();
         pRightHeader.setLayout(new BorderLayout(0, 0));
         pRightHeader.setBackground(new Color(-16724789));
@@ -531,8 +545,10 @@ public class GUI_MainMenu implements ActionListener {
         cbbOption.setForeground(new Color(-16012317));
         final DefaultComboBoxModel defaultComboBoxModel1 = new DefaultComboBoxModel();
         defaultComboBoxModel1.addElement("Xin chào, Tô Thanh Hậu");
+        defaultComboBoxModel1.addElement("Đổi mật khẩu");
         cbbOption.setModel(defaultComboBoxModel1);
-        pOption.add(cbbOption, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        cbbOption.setName("");
+        pOption.add(cbbOption, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
         lblTime = new JLabel();
         lblTime.setAlignmentY(0.5f);
         Font lblTimeFont = this.$$$getFont$$$(null, Font.BOLD, 22, lblTime.getFont());
@@ -542,6 +558,40 @@ public class GUI_MainMenu implements ActionListener {
         lblTime.setHorizontalTextPosition(11);
         lblTime.setText("");
         pRightHeader.add(lblTime, BorderLayout.CENTER);
+        pSearch = new JPanel();
+        pSearch.setLayout(new GridLayoutManager(1, 3, new Insets(0, 300, 0, 0), -1, -1));
+        pSearch.setAlignmentX(0.0f);
+        pSearch.setBackground(new Color(-16724789));
+        pRightHeader.add(pSearch, BorderLayout.WEST);
+        txtSearch = new JTextField();
+        txtSearch.setAlignmentX(0.0f);
+        Font txtSearchFont = this.$$$getFont$$$(null, -1, 18, txtSearch.getFont());
+        if (txtSearchFont != null) txtSearch.setFont(txtSearchFont);
+        txtSearch.setText("");
+        pSearch.add(txtSearch, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(500, 10), null, 0, false));
+        lblSearch = new JLabel();
+        lblSearch.setBackground(new Color(-16724789));
+        Font lblSearchFont = this.$$$getFont$$$(null, -1, 18, lblSearch.getFont());
+        if (lblSearchFont != null) lblSearch.setFont(lblSearchFont);
+        lblSearch.setForeground(new Color(-15774605));
+        lblSearch.setIcon(new ImageIcon(getClass().getResource("/icons/ico_search.png")));
+        lblSearch.setName("");
+        lblSearch.setText("Tra cứu");
+        pSearch.add(lblSearch, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        comboBox1 = new JComboBox();
+        comboBox1.setAlignmentX(0.0f);
+        Font comboBox1Font = this.$$$getFont$$$(null, -1, 18, comboBox1.getFont());
+        if (comboBox1Font != null) comboBox1.setFont(comboBox1Font);
+        comboBox1.setForeground(new Color(-16012317));
+        final DefaultComboBoxModel defaultComboBoxModel2 = new DefaultComboBoxModel();
+        defaultComboBoxModel2.addElement("Hóa đơn");
+        defaultComboBoxModel2.addElement("Sản phẩm");
+        defaultComboBoxModel2.addElement("Khuyến mại");
+        defaultComboBoxModel2.addElement("Nhân viên");
+        defaultComboBoxModel2.addElement("Khách hàng");
+        comboBox1.setModel(defaultComboBoxModel2);
+        pSearch.add(comboBox1, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
+        lblSearch.setLabelFor(txtSearch);
     }
 
     /**
