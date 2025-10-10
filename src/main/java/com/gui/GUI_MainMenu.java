@@ -62,6 +62,8 @@ public class GUI_MainMenu implements ActionListener {
         btnLogout.addActionListener(this);
         btnCustomer.addActionListener(this);
 
+        //testing rules
+
 
         TAB_Dashboard dashboard = new TAB_Dashboard();
         TAB_Selling sales = new TAB_Selling();
