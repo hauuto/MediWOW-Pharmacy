@@ -1,3 +1,7 @@
+CREATE DATABASE MediWOW
+GO
+USE MediWOW
+
 -- Staff Table
 CREATE TABLE Staff (
                        id NVARCHAR(50) PRIMARY KEY,
