@@ -95,7 +95,7 @@ CREATE TABLE PromotionCondition (
 );
 
 -- PromotionAction Table (Weak Entity - Composition with Promotion)
--- Primary Key: (promotion, actionOrder)
+-- Primary Key: (id)
 CREATE TABLE PromotionAction (
                                  id NVARCHAR(50) NOT NULL PRIMARY KEY,
                                  promotion NVARCHAR(50) NOT NULL,
@@ -165,65 +165,3 @@ CREATE INDEX idx_promotion_isActive ON Promotion(isActive);
 
 
 
-
--- ========== --
--- Generate ID Functions--
-
-CREATE FUNCTION GenerateStaffID()
-    RETURNS NVARCHAR(50)
-AS
-BEGIN
-    DECLARE @NewID NVARCHAR(50);
-    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
-    DECLARE @RoleCode NVARCHAR(3)
-
-    SET @RoleCode = CASE
-                        WHEN SYSTEM_USER LIKE '%_ADMIN' THEN 'ADM'
-                        WHEN SYSTEM_USER LIKE '%_MANAGER' THEN 'MAN'
-                        WHEN SYSTEM_USER LIKE '%_PHARMACIST' THEN 'PHA'
-                        ELSE 'OTH'
-        END;
-    DECLARE @Prefix NVARCHAR(10) = @RoleCode + @CurrentYear + '-';
-
-    DECLARE @MaxID NVARCHAR(50);
-    SELECT @MaxID = MAX(id) FROM Staff WHERE id LIKE @Prefix + '%';
-
-    IF @MaxID IS NULL
-        BEGIN
-            SET @NewID = @Prefix + '0001';
-        END
-    ELSE
-        BEGIN
-            DECLARE @NumericPart INT = CAST(SUBSTRING(@MaxID, LEN(@Prefix) + 1, LEN(@MaxID)) AS INT);
-            SET @NumericPart = @NumericPart + 1;
-            SET @NewID = @Prefix + RIGHT('0000' + CAST(@NumericPart AS NVARCHAR(4)), 4);
-        END
-
-    RETURN @NewID;
-END;
-
-
-CREATE FUNCTION GeneratePrescribedCustomerID()
-    RETURNS NVARCHAR(50)
-AS
-BEGIN
-    DECLARE @NewID NVARCHAR(50);
-    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
-    DECLARE @Prefix NVARCHAR(10) = 'PC' + @CurrentYear + '-';
-
-    DECLARE @MaxID NVARCHAR(50);
-    SELECT @MaxID = MAX(id) FROM PrescribedCustomer WHERE id LIKE @Prefix + '%';
-
-    IF @MaxID IS NULL
-        BEGIN
-            SET @NewID = @Prefix + '0001';
-        END
-    ELSE
-        BEGIN
-            DECLARE @NumericPart INT = CAST(SUBSTRING(@MaxID, LEN(@Prefix) + 1, LEN(@MaxID)) AS INT);
-            SET @NumericPart = @NumericPart + 1;
-            SET @NewID = @Prefix + RIGHT('0000' + CAST(@NumericPart AS NVARCHAR(4)), 4);
-        END
-
-    RETURN @NewID;
-END
