@@ -1,27 +1,35 @@
-CREATE FUNCTION GenerateStaffID()
-RETURNS NVARCHAR(50)
-AS
-BEGIN
-    DECLARE @NewID NVARCHAR(50);
-    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
-    DECLARE @Prefix NVARCHAR(10) = 'STF' + @CurrentYear + '-';
+--Author: To Thanh Hau--
 
-    DECLARE @MaxID NVARCHAR(50);
-    SELECT @MaxID = MAX(id) FROM Staff WHERE id LIKE @Prefix + '%';
+-- Trigger to auto-generate Staff ID based on role --
+CREATE SEQUENCE dbo.ManagerSeg AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.PharmacistSeg AS INT START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE dbo.OtherStaffSeg AS INT START WITH 1 INCREMENT BY 1;
 
-    IF @MaxID IS NULL
+CREATE TRIGGER trg_Staff_AutoID_ByRole On Staff
+INSTEAD OF INSERT
+    AS
     BEGIN
-        SET @NewID = @Prefix + '0001';
-    END
-    ELSE
-    BEGIN
-        DECLARE @NumericPart INT = CAST(SUBSTRING(@MaxID, LEN(@Prefix) + 1, LEN(@MaxID)) AS INT);
-        SET @NumericPart = @NumericPart + 1;
-        SET @NewID = @Prefix + RIGHT('0000' + CAST(@NumericPart AS NVARCHAR(4)), 4);
-    END
+        SET NOCOUNT ON;
+        DECLARE @CurrenYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
 
-    RETURN @NewID;
-END;
+        INSERT INTO Staff(id, username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role)
+        SELECT
+            CASE i.role
+                WHEN 'MANAGER' THEN 'MAN' + @CurrenYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.ManagerSeg AS NVARCHAR(4)),4)
+                WHEN 'PHARMACIST' THEN 'PHA' + @CurrenYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.PharmacistSeg AS NVARCHAR(4)),4)
+                ELSE 'OTH' + @CurrenYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.OtherStaffSeg AS NVARCHAR(4)),4)
+            END,
+            i.username,
+            i.password,
+            i.fullName,
+            i.licenseNumber,
+            i.phoneNumber,
+            i.email,
+            i.hireDate,
+            i.isActive,
+            i.role
+        FROM inserted i;
+    END;
 
 
 
