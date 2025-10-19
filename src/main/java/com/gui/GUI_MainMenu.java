@@ -174,12 +174,17 @@ public class GUI_MainMenu implements ActionListener {
         for (Component comp : pnlMenu.getComponents()) {
             if (comp instanceof JButton) {
                 JButton btn = (JButton) comp;
-                btn.setBackground(UIManager.getColor("Button.background"));
+                setStyleButton(btn);
             }
         }
 
         activeButton.setBackground(AppColors.LIGHT);
 
+    }
+
+    private void setStyleButton(JButton button) {
+        button.setBackground(AppColors.BACKGROUND);
+        button.setBorderPainted(false);
     }
 
 
