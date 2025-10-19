@@ -10,15 +10,17 @@ import java.util.Objects;
  */
 public class UnitOfMeasure {
     private final String id;
-    private Product product;
+    private final Product product;
     private String name;
     private double baseUnitConversionRate;
+    private double basePriceConversionRate;
 
     public UnitOfMeasure(String id, Product product, String name, double baseUnitConversionRate) {
         this.id = id;
         this.product = product;
         this.name = name;
         this.baseUnitConversionRate = baseUnitConversionRate;
+        basePriceConversionRate = 1 / baseUnitConversionRate;
     }
 
     public String getId() {
@@ -27,10 +29,6 @@ public class UnitOfMeasure {
 
     public Product getProduct() {
         return product;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
     }
 
     public String getName() {
@@ -47,6 +45,11 @@ public class UnitOfMeasure {
 
     public void setBaseUnitConversionRate(double baseUnitConversionRate) {
         this.baseUnitConversionRate = baseUnitConversionRate;
+        basePriceConversionRate = 1 / this.baseUnitConversionRate;
+    }
+
+    public double getBasePriceConversionRate() {
+        return basePriceConversionRate;
     }
 
     @Override

@@ -8,34 +8,26 @@ import java.util.Objects;
  * @author Bùi Quốc Trụ
  */
 public class InvoiceLine {
-    private Product product;
-    private Invoice invoice;
+    private final Product product;
+    private final Invoice invoice;
     private int quantity;
-    private UnitOfMeasure unitOfMeasure;
-    private LineType lineType;
+    private final UnitOfMeasure unitOfMeasure;
+    private final LineType lineType;
 
-    public InvoiceLine(Product product, Invoice invoice, int quantity, UnitOfMeasure unitOfMeasure, LineType lineType) {
+    public InvoiceLine(Product product, Invoice invoice, UnitOfMeasure unitOfMeasure, LineType lineType, int quantity) {
         this.product = product;
         this.invoice = invoice;
-        this.quantity = quantity;
         this.unitOfMeasure = unitOfMeasure;
         this.lineType = lineType;
+        this.quantity = quantity;
     }
 
     public Product getProduct() {
         return product;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-
     public Invoice getInvoice() {
         return invoice;
-    }
-
-    public void setInvoice(Invoice invoice) {
-        this.invoice = invoice;
     }
 
     public int getQuantity() {
@@ -50,22 +42,24 @@ public class InvoiceLine {
         return unitOfMeasure;
     }
 
-    public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
-        this.unitOfMeasure = unitOfMeasure;
-    }
-
     public LineType getLineType() {
         return lineType;
     }
 
-    public void setLineType(LineType lineType) {
-        this.lineType = lineType;
+    /**
+     * Calculate the subtotal of this invoice line.
+     * If the unit of measure is not specified (null), the base UOM is used.
+     *
+     * @return The subtotal amount for this invoice line.
+     */
+    public double calculateSubtotal() {
+        double baseUomSubtotal = product.getOldestLotAvailable().getRawPrice() * (1 + product.getVat() / 100) * quantity;
+
+        if (unitOfMeasure != null) // If the unit of measure is specified (not using base UOM), convert the subtotal
+            return baseUomSubtotal * unitOfMeasure.getBasePriceConversionRate();
+
+        return baseUomSubtotal;
     }
-
-//    public double calculateSubtotal() {
-//        return unitOfMeasure.getRawPrice() * quantity;
-//    }
-
 
     @Override
     public int hashCode() {
