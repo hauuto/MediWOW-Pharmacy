@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="com.gui.GUI_MainMenu">
-  <grid id="27dc6" binding="pMainMenu" layout-manager="GridBagLayout">
+  <grid id="27dc6" binding="pnlMainMenu" layout-manager="GridBagLayout">
     <constraints>
-      <xy x="20" y="20" width="1467" height="741"/>
+      <xy x="20" y="20" width="1617" height="741"/>
     </constraints>
     <properties>
       <background color="-2236963"/>
@@ -10,7 +10,7 @@
     </properties>
     <border type="none"/>
     <children>
-      <grid id="862" binding="pLeftHeader" layout-manager="BorderLayout" hgap="0" vgap="0">
+      <grid id="862" binding="pnlLeftHeader" layout-manager="BorderLayout" hgap="0" vgap="0">
         <constraints>
           <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
           <gridbag weightx="0.0" weighty="0.0"/>
@@ -31,7 +31,7 @@
           </component>
         </children>
       </grid>
-      <grid id="9b07d" binding="pMenu" layout-manager="GridBagLayout">
+      <grid id="9b07d" binding="pnlMenu" layout-manager="GridBagLayout">
         <constraints>
           <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
           <gridbag weightx="0.0" weighty="0.0"/>
@@ -351,7 +351,7 @@
           </component>
         </children>
       </grid>
-      <grid id="37296" binding="pMain" layout-manager="CardLayout" hgap="0" vgap="0">
+      <grid id="37296" binding="pnlMain" layout-manager="CardLayout" hgap="0" vgap="0">
         <constraints>
           <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
           <gridbag weightx="10.0" weighty="100.0"/>
@@ -366,7 +366,7 @@
         <border type="none"/>
         <children/>
       </grid>
-      <grid id="8b785" binding="pRightHeader" layout-manager="BorderLayout" hgap="0" vgap="0">
+      <grid id="8b785" binding="pnlRightHeader" layout-manager="BorderLayout" hgap="0" vgap="0">
         <constraints>
           <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
           <gridbag weightx="0.0" weighty="0.0"/>
@@ -376,7 +376,7 @@
         </properties>
         <border type="none"/>
         <children>
-          <grid id="f76de" binding="pOption" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="30">
+          <grid id="f76de" binding="pnlOption" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="30">
             <margin top="0" left="50" bottom="0" right="50"/>
             <constraints border-constraint="East"/>
             <properties>
@@ -418,7 +418,7 @@
               <text value=""/>
             </properties>
           </component>
-          <grid id="b5522" binding="pSearch" layout-manager="GridLayoutManager" row-count="1" column-count="3" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+          <grid id="b5522" binding="pnlSearch" layout-manager="GridLayoutManager" row-count="1" column-count="3" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
             <margin top="0" left="300" bottom="0" right="0"/>
             <constraints border-constraint="West"/>
             <properties>

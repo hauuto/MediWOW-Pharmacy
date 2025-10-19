@@ -42,7 +42,7 @@ public class GUI_Login {
 
 
         JFrame mainMenuFrame = new JFrame("MediWOW");
-        mainMenuFrame.setContentPane(new GUI_MainMenu().pMainMenu);
+        mainMenuFrame.setContentPane(new GUI_MainMenu().pnlMainMenu);
         mainMenuFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainMenuFrame.setLocationRelativeTo(null);
         mainMenuFrame.setVisible(true);

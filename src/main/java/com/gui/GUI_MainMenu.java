@@ -2,7 +2,7 @@ package com.gui;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
-import com.intellij.uiDesigner.core.Spacer;
+import com.utils.AppColors;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -10,22 +10,20 @@ import javax.swing.text.StyleContext;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 import java.util.Locale;
 
 public class GUI_MainMenu implements ActionListener {
-    JPanel pMainMenu;
-    private JPanel pLeftHeader;
+    JPanel pnlMainMenu;
+    private JPanel pnlLeftHeader;
     private JLabel lblLogo;
-    private JPanel pMenu;
-    private JPanel pMain;
-    private JPanel pRightHeader;
+    private JPanel pnlMenu;
+    private JPanel pnlMain;
+    private JPanel pnlRightHeader;
     private JButton btnHome;
     private JButton btnSelling;
-    private JPanel pOption;
+    private JPanel pnlOption;
     private JComboBox cbbOption;
     private JButton btnProduct;
     private JButton btnPromotion;
@@ -35,7 +33,7 @@ public class GUI_MainMenu implements ActionListener {
     private JButton btnLogout;
     private JButton btnCustomer;
     private JLabel lblTime;
-    private JPanel pSearch;
+    private JPanel pnlSearch;
     private JTextField txtSearch;
     private JLabel lblSearch;
     private JComboBox comboBox1;
@@ -50,8 +48,13 @@ public class GUI_MainMenu implements ActionListener {
 
     public GUI_MainMenu() {
 
+        pnlSearch.setBackground(AppColors.LIGHT);
+        pnlLeftHeader.setBackground(AppColors.LIGHT);
+        pnlRightHeader.setBackground(AppColors.LIGHT);
+        pnlOption.setBackground(AppColors.LIGHT);
 
-        cardLayout = (CardLayout) pMain.getLayout();
+
+        cardLayout = (CardLayout) pnlMain.getLayout();
 
 
         btnHome.addActionListener(this);
@@ -75,20 +78,20 @@ public class GUI_MainMenu implements ActionListener {
         TAB_Staff staff = new TAB_Staff();
         TAB_Customer customer = new TAB_Customer();
 
-        pMain.add(dashboard.pDashboard, "dashboard");
-        pMain.add(sales.pnlSelling, "selling");
-        pMain.add(promotion, "promotion");
-        pMain.add(statistic.pStatistic, "statistic");
-        pMain.add(product.pProduct, "product");
-        pMain.add(staff.pStaff, "staff");
-        pMain.add(customer.pCustomer, "customer");
+        pnlMain.add(dashboard.pDashboard, "dashboard");
+        pnlMain.add(sales.pnlSelling, "selling");
+        pnlMain.add(promotion, "promotion");
+        pnlMain.add(statistic.pStatistic, "statistic");
+        pnlMain.add(product.pProduct, "product");
+        pnlMain.add(staff.pStaff, "staff");
+        pnlMain.add(customer.pCustomer, "customer");
 
         cbbOption.addActionListener(e -> {
             if (cbbOption.getSelectedIndex() == 1) {
                 JDialog changePasswordDialog = new DialogChangePassword();
                 changePasswordDialog.setTitle("Đổi mật khẩu");
                 changePasswordDialog.setSize(600, 300);
-                changePasswordDialog.setLocationRelativeTo(pMainMenu);
+                changePasswordDialog.setLocationRelativeTo(pnlMainMenu);
                 changePasswordDialog.setResizable(false);
                 changePasswordDialog.setVisible(true);
                 cbbOption.setSelectedIndex(0);
@@ -97,7 +100,7 @@ public class GUI_MainMenu implements ActionListener {
 
 
         setActiveButton(btnHome);
-        cardLayout.show(pMain, "dashboard");
+        cardLayout.show(pnlMain, "dashboard");
 
         Locale locale = Locale.of("vi", "VN");
         DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss E, dd/MM/yyyy", locale);
@@ -117,35 +120,35 @@ public class GUI_MainMenu implements ActionListener {
 
         if (src == btnHome) {
             setActiveButton(btnHome);
-            cardLayout.show(pMain, "dashboard");
+            cardLayout.show(pnlMain, "dashboard");
         } else if (src == btnSelling) {
             setActiveButton(btnSelling);
-            cardLayout.show(pMain, "selling");
+            cardLayout.show(pnlMain, "selling");
 
         } else if (src == btnProduct) {
             setActiveButton(btnProduct);
-            cardLayout.show(pMain, "product");
+            cardLayout.show(pnlMain, "product");
 
         } else if (src == btnPromotion) {
             setActiveButton(btnPromotion);
-            cardLayout.show(pMain, "promotion");
+            cardLayout.show(pnlMain, "promotion");
 
         } else if (src == btnStatistic) {
             setActiveButton(btnStatistic);
-            cardLayout.show(pMain, "statistic");
+            cardLayout.show(pnlMain, "statistic");
 
         } else if (src == btnStaff) {
             setActiveButton(btnStaff);
-            cardLayout.show(pMain, "staff");
+            cardLayout.show(pnlMain, "staff");
 
         } else if (src == btnGuideLine) {
             setActiveButton(btnGuideLine);
 
         } else if (src == btnLogout) {
-            int choice = JOptionPane.showConfirmDialog(pMainMenu, "Bạn có chắc chắn muốn đăng xuất?", "Xác nhận đăng xuất", JOptionPane.YES_NO_OPTION);
+            int choice = JOptionPane.showConfirmDialog(pnlMainMenu, "Bạn có chắc chắn muốn đăng xuất?", "Xác nhận đăng xuất", JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
                 // Close current main menu window
-                JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pMainMenu);
+                JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
                 topFrame.dispose();
 
                 // Open login window
@@ -160,7 +163,7 @@ public class GUI_MainMenu implements ActionListener {
 
         } else if (src == btnCustomer) {
             setActiveButton(btnCustomer);
-            cardLayout.show(pMain, "customer");
+            cardLayout.show(pnlMain, "customer");
 
         }
 
@@ -168,14 +171,14 @@ public class GUI_MainMenu implements ActionListener {
 
     private void setActiveButton(JButton activeButton) {
 
-        for (Component comp : pMenu.getComponents()) {
+        for (Component comp : pnlMenu.getComponents()) {
             if (comp instanceof JButton) {
                 JButton btn = (JButton) comp;
                 btn.setBackground(UIManager.getColor("Button.background"));
             }
         }
 
-        activeButton.setBackground(new Color(0, 204, 203));
+        activeButton.setBackground(AppColors.LIGHT);
 
     }
 
@@ -195,35 +198,35 @@ public class GUI_MainMenu implements ActionListener {
      * @noinspection ALL
      */
     private void $$$setupUI$$$() {
-        pMainMenu = new JPanel();
-        pMainMenu.setLayout(new GridBagLayout());
-        pMainMenu.setBackground(new Color(-2236963));
-        pMainMenu.setPreferredSize(new Dimension(1920, 1080));
-        pLeftHeader = new JPanel();
-        pLeftHeader.setLayout(new BorderLayout(0, 0));
-        pLeftHeader.setBackground(new Color(-16724789));
-        pLeftHeader.setForeground(new Color(-16012317));
+        pnlMainMenu = new JPanel();
+        pnlMainMenu.setLayout(new GridBagLayout());
+        pnlMainMenu.setBackground(new Color(-2236963));
+        pnlMainMenu.setPreferredSize(new Dimension(1920, 1080));
+        pnlLeftHeader = new JPanel();
+        pnlLeftHeader.setLayout(new BorderLayout(0, 0));
+        pnlLeftHeader.setBackground(new Color(-16724789));
+        pnlLeftHeader.setForeground(new Color(-16012317));
         GridBagConstraints gbc;
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.BOTH;
-        pMainMenu.add(pLeftHeader, gbc);
+        pnlMainMenu.add(pnlLeftHeader, gbc);
         lblLogo = new JLabel();
         lblLogo.setBackground(new Color(-2236963));
         lblLogo.setIcon(new ImageIcon(getClass().getResource("/images/logo.png")));
         lblLogo.setText("");
-        pLeftHeader.add(lblLogo, BorderLayout.CENTER);
-        pMenu = new JPanel();
-        pMenu.setLayout(new GridBagLayout());
-        pMenu.setAlignmentY(0.5f);
-        pMenu.setBackground(new Color(-2236963));
-        pMenu.setForeground(new Color(-16027943));
+        pnlLeftHeader.add(lblLogo, BorderLayout.CENTER);
+        pnlMenu = new JPanel();
+        pnlMenu.setLayout(new GridBagLayout());
+        pnlMenu.setAlignmentY(0.5f);
+        pnlMenu.setBackground(new Color(-2236963));
+        pnlMenu.setForeground(new Color(-16027943));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.fill = GridBagConstraints.BOTH;
-        pMainMenu.add(pMenu, gbc);
+        pnlMainMenu.add(pnlMenu, gbc);
         btnHome = new JButton();
         btnHome.setAlignmentY(0.5f);
         btnHome.setAutoscrolls(false);
@@ -255,7 +258,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pMenu.add(btnHome, gbc);
+        pnlMenu.add(btnHome, gbc);
         btnSelling = new JButton();
         btnSelling.setAlignmentY(0.5f);
         btnSelling.setAutoscrolls(false);
@@ -287,7 +290,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pMenu.add(btnSelling, gbc);
+        pnlMenu.add(btnSelling, gbc);
         btnProduct = new JButton();
         btnProduct.setAlignmentY(0.5f);
         btnProduct.setAutoscrolls(false);
@@ -319,7 +322,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 2;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pMenu.add(btnProduct, gbc);
+        pnlMenu.add(btnProduct, gbc);
         btnPromotion = new JButton();
         btnPromotion.setAlignmentY(0.5f);
         btnPromotion.setAutoscrolls(false);
@@ -351,7 +354,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 3;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pMenu.add(btnPromotion, gbc);
+        pnlMenu.add(btnPromotion, gbc);
         btnStatistic = new JButton();
         btnStatistic.setAlignmentY(0.5f);
         btnStatistic.setAutoscrolls(false);
@@ -383,7 +386,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pMenu.add(btnStatistic, gbc);
+        pnlMenu.add(btnStatistic, gbc);
         btnStaff = new JButton();
         btnStaff.setAlignmentY(0.5f);
         btnStaff.setAutoscrolls(false);
@@ -415,7 +418,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 5;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pMenu.add(btnStaff, gbc);
+        pnlMenu.add(btnStaff, gbc);
         btnGuideLine = new JButton();
         btnGuideLine.setAlignmentY(0.5f);
         btnGuideLine.setAutoscrolls(false);
@@ -447,7 +450,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 7;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 50, 0);
-        pMenu.add(btnGuideLine, gbc);
+        pnlMenu.add(btnGuideLine, gbc);
         btnLogout = new JButton();
         btnLogout.setAlignmentY(0.5f);
         btnLogout.setAutoscrolls(false);
@@ -479,7 +482,7 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 8;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(150, 0, 20, 0);
-        pMenu.add(btnLogout, gbc);
+        pnlMenu.add(btnLogout, gbc);
         btnCustomer = new JButton();
         btnCustomer.setAlignmentY(0.5f);
         btnCustomer.setAutoscrolls(false);
@@ -511,31 +514,31 @@ public class GUI_MainMenu implements ActionListener {
         gbc.gridy = 6;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pMenu.add(btnCustomer, gbc);
-        pMain = new JPanel();
-        pMain.setLayout(new CardLayout(0, 0));
-        pMain.setBackground(new Color(-2236963));
-        pMain.setEnabled(true);
-        pMain.putClientProperty("html.disable", Boolean.FALSE);
+        pnlMenu.add(btnCustomer, gbc);
+        pnlMain = new JPanel();
+        pnlMain.setLayout(new CardLayout(0, 0));
+        pnlMain.setBackground(new Color(-2236963));
+        pnlMain.setEnabled(true);
+        pnlMain.putClientProperty("html.disable", Boolean.FALSE);
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 1;
         gbc.weightx = 10.0;
         gbc.weighty = 100.0;
         gbc.fill = GridBagConstraints.BOTH;
-        pMainMenu.add(pMain, gbc);
-        pRightHeader = new JPanel();
-        pRightHeader.setLayout(new BorderLayout(0, 0));
-        pRightHeader.setBackground(new Color(-16724789));
+        pnlMainMenu.add(pnlMain, gbc);
+        pnlRightHeader = new JPanel();
+        pnlRightHeader.setLayout(new BorderLayout(0, 0));
+        pnlRightHeader.setBackground(new Color(-16724789));
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 0;
         gbc.fill = GridBagConstraints.BOTH;
-        pMainMenu.add(pRightHeader, gbc);
-        pOption = new JPanel();
-        pOption.setLayout(new GridLayoutManager(1, 1, new Insets(0, 50, 0, 50), -1, 30));
-        pOption.setBackground(new Color(-16724789));
-        pRightHeader.add(pOption, BorderLayout.EAST);
+        pnlMainMenu.add(pnlRightHeader, gbc);
+        pnlOption = new JPanel();
+        pnlOption.setLayout(new GridLayoutManager(1, 1, new Insets(0, 50, 0, 50), -1, 30));
+        pnlOption.setBackground(new Color(-16724789));
+        pnlRightHeader.add(pnlOption, BorderLayout.EAST);
         cbbOption = new JComboBox();
         cbbOption.setAlignmentX(0.5f);
         cbbOption.setAlignmentY(0.5f);
@@ -550,7 +553,7 @@ public class GUI_MainMenu implements ActionListener {
         defaultComboBoxModel1.addElement("Đổi mật khẩu");
         cbbOption.setModel(defaultComboBoxModel1);
         cbbOption.setName("");
-        pOption.add(cbbOption, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
+        pnlOption.add(cbbOption, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
         lblTime = new JLabel();
         lblTime.setAlignmentY(0.5f);
         Font lblTimeFont = this.$$$getFont$$$(null, Font.BOLD, 22, lblTime.getFont());
@@ -559,18 +562,18 @@ public class GUI_MainMenu implements ActionListener {
         lblTime.setHorizontalAlignment(4);
         lblTime.setHorizontalTextPosition(11);
         lblTime.setText("");
-        pRightHeader.add(lblTime, BorderLayout.CENTER);
-        pSearch = new JPanel();
-        pSearch.setLayout(new GridLayoutManager(1, 3, new Insets(0, 300, 0, 0), -1, -1));
-        pSearch.setAlignmentX(0.0f);
-        pSearch.setBackground(new Color(-16724789));
-        pRightHeader.add(pSearch, BorderLayout.WEST);
+        pnlRightHeader.add(lblTime, BorderLayout.CENTER);
+        pnlSearch = new JPanel();
+        pnlSearch.setLayout(new GridLayoutManager(1, 3, new Insets(0, 300, 0, 0), -1, -1));
+        pnlSearch.setAlignmentX(0.0f);
+        pnlSearch.setBackground(new Color(-16724789));
+        pnlRightHeader.add(pnlSearch, BorderLayout.WEST);
         txtSearch = new JTextField();
         txtSearch.setAlignmentX(0.0f);
         Font txtSearchFont = this.$$$getFont$$$(null, -1, 18, txtSearch.getFont());
         if (txtSearchFont != null) txtSearch.setFont(txtSearchFont);
         txtSearch.setText("");
-        pSearch.add(txtSearch, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(500, 10), null, 0, false));
+        pnlSearch.add(txtSearch, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(500, 10), null, 0, false));
         lblSearch = new JLabel();
         lblSearch.setBackground(new Color(-16724789));
         Font lblSearchFont = this.$$$getFont$$$(null, -1, 18, lblSearch.getFont());
@@ -579,7 +582,7 @@ public class GUI_MainMenu implements ActionListener {
         lblSearch.setIcon(new ImageIcon(getClass().getResource("/icons/ico_search.png")));
         lblSearch.setName("");
         lblSearch.setText("Tra cứu");
-        pSearch.add(lblSearch, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        pnlSearch.add(lblSearch, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         comboBox1 = new JComboBox();
         comboBox1.setAlignmentX(0.0f);
         Font comboBox1Font = this.$$$getFont$$$(null, -1, 18, comboBox1.getFont());
@@ -592,7 +595,7 @@ public class GUI_MainMenu implements ActionListener {
         defaultComboBoxModel2.addElement("Nhân viên");
         defaultComboBoxModel2.addElement("Khách hàng");
         comboBox1.setModel(defaultComboBoxModel2);
-        pSearch.add(comboBox1, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
+        pnlSearch.add(comboBox1, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
         lblSearch.setLabelFor(txtSearch);
     }
 
@@ -622,7 +625,7 @@ public class GUI_MainMenu implements ActionListener {
      * @noinspection ALL
      */
     public JComponent $$$getRootComponent$$$() {
-        return pMainMenu;
+        return pnlMainMenu;
     }
 
 
