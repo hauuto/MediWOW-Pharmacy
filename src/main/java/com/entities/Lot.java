@@ -10,7 +10,7 @@ import java.util.Objects;
  */
 public class Lot {
     private final String batchNumber;
-    private Product product;
+    private final Product product;
     private int quantity;
     private double rawPrice;
     private LocalDateTime expiryDate;
@@ -31,10 +31,6 @@ public class Lot {
 
     public Product getProduct() {
         return product;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
     }
 
     public int getQuantity() {

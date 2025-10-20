@@ -15,7 +15,7 @@ public class Staff {
     private String licenseNumber;
     private String phoneNumber;
     private String email;
-    private LocalDate hireDate;
+    private final LocalDate hireDate;
     private boolean isActive;
 
     public Staff(String id, Role role, String username, String fullName, String licenseNumber, String phoneNumber, String email, LocalDate hireDate, boolean isActive) {
@@ -84,10 +84,6 @@ public class Staff {
 
     public LocalDate getHireDate() {
         return hireDate;
-    }
-
-    public void setHireDate(LocalDate hireDate) {
-        this.hireDate = hireDate;
     }
 
     public boolean isActive() {
