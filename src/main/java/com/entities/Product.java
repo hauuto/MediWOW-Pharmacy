@@ -167,6 +167,8 @@ public class Product {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Adds a new UnitOfMeasure to the product if it does not already exist.
      *
      * @param uom The UnitOfMeasure to add.
@@ -185,6 +187,8 @@ public class Product {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Updates an existing UnitOfMeasure with new details.
      *
      * @param updatedUom The UnitOfMeasure containing updated details.
@@ -207,6 +211,8 @@ public class Product {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Removes a UnitOfMeasure by its ID.
      *
      * @param uomId The ID of the UnitOfMeasure to remove.
@@ -217,6 +223,8 @@ public class Product {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Adds a new Lot to the product if it does not already exist.
      *
      * @param lot The Lot to add.
@@ -235,6 +243,8 @@ public class Product {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Retrieves the oldest available Lot based on expiry date.
      *
      * @return The oldest available Lot, or null if none are available.
@@ -247,6 +257,8 @@ public class Product {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Updates an existing Lot with new details.
      *
      * @param updatedLot The Lot containing updated details.
@@ -271,6 +283,8 @@ public class Product {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Removes a Lot by its batch number.
      *
      * @param batchNumber The batch number of the Lot to remove.

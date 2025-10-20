@@ -47,6 +47,8 @@ public class InvoiceLine {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Calculate the subtotal of this invoice line.
      * If the unit of measure is not specified (null), the base UOM is used.
      *

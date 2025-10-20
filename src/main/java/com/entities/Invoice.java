@@ -110,6 +110,8 @@ public class Invoice {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Adds an InvoiceLine to the invoice if it does not already exist.
      *
      * @param invoiceLine The InvoiceLine to be added.
@@ -128,6 +130,8 @@ public class Invoice {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Updates the quantity of an existing InvoiceLine in the invoice.
      *
      * @param invoiceLine The InvoiceLine with updated quantity.
@@ -148,6 +152,8 @@ public class Invoice {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Removes an InvoiceLine from the invoice.
      *
      * @param invoiceLine The InvoiceLine to be removed.
@@ -157,6 +163,13 @@ public class Invoice {
         return invoiceLineList.remove(invoiceLine);
     }
 
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Calculate the subtotal of the invoice before applying promotions.
+     *
+     * @return The subtotal amount.
+     */
     public double calculateSubtotal() {
         double subtotal = 0.0;
 
@@ -168,6 +181,8 @@ public class Invoice {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Calculate the total discount applied to the invoice.
      *
      * @return The total discount.
@@ -192,6 +207,8 @@ public class Invoice {
     }
 
     /**
+     * @author Bùi Quốc Trụ
+     *
      * Calculate the total amount of the invoice after applying promotions.
      *
      * @return The total amount.
