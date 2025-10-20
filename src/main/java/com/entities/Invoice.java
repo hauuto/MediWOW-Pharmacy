@@ -173,6 +173,9 @@ public class Invoice {
      * @return The total discount.
      */
     public double calculatePromotion() {
+        if (promotion == null)
+            return 0.0;
+
         double discount = calculateSubtotal();
         List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
                 .sorted((a, b) -> Integer.compare(a.getOrder(), b.getOrder()))

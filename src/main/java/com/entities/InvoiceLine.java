@@ -53,7 +53,12 @@ public class InvoiceLine {
      * @return The subtotal amount for this invoice line.
      */
     public double calculateSubtotal() {
-        double baseUomSubtotal = product.getOldestLotAvailable().getRawPrice() * (1 + product.getVat() / 100) * quantity;
+        Lot oldestLot = product.getOldestLotAvailable();
+
+        if (oldestLot == null)
+            return 0.0;
+
+        double baseUomSubtotal = oldestLot.getRawPrice() * (1 + product.getVat() / 100) * quantity;
 
         if (unitOfMeasure != null) // If the unit of measure is specified (not using base UOM), convert the subtotal
             return baseUomSubtotal * unitOfMeasure.getBasePriceConversionRate();
