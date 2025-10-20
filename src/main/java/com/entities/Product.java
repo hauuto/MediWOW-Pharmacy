@@ -16,7 +16,7 @@ public class Product {
     private DosageForm form;
     private String name;
     private String shortName;
-    private String manufaturer;
+    private String manufacturer;
     private String activeIngredient;
     private double vat;
     private String strength;
@@ -24,17 +24,17 @@ public class Product {
     private String baseUnitOfMeasure;
     private List<UnitOfMeasure> unitOfMeasureList;
     private List<Lot> lotList;
-    private LocalDateTime creationDate;
+    private final LocalDateTime creationDate;
     private LocalDateTime updateDate;
 
-    public Product(String id, String barcode, ProductCategory category, DosageForm form, String name, String shortName, String manufaturer, String activeIngredient, double vat, String strength, String description, String baseUnitOfMeasure, List<UnitOfMeasure> unitOfMeasureList, List<Lot> lotList, LocalDateTime creationDate, LocalDateTime updateDate) {
+    public Product(String id, String barcode, ProductCategory category, DosageForm form, String name, String shortName, String manufacturer, String activeIngredient, double vat, String strength, String description, String baseUnitOfMeasure, List<UnitOfMeasure> unitOfMeasureList, List<Lot> lotList, LocalDateTime updateDate) {
         this.id = id;
         this.barcode = barcode;
         this.category = category;
         this.form = form;
         this.name = name;
         this.shortName = shortName;
-        this.manufaturer = manufaturer;
+        this.manufacturer = manufacturer;
         this.activeIngredient = activeIngredient;
         this.vat = vat;
         this.strength = strength;
@@ -42,7 +42,7 @@ public class Product {
         this.baseUnitOfMeasure = baseUnitOfMeasure;
         this.unitOfMeasureList = unitOfMeasureList;
         this.lotList = lotList;
-        this.creationDate = creationDate;
+        this.creationDate = LocalDateTime.now();
         this.updateDate = updateDate;
     }
 
@@ -90,12 +90,12 @@ public class Product {
         this.shortName = shortName;
     }
 
-    public String getManufaturer() {
-        return manufaturer;
+    public String getManufacturer() {
+        return manufacturer;
     }
 
-    public void setManufaturer(String manufaturer) {
-        this.manufaturer = manufaturer;
+    public void setManufacturer(String manufacturer) {
+        this.manufacturer = manufacturer;
     }
 
     public String getActiveIngredient() {
@@ -158,10 +158,6 @@ public class Product {
         return creationDate;
     }
 
-    public void setCreationDate(LocalDateTime creationDate) {
-        this.creationDate = creationDate;
-    }
-
     public LocalDateTime getUpdateDate() {
         return updateDate;
     }
@@ -170,47 +166,133 @@ public class Product {
         this.updateDate = updateDate;
     }
 
-//    /**
-//     * Adds a new UnitOfMeasure to the product if it does not already exist.
-//     *
-//     * @param uom The UnitOfMeasure to add.
-//     * @return true if the UnitOfMeasure was added, false if it already exists or is null.
-//     */
-//    public boolean addUnitOfMeasure(UnitOfMeasure uom) {
-//        if (uom == null)
-//            return false;
-//
-//        for (UnitOfMeasure existingUom : unitOfMeasureList)
-//            if (existingUom.equals(uom))
-//                return false;
-//
-//        unitOfMeasureList.add(uom);
-//        return true;
-//    }
-//
-//    /**
-//     * Retrieves a UnitOfMeasure by its ID.
-//     *
-//     * @param uomId The ID of the UnitOfMeasure to retrieve.
-//     * @return The UnitOfMeasure with the specified ID, or null if not found.
-//     */
-//    public UnitOfMeasure getUnitOfMeasureById(String uomId) {
-//        for (UnitOfMeasure uom : unitOfMeasureList)
-//            if (uom.getId().equals(uomId))
-//                return uom;
-//
-//        return null;
-//    }
-//
-//    public boolean updateUnitOfMeasure(UnitOfMeasure updatedUom) {
-//        for (UnitOfMeasure uom : unitOfMeasureList) {
-//            if (uom.equals(updatedUom)) {
-//                uom.set
-//            }
-//        }
-//
-//        return false;
-//    }
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Adds a new UnitOfMeasure to the product if it does not already exist.
+     *
+     * @param uom The UnitOfMeasure to add.
+     * @return true if the UnitOfMeasure was added, false if it already exists or is null.
+     */
+    public boolean addUnitOfMeasure(UnitOfMeasure uom) {
+        if (uom == null)
+            return false;
+
+        for (UnitOfMeasure existingUom : unitOfMeasureList)
+            if (existingUom.equals(uom))
+                return false;
+
+        unitOfMeasureList.add(uom);
+        return true;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Updates an existing UnitOfMeasure with new details.
+     *
+     * @param updatedUom The UnitOfMeasure containing updated details.
+     * @return true if the UnitOfMeasure was found and updated, false otherwise.
+     */
+    public boolean updateUnitOfMeasure(UnitOfMeasure updatedUom) {
+        if (updatedUom == null)
+            return false;
+
+        for (UnitOfMeasure uom : unitOfMeasureList) {
+            if (uom.equals(updatedUom)) {
+                uom.setBaseUnitConversionRate(updatedUom.getBaseUnitConversionRate());
+                uom.setName(updatedUom.getName());
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Removes a UnitOfMeasure by its ID.
+     *
+     * @param uomId The ID of the UnitOfMeasure to remove.
+     * @return true if the UnitOfMeasure was found and removed, false otherwise.
+     */
+    public boolean removeUnitOfMeasure(String uomId) {
+        return unitOfMeasureList.removeIf(uom -> uom.getId().equals(uomId));
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Adds a new Lot to the product if it does not already exist.
+     *
+     * @param lot The Lot to add.
+     * @return true if the Lot was added, false if it already exists or is null.
+     */
+    public boolean addLot(Lot lot) {
+        if (lot == null)
+            return false;
+
+        for (Lot existingLot : lotList)
+            if (existingLot.equals(lot))
+                return false;
+
+        lotList.add(lot);
+        return true;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Retrieves the oldest available Lot based on expiry date.
+     *
+     * @return The oldest available Lot, or null if none are available.
+     */
+    public Lot getOldestLotAvailable() {
+        return lotList.stream()
+                .filter(lot -> lot.getStatus().equals(com.enums.LotStatus.AVAILABLE) && lot.getQuantity() > 0)
+                .min((lot1, lot2) -> lot1.getExpiryDate().compareTo(lot2.getExpiryDate()))
+                .orElse(null);
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Updates an existing Lot with new details.
+     *
+     * @param updatedLot The Lot containing updated details.
+     * @return true if the Lot was found and updated, false otherwise.
+     */
+    public boolean updateLot(Lot updatedLot) {
+        if (updatedLot == null)
+            return false;
+
+        for (Lot lot : lotList) {
+            if (lot.equals(updatedLot)) {
+                lot.setExpiryDate(updatedLot.getExpiryDate());
+                lot.setQuantity(updatedLot.getQuantity());
+                lot.setRawPrice(updatedLot.getRawPrice());
+                lot.setStatus(updatedLot.getStatus());
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Removes a Lot by its batch number.
+     *
+     * @param batchNumber The batch number of the Lot to remove.
+     * @return true if the Lot was found and removed, false otherwise.
+     */
+    public boolean removeLot(String batchNumber) {
+        return lotList.removeIf(lot -> lot.getBatchNumber().equals(batchNumber));
+    }
 
     @Override
     public String toString() {
