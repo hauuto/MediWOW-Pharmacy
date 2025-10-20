@@ -88,7 +88,7 @@ public class GUI_MainMenu implements ActionListener {
 
         cbbOption.addActionListener(e -> {
             if (cbbOption.getSelectedIndex() == 1) {
-                JDialog changePasswordDialog = new DialogChangePassword();
+                JDialog changePasswordDialog = new DIALOG_ChangePassword();
                 changePasswordDialog.setTitle("Đổi mật khẩu");
                 changePasswordDialog.setSize(600, 300);
                 changePasswordDialog.setLocationRelativeTo(pnlMainMenu);
