@@ -83,7 +83,7 @@ public class GUI_MainMenu implements ActionListener {
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic.pStatistic, "statistic");
         pnlMain.add(product.pProduct, "product");
-        pnlMain.add(staff.pStaff, "staff");
+        pnlMain.add(staff.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
 
         cbbOption.addActionListener(e -> {
