@@ -48,6 +48,7 @@ public class GUI_MainMenu implements ActionListener {
 
     public GUI_MainMenu() {
 
+
         pnlSearch.setBackground(AppColors.LIGHT);
         pnlLeftHeader.setBackground(AppColors.LIGHT);
         pnlRightHeader.setBackground(AppColors.LIGHT);
