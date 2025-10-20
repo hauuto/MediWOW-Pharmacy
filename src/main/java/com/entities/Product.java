@@ -251,7 +251,7 @@ public class Product {
      */
     public Lot getOldestLotAvailable() {
         return lotList.stream()
-                .filter(lot -> lot.getStatus() == com.enums.LotStatus.AVAILABLE && lot.getQuantity() > 0)
+                .filter(lot -> lot.getStatus().equals(com.enums.LotStatus.AVAILABLE) && lot.getQuantity() > 0)
                 .min((lot1, lot2) -> lot1.getExpiryDate().compareTo(lot2.getExpiryDate()))
                 .orElse(null);
     }
