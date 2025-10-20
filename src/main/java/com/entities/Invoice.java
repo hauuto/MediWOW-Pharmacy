@@ -2,6 +2,7 @@ package com.entities;
 
 import com.enums.InvoiceType;
 import com.enums.PaymentMethod;
+import com.enums.PromotionEnum;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,10 +12,10 @@ import java.util.List;
  */
 public class Invoice {
     private final String id;
-    private InvoiceType type;
+    private final InvoiceType type;
     private String notes;
-    private LocalDateTime creationDate;
-    private Staff creator;
+    private final LocalDateTime creationDate;
+    private final Staff creator;
     private String prescriptionCode;
     private PrescribedCustomer prescribedCustomer;
     private List<InvoiceLine> invoiceLineList;
@@ -22,11 +23,11 @@ public class Invoice {
     private PaymentMethod paymentMethod;
     private Invoice referencedInvoice;
 
-    public Invoice(String id, InvoiceType type, String notes, LocalDateTime creationDate, Staff creator, String prescriptionCode, PrescribedCustomer prescribedCustomer, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
+    public Invoice(String id, InvoiceType type, String notes, Staff creator, String prescriptionCode, PrescribedCustomer prescribedCustomer, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
         this.id = id;
         this.type = type;
         this.notes = notes;
-        this.creationDate = creationDate;
+        this.creationDate = LocalDateTime.now();
         this.creator = creator;
         this.prescriptionCode = prescriptionCode;
         this.prescribedCustomer = prescribedCustomer;
@@ -44,10 +45,6 @@ public class Invoice {
         return type;
     }
 
-    public void setType(InvoiceType type) {
-        this.type = type;
-    }
-
     public String getNotes() {
         return notes;
     }
@@ -60,16 +57,8 @@ public class Invoice {
         return creationDate;
     }
 
-    public void setCreationDate(LocalDateTime creationDate) {
-        this.creationDate = creationDate;
-    }
-
     public Staff getCreator() {
         return creator;
-    }
-
-    public void setCreator(Staff creator) {
-        this.creator = creator;
     }
 
     public String getPrescriptionCode() {
@@ -118,6 +107,114 @@ public class Invoice {
 
     public void setReferencedInvoice(Invoice referencedInvoice) {
         this.referencedInvoice = referencedInvoice;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Adds an InvoiceLine to the invoice if it does not already exist.
+     *
+     * @param invoiceLine The InvoiceLine to be added.
+     * @return true if the InvoiceLine was added, false if it already exists or is null.
+     */
+    public boolean addInvoiceLine(InvoiceLine invoiceLine) {
+        if (invoiceLine == null)
+            return false;
+
+        for (InvoiceLine existingLine : invoiceLineList)
+            if (existingLine.equals(invoiceLine))
+                return false;
+
+        invoiceLineList.add(invoiceLine);
+        return true;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Updates the quantity of an existing InvoiceLine in the invoice.
+     *
+     * @param invoiceLine The InvoiceLine with updated quantity.
+     * @return true if the InvoiceLine was found and updated, false otherwise.
+     */
+    public boolean updateInvoiceLine(InvoiceLine invoiceLine) {
+        if (invoiceLine == null)
+            return false;
+
+        for (InvoiceLine existingLine : invoiceLineList) {
+            if (existingLine.equals(invoiceLine)) {
+                existingLine.setQuantity(invoiceLine.getQuantity());
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Removes an InvoiceLine from the invoice.
+     *
+     * @param invoiceLine The InvoiceLine to be removed.
+     * @return true if the InvoiceLine was removed, false otherwise.
+     */
+    public boolean removeInvoiceLine(InvoiceLine invoiceLine) {
+        return invoiceLineList.remove(invoiceLine);
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Calculate the subtotal of the invoice before applying promotions.
+     *
+     * @return The subtotal amount.
+     */
+    public double calculateSubtotal() {
+        double subtotal = 0.0;
+
+        for (InvoiceLine line : invoiceLineList) {
+            subtotal += line.calculateSubtotal();
+        }
+
+        return subtotal;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Calculate the total discount applied to the invoice.
+     *
+     * @return The total discount.
+     */
+    public double calculatePromotion() {
+        if (promotion == null)
+            return 0.0;
+
+        double discount = calculateSubtotal();
+        List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
+                .sorted((a, b) -> Integer.compare(a.getOrder(), b.getOrder()))
+                .toList();
+
+        for (PromotionAction action : sortedActionOrderList) {
+            if (action.getType().equals(PromotionEnum.ActionType.FIXED_DISCOUNT))
+                discount -= action.getValue();
+            else if (action.getType().equals(PromotionEnum.ActionType.PERCENT_DISCOUNT))
+                discount -= discount * (action.getValue() / 100);
+        }
+
+        return calculateSubtotal() - discount;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Calculate the total amount of the invoice after applying promotions.
+     *
+     * @return The total amount.
+     */
+    public double calculateTotal() {
+        return calculateSubtotal() - calculatePromotion();
     }
 
     @Override
