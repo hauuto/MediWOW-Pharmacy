@@ -83,7 +83,7 @@ public class GUI_MainMenu implements ActionListener {
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic.pStatistic, "statistic");
         pnlMain.add(product.pProduct, "product");
-        pnlMain.add(staff.pStaff, "staff");
+        pnlMain.add(staff.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
 
         cbbOption.addActionListener(e -> {
@@ -174,12 +174,17 @@ public class GUI_MainMenu implements ActionListener {
         for (Component comp : pnlMenu.getComponents()) {
             if (comp instanceof JButton) {
                 JButton btn = (JButton) comp;
-                btn.setBackground(UIManager.getColor("Button.background"));
+                setStyleButton(btn);
             }
         }
 
         activeButton.setBackground(AppColors.LIGHT);
 
+    }
+
+    private void setStyleButton(JButton button) {
+        button.setBackground(AppColors.BACKGROUND);
+        button.setBorderPainted(false);
     }
 
 
