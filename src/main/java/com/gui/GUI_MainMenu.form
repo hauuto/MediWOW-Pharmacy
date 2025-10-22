@@ -77,7 +77,7 @@
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="f0892" class="javax.swing.JButton" binding="btnSelling">
+          <component id="f0892" class="javax.swing.JButton" binding="btnSales">
             <constraints>
               <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
               <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>
@@ -103,7 +103,7 @@
               <preferredSize width="150" height="50"/>
               <rolloverEnabled value="true"/>
               <selected value="false"/>
-              <text value="Bán hàng"/>
+              <text value="Đơn hàng"/>
               <toolTipText value="Nhấp vào để bắt đầu bán hàng"/>
             </properties>
             <clientProperties>
@@ -179,7 +179,7 @@
               <html.disable class="java.lang.Boolean" value="false"/>
             </clientProperties>
           </component>
-          <component id="87802" class="javax.swing.JButton" binding="btnStatistic">
+          <component id="87802" class="javax.swing.JButton" binding="btnStatistics">
             <constraints>
               <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
               <gridbag top="0" left="0" bottom="20" right="0" weightx="0.0" weighty="0.0"/>

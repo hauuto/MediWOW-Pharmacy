@@ -5,7 +5,7 @@ import com.enums.Role;
 import java.time.LocalDate;
 
 /**
- * @author Bùi Quốc Trụ
+ * @author Bùi Quốc Trụ, Tô Thanh Hậu
  */
 public class Staff {
     private final String id;
@@ -29,6 +29,8 @@ public class Staff {
         this.hireDate = hireDate;
         this.isActive = isActive;
     }
+
+
 
     public String getId() {
         return id;
