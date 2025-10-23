@@ -12,10 +12,10 @@ import java.util.Date;
 
 /**
  * Lớp hiển thị lịch
- * Thanh Khôi
+ * @author Thanh Khôi
  *
  */
-public class GUI_DatePicker extends JPanel {
+public class DIALOG_DatePicker extends JPanel {
     private JTextField textField;
     private JButton calendarButton;
     private Date selectedDate;
@@ -25,7 +25,7 @@ public class GUI_DatePicker extends JPanel {
     private Date minDate; // Ngày tối thiểu có thể chọn
     private Date maxDate; // Ngày tối đa có thể chọn
 
-    public GUI_DatePicker(Date initialDate) {
+    public DIALOG_DatePicker(Date initialDate) {
         this.selectedDate = initialDate;
         this.dateFormat = new SimpleDateFormat("dd/MM/yyyy");
         this.calendar = Calendar.getInstance();
