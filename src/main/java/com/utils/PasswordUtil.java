@@ -1,9 +1,7 @@
 package com.utils;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Base64;
+import at.favre.lib.crypto.bcrypt.BCrypt;
 
 /**
  * @author Tô Thanh Hậu
@@ -13,6 +11,8 @@ public class PasswordUtil {
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
     private static final int DEFAULT_PASSWORD_LENGTH = 6;
     private static final SecureRandom random = new SecureRandom();
+    // BCrypt cost factor (log rounds). 10-12 is a reasonable default for desktop apps.
+    private static final int BCRYPT_LOG_ROUNDS = 12;
 
     public static String generatePassword() {
         return generatePassword(DEFAULT_PASSWORD_LENGTH);
@@ -28,21 +28,22 @@ public class PasswordUtil {
     }
 
     public static String hashPassword(String password) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(password.getBytes());
-            return Base64.getEncoder().encodeToString(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error hashing password", e);
-        }
+        if (password == null) throw new IllegalArgumentException("password cannot be null");
+        // Favre BCrypt returns the bcrypt string with salt and cost embedded
+        return BCrypt.withDefaults().hashToString(BCRYPT_LOG_ROUNDS, password.toCharArray());
     }
 
 
 
 
-
     public static boolean verifyPassword(String plainPassword, String hashedPassword) {
-        String hashedInput = hashPassword(plainPassword);
-        return hashedInput.equals(hashedPassword);
+        if (plainPassword == null || hashedPassword == null) return false;
+        try {
+            BCrypt.Result result = BCrypt.verifyer().verify(plainPassword.toCharArray(), hashedPassword);
+            return result.verified;
+        } catch (Exception e) {
+            // In case the hashedPassword is malformed or uses an unsupported format
+            return false;
+        }
     }
 }
