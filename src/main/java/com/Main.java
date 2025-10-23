@@ -7,6 +7,10 @@ import com.gui.GUI_Login;
 import javax.swing.*;
 import java.sql.SQLException;
 
+
+/**
+ * @author Tô Thanh Hậu
+ */
 public class Main {
     public static void main(String[] args) {
         // Connect to the database first
