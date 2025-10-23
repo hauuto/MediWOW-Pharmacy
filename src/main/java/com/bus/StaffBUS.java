@@ -21,13 +21,14 @@ public class StaffBUS implements IStaff {
 
         this.staffDAO = new StaffDAO();
         this.emailUltil = new EmailUltil(
-                System.getenv().getOrDefault("SMTP_HOST","smtp.gmail.com"),
-                Integer.parseInt(System.getenv().getOrDefault("SMTP_PORT","587")),
-                System.getenv("SMTP_USERNAME"),
-                System.getenv("SMTP_PASSWORD"),
-                System.getenv().getOrDefault("SMTP_FROM","no-reply@yourdomain.com")
+                dotenv.get("SMTP_HOST") != null ? dotenv.get("SMTP_HOST") : "smtp.gmail.com",
+                dotenv.get("SMTP_PORT") != null ? Integer.parseInt(dotenv.get("SMTP_PORT")) : 587,
+                dotenv.get("SMTP_USERNAME"),
+                dotenv.get("SMTP_PASSWORD"),
+                dotenv.get("SMTP_FROM") != null ? dotenv.get("SMTP_FROM") : "no-reply@yourdomain.com"
         );
     }
+
 
     @Override
     public boolean addStaff(Staff s) {

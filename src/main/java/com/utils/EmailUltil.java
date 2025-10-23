@@ -39,7 +39,7 @@ public class EmailUltil {
             Message message = new MimeMessage(session);
             message.setFrom(new InternetAddress(from));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
-            message.setSubject("Thông tin tài khoản của bạn");
+            message.setSubject("Thông tin đăng nhập hệ thống MediWOW");
             String name = (fullName != null && !fullName.trim().isEmpty()) ? fullName : "Người dùng";
             String body = String.format(
                     "Xin chào %s,\n\n" +
