@@ -7,6 +7,8 @@ import com.utils.EmailUltil;
 import com.utils.PasswordUtil;
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.util.List;
+
 
 /**
  * @author Tô Thanh Hậu
@@ -53,6 +55,10 @@ public class StaffBUS implements IStaff {
         return created;
     }
 
+    @Override
+    public List<Staff> getAllStaffs() {
+        return staffDAO.getAllStaffs();
+    }
 
 
     public void validateStaff(Staff s){

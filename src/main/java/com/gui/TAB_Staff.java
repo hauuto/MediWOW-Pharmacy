@@ -19,7 +19,9 @@ import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class TAB_Staff extends JFrame implements ActionListener {
     JPanel pnlStaff;
@@ -46,8 +48,12 @@ public class TAB_Staff extends JFrame implements ActionListener {
     private JButton btnExport;
     private JButton btnClear;
 
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
 
     private final StaffBUS staffBUS = new StaffBUS();
+
+    private List<Staff> staffCache = new ArrayList<>();
 
 
     public TAB_Staff() {
@@ -58,6 +64,8 @@ public class TAB_Staff extends JFrame implements ActionListener {
         btnRefresh.addActionListener(this);
         btnRefresh.addActionListener(this);
         btnExport.addActionListener(this);
+
+        loadStaffTable();
 
 
     }
@@ -180,6 +188,10 @@ public class TAB_Staff extends JFrame implements ActionListener {
         tblStaff.setGridColor(AppColors.LIGHT);
         tblStaff.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
+                int row = tblStaff.getSelectedRow();
+                if (row >= 0) {
+                    fillFormRow(row);
+                }
 
             }
         });
@@ -228,10 +240,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
         buttonPanel.setBackground(AppColors.WHITE);
 
         btnAdd = createStyledButton("Thêm mới", new Color(34, 139, 34));
-
         btnUpdate = createStyledButton("Cập nhật", new Color(255, 165, 0));
-
-
         btnClear = createStyledButton("Xóa trắng", AppColors.DARK);
 
         buttonPanel.add(btnAdd);
@@ -449,6 +458,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
             if (ok) {
                 JOptionPane.showMessageDialog(this, "Thêm nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 clearInput();
+                loadStaffTable();
             } else {
                 JOptionPane.showMessageDialog(this, "Thêm nhân viên thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
@@ -470,6 +480,55 @@ public class TAB_Staff extends JFrame implements ActionListener {
         txtLicenseNumber.setText("");
         spnHireDate.setValue(new Date());
         chkIsActive.setSelected(true);
+    }
+
+    private void loadStaffTable() {
+        try {
+            staffCache = staffBUS.getAllStaffs();
+            populateTable(staffCache);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Không thể tải dữ liệu" + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void populateTable(List<Staff> ls) {
+        tableModel.setRowCount(0);
+        if (ls == null) return;
+        for (Staff s : ls) {
+            tableModel.addRow(new Object[]{
+                    s.getId(),
+                    s.getFullName(),
+                    s.getRole(),
+                    s.getPhoneNumber(),
+                    s.getEmail(),
+                    s.getHireDate().format(dtf),
+                    s.isActive() ? "Hoạt động" : "Đã nghỉ việc"
+            });
+        }
+    }
+
+    private void fillFormRow(int row) {
+        if (row < 0 || staffCache == null || staffCache.isEmpty()) return;
+
+        int modelRow = (tblStaff.getRowSorter() != null) ? tblStaff.getRowSorter().convertRowIndexToModel(row) : row;
+
+        if (modelRow < 0 || modelRow >= staffCache.size()) return;
+        Staff s = staffCache.get(modelRow);
+
+        txtStaffId.setText(s.getId() != null ? s.getId().toString() : "");
+        txtFullName.setText(s.getFullName() != null ? s.getFullName() : "");
+        txtUsername.setText(s.getUsername() != null ? s.getUsername() : "");
+        cboRole.setSelectedItem(s.getRole() != null ? s.getRole() : Role.PHARMACIST);
+        txtPhoneNumber.setText(s.getPhoneNumber() != null ? s.getPhoneNumber() : "");
+        txtEmail.setText(s.getEmail() != null ? s.getEmail() : "");
+        txtLicenseNumber.setText(s.getLicenseNumber() != null ? s.getLicenseNumber() : "");
+
+        if (s.getHireDate() != null) {
+            Date utilDate = Date.from(s.getHireDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+            spnHireDate.setValue(utilDate);
+        }
+
+        chkIsActive.setSelected(s.isActive());
     }
 
 

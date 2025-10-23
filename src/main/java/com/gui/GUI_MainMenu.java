@@ -39,6 +39,10 @@ public class GUI_MainMenu implements ActionListener {
     private JComboBox comboBox1;
     private CardLayout cardLayout;
 
+
+    /**
+     * @author Tô Thanh Hậu
+     */
     private void createUIComponents() {
         // TODO: place custom component creation code here
 
