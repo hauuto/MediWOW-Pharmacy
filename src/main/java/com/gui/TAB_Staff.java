@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.bus.StaffBUS;
+import com.entities.Staff;
 import com.enums.Role;
 import com.utils.AppColors;
 
@@ -14,7 +16,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 public class TAB_Staff extends JFrame implements ActionListener {
     JPanel pnlStaff;
@@ -37,15 +42,23 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
     private JButton btnAdd;
     private JButton btnUpdate;
-    private JButton btnDelete;
     private JButton btnRefresh;
     private JButton btnExport;
     private JButton btnClear;
 
-    private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    private final StaffBUS staffBUS = new StaffBUS();
+
 
     public TAB_Staff() {
         initComponents();
+
+        btnAdd.addActionListener(this);
+        btnClear.addActionListener(this);
+        btnRefresh.addActionListener(this);
+        btnRefresh.addActionListener(this);
+        btnExport.addActionListener(this);
+
 
     }
 
@@ -60,7 +73,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         // Center Panel - Split between Table and Form
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        splitPane.setDividerLocation(750);
+        splitPane.setDividerLocation(1200);
         splitPane.setLeftComponent(createTablePanel());
         splitPane.setRightComponent(createFormPanel());
         splitPane.setBorder(null);
@@ -163,17 +176,20 @@ public class TAB_Staff extends JFrame implements ActionListener {
         tblStaff.setRowHeight(35);
         tblStaff.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblStaff.setShowGrid(true);
+        tblStaff.setCellEditor(null);
         tblStaff.setGridColor(AppColors.LIGHT);
         tblStaff.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
+
             }
         });
 
         // Header styling
         JTableHeader header = tblStaff.getTableHeader();
+        header.setReorderingAllowed(false);
         header.setFont(new Font("Segoe UI", Font.BOLD, 13));
         header.setBackground(AppColors.PRIMARY);
-        header.setForeground(AppColors.DARK);
+        header.setForeground(AppColors.WHITE);
         header.setPreferredSize(new Dimension(header.getWidth(), 40));
 
         // Cell renderer for center alignment
@@ -215,13 +231,11 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         btnUpdate = createStyledButton("Cập nhật", new Color(255, 165, 0));
 
-        btnDelete = createStyledButton("Xóa", new Color(220, 20, 60));
 
         btnClear = createStyledButton("Xóa trắng", AppColors.DARK);
 
         buttonPanel.add(btnAdd);
         buttonPanel.add(btnUpdate);
-        buttonPanel.add(btnDelete);
         buttonPanel.add(btnClear);
 
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -283,6 +297,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
         formContent.add(createLabel("Vai trò:"), gbc);
         gbc.gridx = 1;
         cboRole = new JComboBox<>(Role.values());
+        cboRole.setSelectedItem(Role.PHARMACIST);
         cboRole.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         styleComboBox(cboRole);
         formContent.add(cboRole, gbc);
@@ -406,9 +421,55 @@ public class TAB_Staff extends JFrame implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         Object o = e.getSource();
         if (o == btnAdd) {
-
+            getStaffInfoFromGUI();
+        } else if (o == btnClear) {
+            clearInput();
         }
 
+    }
+
+    public void getStaffInfoFromGUI() {
+        Staff staff = new Staff();
+        try {
+            staff.setFullName(txtFullName.getText().trim());
+            staff.setUsername(txtUsername.getText().trim());
+            staff.setRole((Role) cboRole.getSelectedItem());
+            staff.setPhoneNumber(txtPhoneNumber.getText().trim());
+            staff.setEmail(txtEmail.getText().trim());
+            staff.setLicenseNumber(txtLicenseNumber.getText().trim());
+
+            Date hireDate = (Date) spnHireDate.getValue();
+            LocalDate localHireDate = LocalDate.ofInstant(hireDate.toInstant(), ZoneId.systemDefault());
+            staff.setHireDate(localHireDate);
+
+            staff.setActive(chkIsActive.isSelected());
+
+            boolean ok = staffBUS.addStaff(staff);
+
+            if (ok) {
+                JOptionPane.showMessageDialog(this, "Thêm nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                clearInput();
+            } else {
+                JOptionPane.showMessageDialog(this, "Thêm nhân viên thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+
+
+    }
+
+    public void clearInput() {
+        txtStaffId.setText("");
+        txtFullName.setText("");
+        txtUsername.setText("");
+        cboRole.setSelectedItem(Role.PHARMACIST);
+        txtPhoneNumber.setText("");
+        txtEmail.setText("");
+        txtLicenseNumber.setText("");
+        spnHireDate.setValue(new Date());
+        chkIsActive.setSelected(true);
     }
 
 
