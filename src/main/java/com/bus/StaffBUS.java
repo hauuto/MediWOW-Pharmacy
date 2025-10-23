@@ -21,6 +21,8 @@ public class StaffBUS implements IStaff {
 
     @Override
     public boolean addStaff(Staff s) {
+        validateStaff(s);
+
         return true;
 
 
@@ -31,7 +33,30 @@ public class StaffBUS implements IStaff {
 
 
 
-    public void validateForm(Staff s){
+    public void validateStaff(Staff s){
+        if (s == null){
+            throw new IllegalArgumentException("Không có thông tin nào được thêm vào");
+        }
+        if (s.getFullName().trim().isEmpty()){
+            throw new IllegalArgumentException("Họ và tên không được để trống");
+        }
+
+        if (s.getUsername().trim().isEmpty()){
+            throw new IllegalArgumentException("Tên đăng nhập không được để trống");
+        }
+
+        if (s.getPhoneNumber().trim().isEmpty() && s.getEmail().trim().isEmpty()){
+            throw new IllegalArgumentException("Số điện thoại hoặc email phải được cung cấp");
+        }
+
+        if (s.getLicenseNumber().trim().isEmpty()){
+            throw new IllegalArgumentException("Dược sĩ cần yêu cầu có mã số chứng chỉ hành nghề");
+        }
+
+
+
+
+
 
 
 

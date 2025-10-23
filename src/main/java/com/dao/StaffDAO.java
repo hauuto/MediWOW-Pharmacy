@@ -20,7 +20,19 @@ public class StaffDAO implements IStaff {
 
     @Override
     public boolean addStaff(Staff s) {
-        return false;
+        Transaction transaction = null;
+        try (Session session = sessionFactory.openSession()) {
+            transaction = session.beginTransaction();
+            session.save(s);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            return false;
+        }
 
     }
 }

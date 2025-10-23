@@ -22,6 +22,9 @@ public class Staff {
     @Column(name = "username", nullable = false, unique = true)
     private String username;
 
+    @Column(name="password", nullable = false)
+    private String password;
+
     @Column(name = "fullName", nullable = false)
     private String fullName;
 
@@ -46,18 +49,6 @@ public class Staff {
 
 
 
-    //constructor for query from database
-    public Staff(String id, Role role, String username,  String fullName, String licenseNumber, String phoneNumber, String email, LocalDate hireDate, boolean isActive) {
-        this.id = id;
-        this.role = role;
-        this.username = username;
-        this.fullName = fullName;
-        this.licenseNumber = licenseNumber;
-        this.phoneNumber = phoneNumber;
-        this.email = email;
-        this.hireDate = hireDate;
-        this.isActive = isActive;
-    }
 
     public String getId() {
         return id;
@@ -99,6 +90,26 @@ public class Staff {
         }
 
         this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+
+        if (password == null || password.isEmpty()) {
+            throw new IllegalArgumentException("Mật khẩu không được để trống");
+        }
+
+        if (password.length() < 6) {
+            throw new IllegalArgumentException("Mật khẩu phải có ít nhất 6 ký tự");
+        }
+        this.password = password;
+    }
+
+    public String getFullName() {
+        return fullName;
     }
 
 
