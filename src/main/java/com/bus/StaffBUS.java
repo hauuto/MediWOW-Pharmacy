@@ -3,7 +3,9 @@ package com.bus;
 import com.dao.StaffDAO;
 import com.entities.Staff;
 import com.interfaces.IStaff;
+import com.utils.EmailUltil;
 import com.utils.PasswordUtil;
+import io.github.cdimascio.dotenv.Dotenv;
 
 
 /**
@@ -12,9 +14,19 @@ import com.utils.PasswordUtil;
 
 public class StaffBUS implements IStaff {
     private final StaffDAO staffDAO;
+    private final EmailUltil emailUltil;
 
     public StaffBUS() {
+        Dotenv dotenv = Dotenv.load();
+
         this.staffDAO = new StaffDAO();
+        this.emailUltil = new EmailUltil(
+                System.getenv().getOrDefault("SMTP_HOST","smtp.gmail.com"),
+                Integer.parseInt(System.getenv().getOrDefault("SMTP_PORT","587")),
+                System.getenv("SMTP_USERNAME"),
+                System.getenv("SMTP_PASSWORD"),
+                System.getenv().getOrDefault("SMTP_FROM","no-reply@yourdomain.com")
+        );
     }
 
     @Override
@@ -25,7 +37,19 @@ public class StaffBUS implements IStaff {
         String hashedPassword = PasswordUtil.hashPassword(password);
         s.setPassword(hashedPassword);
 
-        return staffDAO.addStaff(s);
+        boolean created = staffDAO.addStaff(s);
+
+
+        if (created) {
+            String email = s.getEmail();
+            if (email != null && !email.trim().isEmpty()) {
+                emailUltil.sendPasswordEmail(email,s.getFullName(),s.getUsername(),password);
+
+            }
+
+        }
+
+        return created;
     }
 
 
