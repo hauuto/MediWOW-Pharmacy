@@ -16,8 +16,6 @@
         <property name="hibernate.c3p0.max_statements">50</property>
         <property name="hibernate.c3p0.idle_test_period">3000</property>
 
-        <!-- SQL dialect -->
-        <property name="hibernate.dialect">org.hibernate.dialect.SQLServerDialect</property>
 
         <!-- Echo all executed SQL to stdout -->
         <property name="hibernate.show_sql">true</property>

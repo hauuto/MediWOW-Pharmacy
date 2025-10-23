@@ -21,9 +21,11 @@ public class StaffDAO implements IStaff {
     @Override
     public boolean addStaff(Staff s) {
         Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
             transaction = session.beginTransaction();
-            session.save(s);
+            session.persist(s);
             transaction.commit();
             return true;
         } catch (Exception e) {
@@ -32,7 +34,10 @@ public class StaffDAO implements IStaff {
             }
             e.printStackTrace();
             return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
         }
-
     }
 }

@@ -5,8 +5,6 @@ import com.entities.Staff;
 import com.interfaces.IStaff;
 import com.utils.PasswordUtil;
 
-import java.util.UUID;
-
 
 /**
  * @author Tô Thanh Hậu
@@ -23,12 +21,11 @@ public class StaffBUS implements IStaff {
     public boolean addStaff(Staff s) {
         validateStaff(s);
 
-        return true;
+        String password = PasswordUtil.generatePassword();
+        String hashedPassword = PasswordUtil.hashPassword(password);
+        s.setPassword(hashedPassword);
 
-
-
-
-
+        return staffDAO.addStaff(s);
     }
 
 
@@ -37,29 +34,24 @@ public class StaffBUS implements IStaff {
         if (s == null){
             throw new IllegalArgumentException("Không có thông tin nào được thêm vào");
         }
-        if (s.getFullName().trim().isEmpty()){
+        if (s.getFullName() == null || s.getFullName().trim().isEmpty()){
             throw new IllegalArgumentException("Họ và tên không được để trống");
         }
 
-        if (s.getUsername().trim().isEmpty()){
+        if (s.getUsername() == null || s.getUsername().trim().isEmpty()){
             throw new IllegalArgumentException("Tên đăng nhập không được để trống");
         }
 
-        if (s.getPhoneNumber().trim().isEmpty() && s.getEmail().trim().isEmpty()){
+        boolean hasPhoneNumber = s.getPhoneNumber() != null && !s.getPhoneNumber().trim().isEmpty();
+        boolean hasEmail = s.getEmail() != null && !s.getEmail().trim().isEmpty();
+
+        if (!hasPhoneNumber && !hasEmail){
             throw new IllegalArgumentException("Số điện thoại hoặc email phải được cung cấp");
         }
 
         if (s.getLicenseNumber().trim().isEmpty()){
             throw new IllegalArgumentException("Dược sĩ cần yêu cầu có mã số chứng chỉ hành nghề");
         }
-
-
-
-
-
-
-
-
     }
 
 

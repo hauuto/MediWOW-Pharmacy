@@ -2,6 +2,7 @@ package com.entities;
 
 import com.enums.Role;
 import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
 
@@ -12,7 +13,8 @@ import java.time.LocalDate;
 @Table(name = "Staff")
 public class Staff {
     @Id
-    @Column(name = "id", nullable = false, length = 50)
+    @UuidGenerator
+    @Column(name = "id",insertable = false, updatable = false, nullable = false, length = 50)
     private String id;
 
     @Enumerated(EnumType.STRING)
@@ -173,12 +175,12 @@ public class Staff {
         this.hireDate = hireDate;
     }
 
-    public boolean isActive(boolean selected) {
+
+    public boolean isActive() {
         return isActive;
     }
-
-    public void setActive(boolean active) {
-        isActive = active;
+    public void setActive(boolean isActive) {
+        this.isActive = isActive;
     }
 
     @Override

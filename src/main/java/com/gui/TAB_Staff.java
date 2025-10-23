@@ -438,9 +438,10 @@ public class TAB_Staff extends JFrame implements ActionListener {
             LocalDate localHireDate = LocalDate.ofInstant(hireDate.toInstant(), ZoneId.systemDefault());
             staff.setHireDate(localHireDate);
 
-            staff.isActive(chkIsActive.isSelected());
+            staff.setActive(chkIsActive.isSelected());
 
             boolean ok = staffBUS.addStaff(staff);
+
             if (ok) {
                 JOptionPane.showMessageDialog(this, "Thêm nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 clearInput();

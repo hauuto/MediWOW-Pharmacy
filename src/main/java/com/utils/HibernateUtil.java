@@ -40,7 +40,6 @@ public class HibernateUtil {
     }
 
     public static void shutdown() {
-        // Close caches and connection pools
         if (sessionFactory != null && !sessionFactory.isClosed()) {
             sessionFactory.close();
             System.out.println("✅ Hibernate SessionFactory closed.");
