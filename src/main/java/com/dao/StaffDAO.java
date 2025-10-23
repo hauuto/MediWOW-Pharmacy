@@ -7,6 +7,8 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
+import java.util.List;
+
 /**
  * @author Tô Thanh Hậu
  */
@@ -34,6 +36,22 @@ public class StaffDAO implements IStaff {
             }
             e.printStackTrace();
             return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public List<Staff> getAllStaffs() {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.createQuery("FROM Staff", Staff.class).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         } finally {
             if (session != null && session.isOpen()) {
                 session.close();
