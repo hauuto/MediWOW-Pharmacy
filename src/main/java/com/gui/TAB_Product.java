@@ -1,121 +1,424 @@
 package com.gui;
 
 import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.table.*;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.awt.event.ItemEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
 
 /**
- * TAB_Product — SplitView: Danh sách (trái) + Chi tiết (phải)
- * - Bố cục, trải nghiệm bám TAB_Promotion
- * - Trường dữ liệu theo OOAD Product/UnitOfMeasure/Lot
- * - FEFO mặc định cho bảng Lô, cảnh báo cận HSD 30 ngày
+ * TAB_Product — List (left) + Detail (right) + Toolbar + ActionBar
+ * Cấu trúc:
+ * pProduct (BorderLayout)
+ *  ├─ NORTH: Toolbar (Export + bộ lọc + search kiểu TAB_Promotion)
+ *  └─ CENTER: JSplitPane
+ *        ├─ leftPanel: List (JTable)
+ *        └─ rightPanel: DetailRoot (BorderLayout)
+ *              ├─ CENTER: JScrollPane(DetailContent) ← vertically scrollable
+ *              └─ SOUTH : ActionBar [Chỉnh sửa | Ngừng bán/Kích hoạt]  (hoặc [Lưu | Hủy] khi edit)
  *
- * Gắn vào GUI_MainMenu bằng product.pProduct như hiện tại.
+ * Ghi chú:
+ *  - Giữ mock data
+ *  - Loại & Dạng dùng enum; Hoạt chất (filter) là String (JTextField)
+ *  - Bỏ Nhà sản xuất
+ *  - FEFO luôn ưu tiên (không có checkbox)
+ *  - Đơn vị quy đổi & Lô/HSD: độ cao tối thiểu 3 hàng; Ẩn nút Thêm/Xóa ở view mode; hiện khi edit
  */
 public class TAB_Product {
-    // ===== Root giữ nguyên để tương thích GUI_MainMenu =====
+
+    // ========== Root ==========
     public JPanel pProduct;
 
-    // Toolbar
+    // ========== Toolbar ==========
     private JTextField txtSearch;
-    private JComboBox<ProductCategory> cboCateFilter;
-    private JComboBox<DosageForm>      cboFormFilter;
-    private JButton btnAdd, btnUpdate, btnDelete, btnRefresh, btnExport;
+    private JComboBox<Category> cboCategory;
+    private JComboBox<DosageForm> cboForm;
+    private JTextField txtActiveIngredientFilter;
+    private JButton btnExport;
 
-    // List (left)
+    // ========== List (left) ==========
     private JTable tblProducts;
-    private ProductsTableModel productsModel;
-    private List<ProductRow> allProducts = new ArrayList<>(); // mock storage
+    private ProductTableModel productModel;
+    private TableRowSorter<ProductTableModel> sorter;
 
-    // Detail (right)
-    private JTextField txtId, txtBarcode, txtName, txtShort, txtManufacturer, txtActiveIng, txtStrength, txtBaseUom, txtImagePath, txtCreatedAt;
-    private JTextArea  txaDesc;
-    private JFormattedTextField fVat;
-    private JComboBox<ProductCategory> cboCategory;
-    private JComboBox<DosageForm>      cboForm;
+    // ========== Detail (right) CORE ==========
+    private JPanel pDetailRoot;
+    private JPanel pDetailContent;   // GridBag
+    private JScrollPane scrDetail;
 
-    // Sub tables: UOM & LOT
-    private JTable tblUoms, tblLots;
-    private UomsTableModel uomsModel;
-    private LotsTableModel lotsModel;
-    private JButton btnAddUom, btnDelUom, btnAddLot, btnDelLot;
-    private JCheckBox chkFefo;
+    // Row 0 - left
+    private JLabel lblImage;
+    private JButton btnChangeImage;
 
-    private final DateTimeFormatter DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    // Row 0 - right 4 fields
+    private JTextField txtId, txtBarcode;
+    private JComboBox<ProductStatus> cboStatus;     // disabled (not editable)
+    private JComboBox<Category> cboCatDetail;       // disabled in view; editable in edit
 
-    public TAB_Product(){
+    // Rows 1.. other fields (no Manufacturer)
+    private JTextField txtName, txtShortName, txtStrength, txtActiveIngredient, txtVat, txtBaseUom;
+    private JComboBox<DosageForm> cboFormDetail;
+    private JTextArea txaDescription;
+
+    // Đơn vị quy đổi
+    private JTable tblUnits;
+    private UnitsModel unitsModel;
+    private JButton btnAddUnit, btnDelUnit;
+
+    // Lô & hạn sử dụng
+    private JTable tblLots;
+    private LotsModel lotsModel;
+    private JButton btnAddLot, btnDelLot;
+
+    // ActionBar (luôn hiển thị)
+    private final JButton btnPrimary = new JButton("Chỉnh sửa");     // or "Lưu" when in edit mode
+    private final JButton btnSecondary = new JButton("Ngừng bán");   // or "Kích hoạt" / "Hủy" (edit mode)
+
+    // ========== State ==========
+    private boolean editing = false;
+    private Product current; // sản phẩm đang xem
+    private final List<Product> data = new ArrayList<>(); // mock
+
+    // ========== Constants ==========
+    private static final String DEFAULT_IMG = "src/main/resources/images/products/etc/etc1.jpg";
+    private static final int IMG_W = 140, IMG_H = 140;
+
+    public TAB_Product() {
         buildUI();
-        mockData();         // demo data
-        applyFilter("");    // load list
+        loadMock();
+        productModel.setRows(data);
+        if (!data.isEmpty()) {
+            tblProducts.setRowSelectionInterval(0, 0);
+            loadDetail(getSelected());
+        }
     }
 
-    // ================= Build UI =================
-    private void buildUI(){
-        pProduct = new JPanel(new BorderLayout(12, 12));
+    // region ===== UI Build =====
+    private void buildUI() {
+        pProduct = new JPanel(new BorderLayout(10, 10));
         pProduct.setBorder(new EmptyBorder(10, 10, 10, 10));
-
         pProduct.add(buildToolbar(), BorderLayout.NORTH);
-        pProduct.add(buildSplitView(), BorderLayout.CENTER);
+        pProduct.add(buildSplit(), BorderLayout.CENTER);
     }
 
-    private JComponent buildToolbar(){
+    private JComponent buildToolbar() {
         JPanel bar = new JPanel(new BorderLayout(8, 4));
 
+        // left/center: search field (giữ phong cách như TAB_Promotion)
         txtSearch = new JTextField();
-        txtSearch.setFont(txtSearch.getFont().deriveFont(16f));
-        txtSearch.setToolTipText("Tìm: mã / mã vạch / tên / hoạt chất / NSX");
-        JButton btnFind = new JButton("Tìm");
-        btnFind.addActionListener(e -> applyFilter(txtSearch.getText()));
+        txtSearch.setColumns(22);
+        txtSearch.addActionListener(e -> applyFilter());
+        JButton btnSearch = new JButton("Tìm");
+        btnSearch.addActionListener(e -> applyFilter());
 
-        JPanel searchWrap = new JPanel(new BorderLayout(4, 0));
+        JPanel searchWrap = new JPanel(new BorderLayout(6, 0));
         searchWrap.add(txtSearch, BorderLayout.CENTER);
-        searchWrap.add(btnFind, BorderLayout.EAST);
-
-        // right controls
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
-        cboCateFilter = new JComboBox<>(ProductCategory.values());
-        cboFormFilter = new JComboBox<>(DosageForm.values());
-        cboCateFilter.insertItemAt(null, 0);
-        cboFormFilter.insertItemAt(null, 0);
-        cboCateFilter.setSelectedIndex(0);
-        cboFormFilter.setSelectedIndex(0);
-        Action filterAction = new AbstractAction(){ public void actionPerformed(java.awt.event.ActionEvent e){ applyFilter(txtSearch.getText()); }};
-        cboCateFilter.addActionListener(filterAction);
-        cboFormFilter.addActionListener(filterAction);
-
-        right.add(pill("Loại", cboCateFilter));
-        right.add(pill("Dạng", cboFormFilter));
-
-        btnAdd = new JButton("Thêm");
-        btnUpdate = new JButton("Cập nhật");
-        btnDelete = new JButton("Xoá");
-        btnRefresh= new JButton("Làm mới");
-        btnExport = new JButton("Xuất Excel");
-
-        right.add(btnAdd); right.add(btnUpdate); right.add(btnDelete);
-        right.add(btnRefresh); right.add(btnExport);
-
+        searchWrap.add(btnSearch, BorderLayout.EAST);
         bar.add(searchWrap, BorderLayout.CENTER);
+
+        // right: filters & export
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+        right.add(pill("Loại", (cboCategory = new JComboBox<>(Category.values()))));
+        right.add(pill("Dạng", (cboForm = new JComboBox<>(DosageForm.values()))));
+        // Hoạt chất: String placeholder
+        txtActiveIngredientFilter = new JTextField(12);
+        right.add(pill("Hoạt chất", txtActiveIngredientFilter));
+        btnExport = new JButton("Xuất Excel");
+        right.add(btnExport);
         bar.add(right, BorderLayout.EAST);
 
-        // actions (mock)
-        btnRefresh.addActionListener(e -> {
-            txtSearch.setText("");
-            cboCateFilter.setSelectedIndex(0);
-            cboFormFilter.setSelectedIndex(0);
-            applyFilter("");
-        });
+        // filter listeners
+        cboCategory.addItemListener(e -> { if (e.getStateChange() == ItemEvent.SELECTED) applyFilter(); });
+        cboForm.addItemListener(e -> { if (e.getStateChange() == ItemEvent.SELECTED) applyFilter(); });
+        txtActiveIngredientFilter.addActionListener(e -> applyFilter());
 
         return bar;
     }
 
-    private JPanel pill(String label, JComponent comp){
+    private JSplitPane buildSplit() {
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+                buildListPanel(),
+                buildDetailRoot());
+        split.setContinuousLayout(true);
+        split.setResizeWeight(0.48);
+        split.setBorder(null);
+        return split;
+    }
+
+    private JComponent buildListPanel() {
+        JPanel p = new JPanel(new BorderLayout(6, 6));
+        p.setBorder(new CompoundBorder(new LineBorder(new Color(220,220,220)),
+                new EmptyBorder(10,10,10,10)));
+        JLabel title = new JLabel("Danh sách sản phẩm");
+        title.setFont(title.getFont().deriveFont(Font.BOLD));
+        p.add(title, BorderLayout.NORTH);
+
+        productModel = new ProductTableModel();
+        tblProducts = new JTable(productModel);
+        tblProducts.setRowHeight(26);
+        tblProducts.setAutoCreateRowSorter(true);
+
+        sorter = new TableRowSorter<>(productModel);
+        tblProducts.setRowSorter(sorter);
+
+        tblProducts.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                Product sel = getSelected();
+                if (sel != null) loadDetail(sel);
+            }
+        });
+
+        p.add(new JScrollPane(tblProducts), BorderLayout.CENTER);
+        return p;
+    }
+
+    private JComponent buildDetailRoot() {
+        pDetailRoot = new JPanel(new BorderLayout(8, 8));
+
+        // Action bar (South) — tạo trước để tránh NPE khi setEditMode chỉnh text nút
+        pDetailRoot.add(buildActionBar(), BorderLayout.SOUTH);
+
+        // CENTER: scrollable content
+        pDetailContent = buildDetailContent();
+        scrDetail = new JScrollPane(pDetailContent);
+        scrDetail.getVerticalScrollBar().setUnitIncrement(16);
+        pDetailRoot.add(scrDetail, BorderLayout.CENTER);
+
+        setEditMode(false);
+        return pDetailRoot;
+    }
+
+    private JPanel buildActionBar() {
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        btnPrimary.addActionListener(e -> {
+            if (!editing) enterEdit();
+            else saveAndExitEdit();
+        });
+        btnSecondary.addActionListener(e -> {
+            if (!editing) toggleStatus();
+            else cancelEdit();
+        });
+        bar.add(btnPrimary);
+        bar.add(btnSecondary);
+        return bar;
+    }
+
+    private JPanel buildDetailContent() {
+        JPanel root = new JPanel(new GridBagLayout());
+        root.setBorder(new CompoundBorder(new LineBorder(new Color(220,220,220)),
+                new EmptyBorder(10,10,10,10)));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+
+        JLabel title = new JLabel("I. Chi tiết sản phẩm");
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 14f));
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        root.add(title, gbc);
+
+        // ===== Row 0: 2 cột =====
+        // Left: image + button
+        JPanel imgWrap = new JPanel(new BorderLayout(0, 6));
+        lblImage = new JLabel(scaleIcon(DEFAULT_IMG, IMG_W, IMG_H));
+        lblImage.setHorizontalAlignment(SwingConstants.CENTER);
+        lblImage.setVerticalAlignment(SwingConstants.CENTER);
+        btnChangeImage = new JButton("Đổi ảnh…");
+        btnChangeImage.addActionListener(e -> changeImage());
+        imgWrap.add(lblImage, BorderLayout.CENTER);
+        imgWrap.add(btnChangeImage, BorderLayout.SOUTH);
+
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1; gbc.weightx = 0.3;
+        root.add(imgWrap, gbc);
+
+        // Right: 4 field Mã, Mã vạch, Tình trạng, Loại
+        JPanel right4 = new JPanel(new GridLayout(4, 2, 6, 6));
+        right4.add(new JLabel("Mã:"));        txtId = roText();       right4.add(txtId);
+        right4.add(new JLabel("Mã vạch:"));   txtBarcode = roText();  right4.add(txtBarcode);
+        right4.add(new JLabel("Tình trạng:"));
+        cboStatus = new JComboBox<>(ProductStatus.values()); cboStatus.setEnabled(false); right4.add(cboStatus);
+        right4.add(new JLabel("Loại:"));
+        cboCatDetail = new JComboBox<>(Category.values());    cboCatDetail.setEnabled(false); right4.add(cboCatDetail);
+
+        gbc.gridx = 1; gbc.gridy = 1; gbc.gridwidth = 1; gbc.weightx = 0.7;
+        root.add(right4, gbc);
+
+        // ===== Row 1..: các field khác (không có Nhà SX) =====
+        JPanel row1 = new JPanel(new GridLayout(1, 4, 6, 6));
+        row1.add(new JLabel("Tên:"));         txtName = roText();       row1.add(txtName);
+        row1.add(new JLabel("Tên viết tắt:")); txtShortName = roText(); row1.add(txtShortName);
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+        root.add(row1, gbc);
+
+        JPanel row2 = new JPanel(new GridLayout(1, 4, 6, 6));
+        row2.add(new JLabel("Dạng:"));
+        cboFormDetail = new JComboBox<>(DosageForm.values()); cboFormDetail.setEnabled(false); row2.add(cboFormDetail);
+        row2.add(new JLabel("Hàm lượng:"));   txtStrength = roText();   row2.add(txtStrength);
+        gbc.gridy = 3; root.add(row2, gbc);
+
+        JPanel row3 = new JPanel(new GridLayout(1, 4, 6, 6));
+        row3.add(new JLabel("Hoạt chất:"));   txtActiveIngredient = roText(); row3.add(txtActiveIngredient);
+        row3.add(new JLabel("VAT (%):"));     txtVat = roText();        row3.add(txtVat);
+        gbc.gridy = 4; root.add(row3, gbc);
+
+        JPanel row4 = new JPanel(new GridLayout(1, 4, 6, 6));
+        row4.add(new JLabel("Đơn vị cơ bản:")); txtBaseUom = roText(); row4.add(txtBaseUom);
+        row4.add(new JLabel("")); row4.add(new JLabel("")); // filler
+        gbc.gridy = 5; root.add(row4, gbc);
+
+        JPanel row5 = new JPanel(new BorderLayout(6, 6));
+        row5.add(new JLabel("Mô tả:"), BorderLayout.WEST);
+        txaDescription = new JTextArea(3, 30);
+        txaDescription.setLineWrap(true); txaDescription.setWrapStyleWord(true); txaDescription.setEditable(false);
+        row5.add(new JScrollPane(txaDescription), BorderLayout.CENTER);
+        gbc.gridy = 6; root.add(row5, gbc);
+
+        // --- Đơn vị quy đổi ---
+        JPanel unitsWrap = new JPanel(new BorderLayout(6, 6));
+        unitsWrap.setBorder(new TitledBorder("2. Đơn vị quy đổi"));
+        unitsModel = new UnitsModel();
+        tblUnits = new JTable(unitsModel);
+        tblUnits.setRowHeight(26);
+        ensureMinVisibleRows(tblUnits, 3);
+        unitsWrap.add(new JScrollPane(tblUnits), BorderLayout.CENTER);
+        JPanel unitsBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        btnAddUnit = new JButton("+ Thêm");
+        btnDelUnit = new JButton("Xóa");
+        btnAddUnit.addActionListener(e -> { unitsModel.addRow(new UnitRow("", 1)); selectLastRowAndScroll(tblUnits); });
+        btnDelUnit.addActionListener(e -> deleteSelected(tblUnits, unitsModel));
+        unitsBtns.add(btnAddUnit); unitsBtns.add(btnDelUnit);
+        unitsWrap.add(unitsBtns, BorderLayout.SOUTH);
+        gbc.gridy = 7; root.add(unitsWrap, gbc);
+
+        // --- Lô & HSD ---
+        JPanel lotsWrap = new JPanel(new BorderLayout(6, 6));
+        lotsWrap.setBorder(new TitledBorder("3. Lô & hạn sử dụng"));
+        lotsModel = new LotsModel();
+        tblLots = new JTable(lotsModel);
+        tblLots.setRowHeight(26);
+        ensureMinVisibleRows(tblLots, 3);
+        lotsWrap.add(new JScrollPane(tblLots), BorderLayout.CENTER);
+        JPanel lotsBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        btnAddLot = new JButton("+ Thêm");
+        btnDelLot = new JButton("Xóa");
+        btnAddLot.addActionListener(e -> { lotsModel.addRow(new LotRow("NEW", 0, 0.0, LocalDate.now().plusMonths(6), "AVAILABLE")); selectLastRowAndScroll(tblLots); });
+        btnDelLot.addActionListener(e -> deleteSelected(tblLots, lotsModel));
+        lotsBtns.add(btnAddLot); lotsBtns.add(btnDelLot);
+        lotsWrap.add(lotsBtns, BorderLayout.SOUTH);
+        gbc.gridy = 8; root.add(lotsWrap, gbc);
+
+        return root;
+    }
+    // endregion
+
+    // region ===== Actions & State =====
+    private void enterEdit() {
+        setEditMode(true);
+    }
+
+    private void saveAndExitEdit() {
+        // Demo: lưu ngược dữ liệu detail vào 'current' (mock only; bạn sẽ map sang entity thực tế)
+        if (current != null) {
+            current.barcode = txtBarcode.getText().trim();
+            current.category = (Category) cboCatDetail.getSelectedItem();
+            current.name = txtName.getText().trim();
+            current.shortName = txtShortName.getText().trim();
+            current.form = (DosageForm) cboFormDetail.getSelectedItem();
+            current.strength = txtStrength.getText().trim();
+            current.activeIngredient = txtActiveIngredient.getText().trim();
+            current.vat = parseDouble(txtVat.getText());
+            current.baseUom = txtBaseUom.getText().trim();
+            current.description = txaDescription.getText();
+            // units & lots from table models
+            current.units.clear();
+            for (UnitRow r : unitsModel.rows) if (!r.name.isBlank()) current.units.add(new UnitRow(r.name.trim(), (int)r.rate));
+            current.lots.clear();
+            current.lots.addAll(lotsModel.rows);
+            // refresh list row view
+            productModel.fireTableDataChanged();
+        }
+        setEditMode(false);
+    }
+
+    private void cancelEdit() {
+        // revert UI from current product
+        if (current != null) loadDetail(current);
+        setEditMode(false);
+    }
+
+    private void toggleStatus() {
+        if (current == null) return;
+        if (current.status == ProductStatus.DANG_BAN) current.status = ProductStatus.NGUNG_BAN;
+        else current.status = ProductStatus.DANG_BAN;
+        cboStatus.setSelectedItem(current.status);
+        updateSecondaryButton();
+        productModel.fireTableDataChanged();
+    }
+
+    private void setEditMode(boolean on) {
+        this.editing = on;
+        // fields editable, trừ Mã & Tình trạng
+        txtId.setEditable(false);
+        cboStatus.setEnabled(false);
+
+        txtBarcode.setEditable(on);
+        cboCatDetail.setEnabled(on);
+        txtName.setEditable(on);
+        txtShortName.setEditable(on);
+        cboFormDetail.setEnabled(on);
+        txtStrength.setEditable(on);
+        txtActiveIngredient.setEditable(on);
+        txtVat.setEditable(on);
+        txtBaseUom.setEditable(on);
+        txaDescription.setEditable(on);
+        btnChangeImage.setEnabled(on);
+
+        // Units & Lots buttons
+        btnAddUnit.setVisible(on);
+        btnDelUnit.setVisible(on);
+        btnAddLot.setVisible(on);
+        btnDelLot.setVisible(on);
+
+        // Table editability
+        unitsModel.setEditable(on);
+        lotsModel.setEditable(on);
+
+        // ActionBar labels
+        btnPrimary.setText(on ? "Lưu" : "Chỉnh sửa");
+        btnSecondary.setText(on ? "Hủy" : secondaryLabelForStatus());
+    }
+
+    private void updateSecondaryButton() {
+        if (!editing) btnSecondary.setText(secondaryLabelForStatus());
+    }
+
+    private String secondaryLabelForStatus() {
+        ProductStatus st = (ProductStatus) cboStatus.getSelectedItem();
+        return (st == ProductStatus.DANG_BAN) ? "Ngừng bán" : "Kích hoạt";
+    }
+    // endregion
+
+    // region ===== Helpers =====
+    private JTextField roText() {
+        JTextField t = new JTextField();
+        t.setEditable(false);
+        return t;
+    }
+
+    private JPanel pill(String label, Component comp) {
         JPanel wrap = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         wrap.setBorder(new CompoundBorder(new LineBorder(new Color(210,210,210)), new EmptyBorder(2,8,2,8)));
         wrap.add(new JLabel(label + ":"));
@@ -123,386 +426,347 @@ public class TAB_Product {
         return wrap;
     }
 
-    private JSplitPane buildSplitView(){
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, buildListPanel(), buildDetailPanel());
-        split.setContinuousLayout(true);
-        split.setResizeWeight(0.55);
-        split.setBorder(null);
-        return split;
-    }
+    private void applyFilter() {
+        if (sorter == null) return;
+        String q = txtSearch.getText() == null ? "" : txtSearch.getText().trim().toLowerCase(Locale.ROOT);
+        Category cat = (Category) cboCategory.getSelectedItem();
+        DosageForm form = (DosageForm) cboForm.getSelectedItem();
+        String ai = txtActiveIngredientFilter.getText() == null ? "" : txtActiveIngredientFilter.getText().trim().toLowerCase(Locale.ROOT);
 
-    private JPanel buildListPanel(){
-        JPanel p = new JPanel(new BorderLayout(6, 6));
-        p.setBorder(new CompoundBorder(new LineBorder(new Color(220,220,220)),
-                new EmptyBorder(10, 10, 10, 10)));
-
-        JLabel title = new JLabel("Danh sách sản phẩm");
-        title.setFont(title.getFont().deriveFont(Font.BOLD));
-        p.add(title, BorderLayout.NORTH);
-
-        productsModel = new ProductsTableModel();
-        tblProducts = new JTable(productsModel);
-        tblProducts.setAutoCreateRowSorter(true);
-        tblProducts.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tblProducts.setRowHeight(26);
-
-        tblProducts.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && tblProducts.getSelectedRow() >= 0) {
-                ProductRow pr = getSelectedProduct();
-                loadDetail(pr);
-            }
-        });
-
-        // column widths
-        int[] widths = {100, 120, 220, 110, 110, 70, 110, 140, 120};
-        for (int i=0;i<widths.length && i<tblProducts.getColumnCount();i++){
-            tblProducts.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        List<RowFilter<Object,Object>> filters = new ArrayList<>();
+        if (!q.isEmpty()) {
+            filters.add(RowFilter.regexFilter("(?i)" + Pattern.quote(q), 0, 1)); // id or name
         }
-
-        p.add(new JScrollPane(tblProducts), BorderLayout.CENTER);
-        return p;
+        if (cat != null && cat != Category.ALL) {
+            filters.add(RowFilter.regexFilter("^" + cat.name() + "$", 2)); // category col
+        }
+        if (form != null && form != DosageForm.ALL) {
+            filters.add(RowFilter.regexFilter("^" + form.name() + "$", 3)); // form col
+        }
+        if (!ai.isEmpty()) {
+            filters.add(RowFilter.regexFilter("(?i)" + Pattern.quote(ai), 4)); // active ingredient col
+        }
+        if (filters.isEmpty()) sorter.setRowFilter(null);
+        else sorter.setRowFilter(RowFilter.andFilter(filters));
     }
 
-    private ProductRow getSelectedProduct(){
+    private void loadDetail(Product p) {
+        current = p;
+        if (p == null) return;
+
+        // general
+        lblImage.setIcon(scaleIcon(p.imagePath != null ? p.imagePath : DEFAULT_IMG, IMG_W, IMG_H));
+        txtId.setText(p.id);
+        txtBarcode.setText(nullSafe(p.barcode));
+        cboStatus.setSelectedItem(p.status);
+        cboCatDetail.setSelectedItem(p.category);
+
+        // more fields
+        txtName.setText(nullSafe(p.name));
+        txtShortName.setText(nullSafe(p.shortName));
+        cboFormDetail.setSelectedItem(p.form);
+        txtStrength.setText(nullSafe(p.strength));
+        txtActiveIngredient.setText(nullSafe(p.activeIngredient));
+        txtVat.setText(p.vat == null ? "" : p.vat.toString());
+        txtBaseUom.setText(nullSafe(p.baseUom));
+        txaDescription.setText(nullSafe(p.description));
+
+        // tables
+        unitsModel.setRows(new ArrayList<>(p.units));
+        lotsModel.setRows(new ArrayList<>(p.lots));
+
+        setEditMode(false);
+        updateSecondaryButton();
+    }
+
+    private static String nullSafe(String s) { return s == null ? "" : s; }
+
+    private Product getSelected() {
         int view = tblProducts.getSelectedRow();
         if (view < 0) return null;
-        int modelRow = tblProducts.convertRowIndexToModel(view);
-        return productsModel.getRowAt(modelRow);
+        int modelIndex = tblProducts.convertRowIndexToModel(view);
+        return productModel.getAt(modelIndex);
     }
 
-    private JComponent buildDetailPanel(){
-        JPanel root = new JPanel();
-        root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
-        root.setBorder(new CompoundBorder(new LineBorder(new Color(220,220,220)),
-                new EmptyBorder(10, 10, 10, 10)));
-
-        JLabel title = new JLabel("Chi tiết sản phẩm");
-        title.setFont(title.getFont().deriveFont(Font.BOLD));
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
-        root.add(title);
-        root.add(Box.createVerticalStrut(6));
-
-        // ===== Thông tin chung =====
-        JPanel info = new JPanel(new GridBagLayout());
-        info.setBorder(new TitledBorder("Thông tin chung"));
-        GridBagConstraints g = new GridBagConstraints();
-        g.insets = new Insets(4,6,4,6);
-        g.fill = GridBagConstraints.HORIZONTAL;
-
-        txtId = tf(); txtId.setEditable(false);
-        txtBarcode = tf(); txtName = tf(); txtShort = tf();
-        txtManufacturer = tf(); txtActiveIng = tf(); txtStrength = tf(); txtBaseUom = tf();
-        txtImagePath = tf(); txtCreatedAt = tf(); txtCreatedAt.setEditable(false);
-        txaDesc = new JTextArea(2, 30); txaDesc.setLineWrap(true); txaDesc.setWrapStyleWord(true);
-        fVat = new JFormattedTextField(java.text.NumberFormat.getNumberInstance());
-        fVat.setColumns(10);
-
-        cboCategory = new JComboBox<>(ProductCategory.values());
-        cboForm     = new JComboBox<>(DosageForm.values());
-
-        // Row 1: ID - Barcode
-        add(info, g, 0,0, new JLabel("Mã *")); add(info, g, 1,0, txtId);
-        add(info, g, 2,0, new JLabel("Mã vạch")); add(info, g, 3,0, txtBarcode);
-
-        // Row 2: Name
-        add(info, g, 0,1, new JLabel("Tên *")); addSpan(info, g, 1,1, 3, txtName);
-
-        // Row 3: Short - BaseUom
-        add(info, g, 0,2, new JLabel("Tên tắt")); add(info, g, 1,2, txtShort);
-        add(info, g, 2,2, new JLabel("ĐVT cơ sở")); add(info, g, 3,2, txtBaseUom);
-
-        // Row 4: Category - Form
-        add(info, g, 0,3, new JLabel("Loại *")); add(info, g, 1,3, cboCategory);
-        add(info, g, 2,3, new JLabel("Dạng *")); add(info, g, 3,3, cboForm);
-
-        // Row 5: VAT - Strength
-        add(info, g, 0,4, new JLabel("VAT (%)")); add(info, g, 1,4, fVat);
-        add(info, g, 2,4, new JLabel("Hàm lượng")); add(info, g, 3,4, txtStrength);
-
-        // Row 6: Manufacturer - ActiveIngredient
-        add(info, g, 0,5, new JLabel("Nhà SX")); add(info, g, 1,5, txtManufacturer);
-        add(info, g, 2,5, new JLabel("Hoạt chất")); add(info, g, 3,5, txtActiveIng);
-
-        // Row 7: Desc
-        add(info, g, 0,6, new JLabel("Mô tả")); addSpan(info, g, 1,6, 3, new JScrollPane(txaDesc));
-
-        // Row 8: Image - CreatedAt
-        add(info, g, 0,7, new JLabel("Ảnh")); add(info, g, 1,7, txtImagePath);
-        add(info, g, 2,7, new JLabel("Ngày tạo")); add(info, g, 3,7, txtCreatedAt);
-
-        info.setAlignmentX(Component.LEFT_ALIGNMENT);
-        root.add(info);
-        root.add(Box.createVerticalStrut(6));
-
-        // ===== UOM =====
-        uomsModel = new UomsTableModel();
-        tblUoms = new JTable(uomsModel);
-        tblUoms.setRowHeight(26);
-        JPanel uWrap = new JPanel(new BorderLayout(6,6));
-        uWrap.setBorder(new TitledBorder("Đơn vị quy đổi"));
-        uWrap.add(new JScrollPane(tblUoms), BorderLayout.CENTER);
-        JPanel uBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
-        btnAddUom = new JButton("+ Thêm"); btnDelUom = new JButton("Xoá");
-        uBtns.add(btnAddUom); uBtns.add(btnDelUom);
-        uWrap.add(uBtns, BorderLayout.SOUTH);
-        btnAddUom.addActionListener(e -> { uomsModel.addRow(new UomRow(genId("UOM"), "", 1d)); selectLastRow(tblUoms); });
-        btnDelUom.addActionListener(e -> deleteSelected(tblUoms, uomsModel));
-        uWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
-        root.add(uWrap);
-        root.add(Box.createVerticalStrut(6));
-
-        // ===== LOTS =====
-        lotsModel = new LotsTableModel();
-        tblLots = new JTable(lotsModel){
-            @Override public Component prepareRenderer(TableCellRenderer r, int row, int col){
-                Component c = super.prepareRenderer(r, row, col);
-                int mRow = convertRowIndexToModel(row);
-                LotRow lr = lotsModel.getRowAt(mRow);
-                c.setForeground(Color.BLACK);
-                c.setBackground(Color.WHITE);
-                if (lr.status == LotStatus.EXPIRED) c.setBackground(new Color(0xFFCDD2));          // đỏ nhạt
-                else if (lr.status == LotStatus.FAULTY) c.setBackground(new Color(0xF8BBD0));     // hồng
-                else if (lr.expiryDate != null && !lr.expiryDate.isAfter(LocalDate.now().plusDays(30)))
-                    c.setBackground(new Color(0xE1BEE7)); // tím: cận HSD 30 ngày
-                return c;
+    private void changeImage() {
+        JFileChooser fc = new JFileChooser();
+        int rs = fc.showOpenDialog(pProduct);
+        if (rs == JFileChooser.APPROVE_OPTION) {
+            File f = fc.getSelectedFile();
+            if (f != null && f.exists()) {
+                if (current != null) current.imagePath = f.getAbsolutePath();
+                lblImage.setIcon(scaleIcon(f.getAbsolutePath(), IMG_W, IMG_H));
             }
-        };
-        tblLots.setRowHeight(26);
-        // FEFO: sort theo HSD asc
-        TableRowSorter<TableModel> sorter = new TableRowSorter<>(lotsModel);
-        tblLots.setRowSorter(sorter);
-        chkFefo = new JCheckBox("Ưu tiên FEFO (HSD gần nhất lên trước)", true);
-        chkFefo.addActionListener(e -> {
-            if (chkFefo.isSelected()){
-                sorter.setSortKeys(List.of(new RowSorter.SortKey(3, SortOrder.ASCENDING)));
-            } else sorter.setSortKeys(null);
-        });
-        chkFefo.doClick(); chkFefo.doClick(); // ensure sort applied once
-
-        JPanel lWrap = new JPanel(new BorderLayout(6,6));
-        lWrap.setBorder(new TitledBorder("Lô & hạn sử dụng"));
-        lWrap.add(new JScrollPane(tblLots), BorderLayout.CENTER);
-        JPanel lSouth = new JPanel(new BorderLayout());
-        lSouth.add(chkFefo, BorderLayout.WEST);
-        JPanel lBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
-        btnAddLot = new JButton("+ Thêm lô"); btnDelLot = new JButton("Xoá lô");
-        lBtns.add(btnAddLot); lBtns.add(btnDelLot);
-        lSouth.add(lBtns, BorderLayout.EAST);
-        lWrap.add(lSouth, BorderLayout.SOUTH);
-        btnAddLot.addActionListener(e -> {
-            lotsModel.addRow(new LotRow(genId("LOT"), 0, 0d, LocalDate.now().plusMonths(12), LotStatus.AVAILABLE));
-            selectLastRow(tblLots);
-        });
-        btnDelLot.addActionListener(e -> deleteSelected(tblLots, lotsModel));
-
-        lWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
-        root.add(lWrap);
-
-        return root;
-    }
-
-    private JTextField tf(){ JTextField t = new JTextField(); t.setFont(t.getFont().deriveFont(14f)); return t; }
-    private void add(JPanel p, GridBagConstraints g, int x, int y, JComponent c){ g.gridx=x; g.gridy=y; g.gridwidth=1; g.weightx = (x%2==1)?1:0; p.add(c, g); }
-    private void addSpan(JPanel p, GridBagConstraints g, int x, int y, int span, JComponent c){ g.gridx=x; g.gridy=y; g.gridwidth=span; g.weightx=1; p.add(c, g); }
-    private void selectLastRow(JTable t){ int last=t.getRowCount()-1; if (last>=0) t.setRowSelectionInterval(last, last); }
-    private void deleteSelected(JTable t, AbstractTableModel m){
-        int viewRow = t.getSelectedRow(); if (viewRow<0) return;
-        int modelRow = t.convertRowIndexToModel(viewRow);
-        if (m instanceof UomsTableModel um) um.removeRow(modelRow);
-        if (m instanceof LotsTableModel lm) lm.removeRow(modelRow);
-    }
-    private String genId(String prefix){ return prefix + "-" + UUID.randomUUID().toString().substring(0,8).toUpperCase(); }
-
-    // ================= Filtering & Binding =================
-    private void applyFilter(String q){
-        String query = q==null? "": q.trim().toLowerCase();
-        ProductCategory cate = (ProductCategory)cboCateFilter.getSelectedItem();
-        DosageForm form = (DosageForm)cboFormFilter.getSelectedItem();
-
-        List<ProductRow> filtered = allProducts.stream().filter(p -> {
-            boolean ok = true;
-            if (cate != null) ok &= p.category == cate;
-            if (form != null) ok &= p.form == form;
-            if (!query.isEmpty()){
-                ok &= (contains(p.id, query) || contains(p.barcode, query) || contains(p.name, query)
-                        || contains(p.activeIngredient, query) || contains(p.manufacturer, query));
-            }
-            return ok;
-        }).collect(Collectors.toList());
-
-        productsModel.setData(filtered);
-        if (!filtered.isEmpty()){
-            tblProducts.setRowSelectionInterval(0,0);
-            loadDetail(filtered.get(0));
-        } else {
-            clearDetail();
         }
     }
-    private boolean contains(String s, String q){ return s!=null && s.toLowerCase().contains(q); }
 
-    private void loadDetail(ProductRow p){
-        if (p==null) return;
-        txtId.setText(p.id); txtBarcode.setText(p.barcode);
-        txtName.setText(p.name); txtShort.setText(p.shortName);
-        txtManufacturer.setText(p.manufacturer); txtActiveIng.setText(p.activeIngredient);
-        fVat.setValue(p.vat); txtStrength.setText(p.strength);
-        txaDesc.setText(p.description); txtBaseUom.setText(p.baseUom);
-        txtImagePath.setText(p.imagePath); txtCreatedAt.setText(p.createdAt!=null? p.createdAt.format(DMY):"");
-        cboCategory.setSelectedItem(p.category); cboForm.setSelectedItem(p.form);
-
-        uomsModel.setData(new ArrayList<>(p.uoms));
-        lotsModel.setData(new ArrayList<>(p.lots));
+    private static void ensureMinVisibleRows(JTable t, int minRows) {
+        int rh = t.getRowHeight();
+        int hh = t.getTableHeader() != null ? t.getTableHeader().getPreferredSize().height : 22;
+        t.setPreferredScrollableViewportSize(new Dimension(t.getPreferredScrollableViewportSize().width, hh + rh * minRows + 4));
     }
 
-    private void clearDetail(){
-        for (JTextField tf : List.of(txtId, txtBarcode, txtName, txtShort, txtManufacturer, txtActiveIng, txtStrength, txtBaseUom, txtImagePath, txtCreatedAt)) tf.setText("");
-        txaDesc.setText(""); fVat.setValue(null);
-        cboCategory.setSelectedIndex(0); cboForm.setSelectedIndex(0);
-        uomsModel.setData(new ArrayList<>()); lotsModel.setData(new ArrayList<>());
-    }
-
-    // ================== Mock data (demo) ==================
-    private void mockData(){
-        ProductRow a = new ProductRow("PRD-0001","8938505970012", ProductCategory.OTC, DosageForm.TABLET,
-                "Paracetamol 500mg","PARA500","Imexpharm","Paracetamol",5.0,"500mg",
-                "Giảm đau, hạ sốt", "viên", "", LocalDate.now().minusDays(3));
-        a.uoms.add(new UomRow("UOM-VIEN","Viên",1));
-        a.uoms.add(new UomRow("UOM-HOP","Hộp 10 vỉ x 10 viên",100));
-        a.lots.add(new LotRow("L2309A", 120, 900.0, LocalDate.now().plusDays(20), LotStatus.AVAILABLE));
-        a.lots.add(new LotRow("L2312B", 60,  920.0, LocalDate.now().plusMonths(6),  LotStatus.AVAILABLE));
-
-        ProductRow b = new ProductRow("PRD-0002","8938505970029", ProductCategory.SUPPLEMENT, DosageForm.SYRUP,
-                "Vitamin C Syrup","VITC-SYR","DHG Pharma","Ascorbic acid",0.0,"100mg/5ml",
-                "Bổ sung Vitamin C", "ml", "", LocalDate.now().minusDays(10));
-        b.uoms.add(new UomRow("UOM-CHAI","Chai 120ml",120));
-        b.lots.add(new LotRow("VC-2401", 30, 15000.0, LocalDate.now().plusDays(5), LotStatus.AVAILABLE));
-        b.lots.add(new LotRow("VC-2402", 10, 14800.0, LocalDate.now().minusDays(1), LotStatus.EXPIRED));
-
-        allProducts = List.of(a, b);
-    }
-
-    // ================== TableModels & Rows ==================
-    // ——— Entities (enum) từ OOAD Product ———
-    public enum ProductCategory { SUPPLEMENT, OTC, ETC }   // OOAD & SQL (category)
-    public enum DosageForm {
-        TABLET, CAPSULE, POWDER, LOZENGE, SYRUP, DROP, MOUTHWASH   // OOAD  :contentReference[oaicite:16]{index=16}
-    }
-    public enum LotStatus { AVAILABLE, EXPIRED, FAULTY }           // OOAD & SQL
-
-    // Row structs (UI-only; thay bằng entity/DAO khi tích hợp DB)
-    static class ProductRow {
-        String id, barcode, name, shortName, manufacturer, activeIngredient, strength, description, baseUom, imagePath;
-        Double vat;
-        ProductCategory category; DosageForm form;
-        LocalDate createdAt;
-        List<UomRow> uoms = new ArrayList<>();
-        List<LotRow> lots = new ArrayList<>();
-        ProductRow(String id, String barcode, ProductCategory cat, DosageForm form, String name, String shortName,
-                   String manufacturer, String activeIngredient, Double vat, String strength, String desc,
-                   String baseUom, String imagePath, LocalDate createdAt){
-            this.id=id; this.barcode=barcode; this.category=cat; this.form=form; this.name=name; this.shortName=shortName;
-            this.manufacturer=manufacturer; this.activeIngredient=activeIngredient; this.vat=vat; this.strength=strength;
-            this.description=desc; this.baseUom=baseUom; this.imagePath=imagePath; this.createdAt=createdAt;
+    private static void selectLastRowAndScroll(JTable t) {
+        int last = t.getRowCount() - 1;
+        if (last >= 0) {
+            t.setRowSelectionInterval(last, last);
+            t.scrollRectToVisible(t.getCellRect(last, 0, true));
         }
     }
-    static class UomRow { String id, name; double baseConv; UomRow(String id, String name, double b){ this.id=id; this.name=name; this.baseConv=b; } }
-    static class LotRow { String batch; int qty; double basePrice; LocalDate expiryDate; LotStatus status;
-        LotRow(String b, int q, double p, LocalDate d, LotStatus s){ batch=b; qty=q; basePrice=p; expiryDate=d; status=s; } }
 
-    static class ProductsTableModel extends AbstractTableModel {
-        private final String[] cols = {"Mã","Mã vạch","Tên","Loại","Dạng","VAT","ĐVT cơ sở","Nhà SX","Ngày tạo"};
-        private List<ProductRow> rows = new ArrayList<>();
-        public void setData(List<ProductRow> data){ rows=data; fireTableDataChanged(); }
-        public ProductRow getRowAt(int r){ return rows.get(r); }
-        @Override public int getRowCount(){ return rows.size(); }
-        @Override public int getColumnCount(){ return cols.length; }
-        @Override public String getColumnName(int c){ return cols[c]; }
-        @Override public Object getValueAt(int r, int c){
-            ProductRow p = rows.get(r);
-            return switch (c){
+    private static void deleteSelected(JTable t, AbstractTableModel m) {
+        int view = t.getSelectedRow();
+        if (view < 0) return;
+        int modelRow = t.convertRowIndexToModel(view);
+        if (m instanceof UnitsModel um) {
+            um.removeRow(modelRow);
+        } else if (m instanceof LotsModel lm) {
+            lm.removeRow(modelRow);
+        }
+    }
+
+    private static Double parseDouble(String s) {
+        try { return s == null || s.isBlank() ? null : Double.parseDouble(s.trim()); }
+        catch (Exception ex) { return null; }
+    }
+
+    private ImageIcon scaleIcon(String path, int w, int h) {
+        try {
+            Image img = null;
+            // 1) absolute/relative file
+            File f = new File(path);
+            if (f.exists()) {
+                img = ImageIO.read(f);
+            } else {
+                // 2) try classpath from "src/main/resources/..."
+                String cp = toResourcePath(path);
+                var url = getClass().getResource(cp);
+                if (url != null) img = ImageIO.read(url);
+            }
+            if (img == null) {
+                // fallback transparent
+                img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            }
+            Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            return new ImageIcon(scaled);
+        } catch (Exception e) {
+            Image tmp = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            return new ImageIcon(tmp);
+        }
+    }
+
+    private static String toResourcePath(String fileLike) {
+        // convert "src/main/resources/images/..." -> "/images/..."
+        String norm = fileLike.replace('\\', '/');
+        int idx = norm.indexOf("/resources/");
+        if (idx >= 0) {
+            return norm.substring(idx + "/resources".length());
+        }
+        if (!norm.startsWith("/")) return "/" + norm;
+        return norm;
+    }
+    // endregion
+
+    // region ===== Mock data =====
+    private void loadMock() {
+        // Sản phẩm A
+        Product a = new Product("PRD-0001", "8801234567890", Category.OTC);
+        a.name = "Paracetamol 500mg";
+        a.shortName = "Para500";
+        a.form = DosageForm.TABLET;
+        a.strength = "500 mg";
+        a.activeIngredient = "Paracetamol";
+        a.vat = 8.0;
+        a.baseUom = "VIÊN";
+        a.description = "Giảm đau, hạ sốt";
+        a.imagePath = DEFAULT_IMG;
+        a.units.addAll(List.of(new UnitRow("VỈ (10 viên)", 10), new UnitRow("HỘP (10 vỉ)", 100)));
+        a.lots.addAll(List.of(
+                new LotRow("A01", 120, 1200.0, LocalDate.now().plusMonths(8), "AVAILABLE"),
+                new LotRow("A02", 90, 1250.0, LocalDate.now().plusMonths(5), "AVAILABLE")
+        ));
+
+        // Sản phẩm B
+        Product b = new Product("PRD-0002", "8930001234567", Category.SUPPLEMENT);
+        b.name = "Vitamin C 1000mg";
+        b.shortName = "VITC1000";
+        b.form = DosageForm.LOZENGE;
+        b.strength = "1000 mg";
+        b.activeIngredient = "Ascorbic acid";
+        b.vat = 5.0;
+        b.baseUom = "VIÊN";
+        b.description = "Tăng sức đề kháng";
+        b.imagePath = DEFAULT_IMG;
+        b.units.addAll(List.of(new UnitRow("LỌ (100 viên)", 100)));
+        b.lots.addAll(List.of(
+                new LotRow("B01", 30, 3500.0, LocalDate.now().plusMonths(2), "AVAILABLE"),
+                new LotRow("B02", 0, 3600.0, LocalDate.now().minusDays(5), "EXPIRED")
+        ));
+        b.status = ProductStatus.NGUNG_BAN;
+
+        // Sản phẩm C
+        Product c = new Product("PRD-0003", "8939998887776", Category.ETC);
+        c.name = "Amoxicillin 500mg";
+        c.shortName = "Amox500";
+        c.form = DosageForm.CAPSULE;
+        c.strength = "500 mg";
+        c.activeIngredient = "Amoxicillin";
+        c.vat = 8.0;
+        c.baseUom = "VIÊN";
+        c.description = "Kháng sinh";
+        c.imagePath = DEFAULT_IMG;
+        c.units.addAll(List.of(new UnitRow("VỈ (10 viên)", 10), new UnitRow("HỘP (10 vỉ)", 100)));
+        c.lots.add(new LotRow("C01", 25, 4200.0, LocalDate.now().plusMonths(1), "AVAILABLE"));
+
+        data.addAll(List.of(a, b, c));
+    }
+    // endregion
+
+    // region ===== Table models & DTOs =====
+    private static class ProductTableModel extends AbstractTableModel {
+        private final String[] cols = {"Mã","Tên","Loại","Dạng","Hoạt chất","VAT(%)","Tình trạng"};
+        private List<Product> rows = new ArrayList<>();
+
+        void setRows(List<Product> list) { rows = list; fireTableDataChanged(); }
+        Product getAt(int r) { return rows.get(r); }
+
+        @Override public int getRowCount() { return rows.size(); }
+        @Override public int getColumnCount() { return cols.length; }
+        @Override public String getColumnName(int c) { return cols[c]; }
+
+        @Override
+        public Object getValueAt(int r, int c) {
+            Product p = rows.get(r);
+            return switch (c) {
                 case 0 -> p.id;
-                case 1 -> p.barcode;
-                case 2 -> p.name;
-                case 3 -> p.category;
-                case 4 -> p.form;
+                case 1 -> p.name;
+                case 2 -> p.category.name();
+                case 3 -> p.form.name();
+                case 4 -> p.activeIngredient;
                 case 5 -> p.vat;
-                case 6 -> p.baseUom;
-                case 7 -> p.manufacturer;
-                case 8 -> p.createdAt!=null? p.createdAt.format(DateTimeFormatter.ofPattern("dd/MM")) : "";
+                case 6 -> p.status == ProductStatus.DANG_BAN ? "Đang bán" : "Ngừng bán";
                 default -> "";
             };
         }
-        @Override public Class<?> getColumnClass(int c){
-            return switch (c){ case 5 -> Double.class; default -> String.class; };
-        }
-        @Override public boolean isCellEditable(int r, int c){ return false; }
     }
 
-    static class UomsTableModel extends AbstractTableModel {
-        private final String[] cols = {"Mã đơn vị","Tên đơn vị","Hệ số quy đổi"};
-        private List<UomRow> rows = new ArrayList<>();
-        public void setData(List<UomRow> list){ rows=list; fireTableDataChanged(); }
-        public void addRow(UomRow r){ rows.add(r); fireTableRowsInserted(rows.size()-1, rows.size()-1); }
-        public void removeRow(int idx){ rows.remove(idx); fireTableRowsDeleted(idx, idx); }
-        @Override public int getRowCount(){ return rows.size(); }
-        @Override public int getColumnCount(){ return cols.length; }
-        @Override public String getColumnName(int c){ return cols[c]; }
-        @Override public Class<?> getColumnClass(int c){ return c==2? Double.class : String.class; }
-        @Override public boolean isCellEditable(int r, int c){ return true; }
-        @Override public Object getValueAt(int r, int c){
-            UomRow u = rows.get(r);
-            return switch (c){ case 0 -> u.id; case 1 -> u.name; case 2 -> u.baseConv; default -> null; };
+    private static class UnitsModel extends AbstractTableModel {
+        private final String[] cols = {"Đơn vị", "Quy đổi (so với đơn vị cơ bản)"};
+        private final Class<?>[] types = {String.class, Integer.class};
+        private boolean editable = false;
+        private List<UnitRow> rows = new ArrayList<>();
+
+        public void setEditable(boolean e) { editable = e; fireTableDataChanged(); }
+        public void setRows(List<UnitRow> list) { rows = list; fireTableDataChanged(); }
+        public void addRow(UnitRow r) { rows.add(r); fireTableRowsInserted(rows.size()-1, rows.size()-1); }
+        public void removeRow(int idx) { if (idx>=0 && idx<rows.size()) { rows.remove(idx); fireTableRowsDeleted(idx, idx); } }
+
+        @Override public int getRowCount() { return rows.size(); }
+        @Override public int getColumnCount() { return cols.length; }
+        @Override public String getColumnName(int c) { return cols[c]; }
+        @Override public Class<?> getColumnClass(int columnIndex) { return types[columnIndex]; }
+        @Override public boolean isCellEditable(int r, int c) { return editable; }
+
+        @Override
+        public Object getValueAt(int r, int c) {
+            UnitRow u = rows.get(r);
+            return c==0 ? u.name : (int)u.rate;
         }
-        @Override public void setValueAt(Object v, int r, int c){
-            UomRow u = rows.get(r);
-            switch (c){
-                case 0 -> u.id = Objects.toString(v,"");
-                case 1 -> u.name = Objects.toString(v,"");
-                case 2 -> u.baseConv = v instanceof Number n? n.doubleValue() : u.baseConv;
-            }
-            fireTableCellUpdated(r,c);
+        @Override
+        public void setValueAt(Object aValue, int r, int c) {
+            if (!editable) return;
+            UnitRow u = rows.get(r);
+            if (c==0) u.name = Objects.toString(aValue, "");
+            else u.rate = toInt(aValue);
         }
+        private int toInt(Object v){ try { return v==null?1: Integer.parseInt(v.toString()); } catch(Exception e){ return 1; } }
     }
 
-    static class LotsTableModel extends AbstractTableModel {
-        private final String[] cols = {"Số lô","Số lượng","Giá vốn (đvt cơ sở)","HSD","Trạng thái"};
+    private static class LotsModel extends AbstractTableModel {
+        private final String[] cols = {"Lô", "Số lượng", "Giá cơ sở", "HSD", "Trạng thái"};
+        private final Class<?>[] types = {String.class, Integer.class, Double.class, String.class, String.class};
+        private boolean editable = false;
         private List<LotRow> rows = new ArrayList<>();
-        public void setData(List<LotRow> list){ rows=list; fireTableDataChanged(); }
-        public void addRow(LotRow r){ rows.add(r); fireTableRowsInserted(rows.size()-1, rows.size()-1); }
-        public void removeRow(int idx){ rows.remove(idx); fireTableRowsDeleted(idx, idx); }
-        public LotRow getRowAt(int i){ return rows.get(i); }
-        @Override public int getRowCount(){ return rows.size(); }
-        @Override public int getColumnCount(){ return cols.length; }
-        @Override public String getColumnName(int c){ return cols[c]; }
-        @Override public Class<?> getColumnClass(int c){ return switch (c){ case 1 -> Integer.class; case 2 -> Double.class; case 3 -> String.class; default -> String.class; }; }
-        @Override public boolean isCellEditable(int r, int c){ return true; }
-        @Override public Object getValueAt(int r, int c){
+        private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        public void setEditable(boolean e) { editable = e; fireTableDataChanged(); }
+        public void setRows(List<LotRow> list) { rows = list; fireTableDataChanged(); }
+        public void addRow(LotRow r) { rows.add(r); fireTableRowsInserted(rows.size()-1, rows.size()-1); }
+        public void removeRow(int idx) { if (idx>=0 && idx<rows.size()) { rows.remove(idx); fireTableRowsDeleted(idx, idx); } }
+
+        @Override public int getRowCount() { return rows.size(); }
+        @Override public int getColumnCount() { return cols.length; }
+        @Override public String getColumnName(int c) { return cols[c]; }
+        @Override public Class<?> getColumnClass(int columnIndex) { return types[columnIndex]; }
+        @Override public boolean isCellEditable(int r, int c) { return editable; }
+
+        @Override
+        public Object getValueAt(int r, int c) {
             LotRow l = rows.get(r);
-            return switch (c){
+            return switch (c) {
                 case 0 -> l.batch;
                 case 1 -> l.qty;
                 case 2 -> l.basePrice;
-                case 3 -> l.expiryDate!=null? l.expiryDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "";
-                case 4 -> l.status.name();
-                default -> null;
+                case 3 -> l.expiry != null ? l.expiry.format(fmt) : "";
+                case 4 -> l.status;
+                default -> "";
             };
         }
-        @Override public void setValueAt(Object v, int r, int c){
+        @Override
+        public void setValueAt(Object aValue, int r, int c) {
+            if (!editable) return;
             LotRow l = rows.get(r);
-            switch (c){
-                case 0 -> l.batch = Objects.toString(v,"");
-                case 1 -> l.qty = (v instanceof Number n) ? n.intValue() : l.qty;
-                case 2 -> l.basePrice = (v instanceof Number n2)? n2.doubleValue() : l.basePrice;
+            switch (c) {
+                case 0 -> l.batch = Objects.toString(aValue, "");
+                case 1 -> l.qty = toInt(aValue);
+                case 2 -> l.basePrice = toDouble(aValue);
                 case 3 -> {
-                    try {
-                        l.expiryDate = LocalDate.parse(Objects.toString(v,""), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-                    } catch (Exception ignored){}
+                    try { l.expiry = LocalDate.parse(Objects.toString(aValue,""), fmt); }
+                    catch (Exception ignored) { l.expiry = null; }
                 }
-                case 4 -> {
-                    try { l.status = LotStatus.valueOf(Objects.toString(v,"AVAILABLE")); } catch(Exception ignored){}
-                }
+                case 4 -> l.status = Objects.toString(aValue, "AVAILABLE");
             }
-            fireTableCellUpdated(r,c);
+        }
+        private int toInt(Object v){ try { return v==null?0: Integer.parseInt(v.toString()); } catch(Exception e){ return 0; } }
+        private double toDouble(Object v){ try { return v==null?0.0: Double.parseDouble(v.toString()); } catch(Exception e){ return 0.0; } }
+    }
+
+    // Lightweight DTOs for mock UI (độc lập với entity thật)
+    private static class Product {
+        String id, barcode;
+        Category category;
+        DosageForm form = DosageForm.TABLET;
+        String name, shortName, strength, activeIngredient, baseUom, description, imagePath;
+        Double vat;
+        ProductStatus status = ProductStatus.DANG_BAN;
+        final List<UnitRow> units = new ArrayList<>();
+        final List<LotRow> lots = new ArrayList<>();
+
+        Product(String id, String barcode, Category cat) {
+            this.id = id; this.barcode = barcode; this.category = cat;
         }
     }
+    private static class UnitRow {
+        String name; double rate;
+        UnitRow(String n, double r){ this.name=n; this.rate=r; }
+    }
+    private static class LotRow {
+        String batch; int qty; double basePrice; LocalDate expiry; String status;
+        LotRow(String b, int q, double price, LocalDate ex, String st){ batch=b; qty=q; basePrice=price; expiry=ex; status=st; }
+    }
+
+    // Enums
+    private enum ProductStatus { DANG_BAN, NGUNG_BAN; @Override public String toString(){ return this==DANG_BAN? "Đang bán":"Ngừng bán"; } }
+    private enum Category {
+        ALL("Tất cả"), SUPPLEMENT("SUPPLEMENT"), OTC("OTC"), ETC("ETC");
+        final String label; Category(String l){ label=l; }
+        @Override public String toString(){ return label; }
+    }
+    private enum DosageForm {
+        ALL("Tất cả"), TABLET("TABLET"), CAPSULE("CAPSULE"), POWDER("POWDER"),
+        LOZENGE("LOZENGE"), SYRUP("SYRUP"), DROP("DROP"), MOUTHWASH("MOUTHWASH");
+        final String label; DosageForm(String l){ label=l; }
+        @Override public String toString(){ return label; }
+    }
+    // endregion
 }
