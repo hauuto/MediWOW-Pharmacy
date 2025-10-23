@@ -42,7 +42,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
     private JButton btnAdd;
     private JButton btnUpdate;
-    private JButton btnDelete;
     private JButton btnRefresh;
     private JButton btnExport;
     private JButton btnClear;
@@ -55,6 +54,11 @@ public class TAB_Staff extends JFrame implements ActionListener {
         initComponents();
 
         btnAdd.addActionListener(this);
+        btnClear.addActionListener(this);
+        btnRefresh.addActionListener(this);
+        btnRefresh.addActionListener(this);
+        btnExport.addActionListener(this);
+
 
     }
 
@@ -227,13 +231,11 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         btnUpdate = createStyledButton("Cập nhật", new Color(255, 165, 0));
 
-        btnDelete = createStyledButton("Xóa", new Color(220, 20, 60));
 
         btnClear = createStyledButton("Xóa trắng", AppColors.DARK);
 
         buttonPanel.add(btnAdd);
         buttonPanel.add(btnUpdate);
-        buttonPanel.add(btnDelete);
         buttonPanel.add(btnClear);
 
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -420,6 +422,8 @@ public class TAB_Staff extends JFrame implements ActionListener {
         Object o = e.getSource();
         if (o == btnAdd) {
             getStaffInfoFromGUI();
+        } else if (o == btnClear) {
+            clearInput();
         }
 
     }
@@ -460,7 +464,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
         txtStaffId.setText("");
         txtFullName.setText("");
         txtUsername.setText("");
-        cboRole.setSelectedIndex(0);
+        cboRole.setSelectedItem(Role.PHARMACIST);
         txtPhoneNumber.setText("");
         txtEmail.setText("");
         txtLicenseNumber.setText("");
