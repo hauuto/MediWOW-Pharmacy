@@ -9,37 +9,59 @@ import java.util.Calendar;
 import java.util.Date;
 
 /**
- * Giao diện quản lý khuyến mãi (bỏ phần Chi nhánh)
- * Có danh sách, bộ lọc, và nút thêm +Khuyến mãi
- * Thanh Khôi
+ * Giao diện quản lý khuyến mãi
+ * - SplitPane tổng: 60/40
+ * - SplitPane bên trong: 40/60
+ * - Bảng điều kiện & hành động có thể nhập trực tiếp
+ * - Dưới cùng: 3 nút chính (Thêm mới, Xóa, Xóa trắng)
  */
 public class TAB_Promotion extends JPanel {
 
     private DefaultTableModel tableModel;
+    private DefaultTableModel condModel;
+    private DefaultTableModel actModel;
 
-    // Instance fields for form components
     private JTextField txtCodeField;
     private JTextField txtNameField;
-    private GUI_DatePicker dpStartDate;
-    private GUI_DatePicker dpEndDate;
+    private DIALOG_DatePicker dpStartDate;
+    private DIALOG_DatePicker dpEndDate;
     private JComboBox<String> cbTypeField;
     private JComboBox<String> cbStatusField;
     private JTextArea txtDescField;
 
     public TAB_Promotion() {
         setLayout(new BorderLayout());
-        setBorder(new EmptyBorder(12, 12, 12, 12));
+        setBackground(new Color(245, 250, 250));
+        setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // -------------------- TOP: Thanh tìm kiếm + nút thêm --------------------
-        JPanel top = new JPanel(new BorderLayout(8, 8));
-        JTextField search = new JTextField();
-        search.setPreferredSize(new Dimension(300, 30));
-        search.setToolTipText("Theo mã, tên chương trình");
-        top.add(search, BorderLayout.CENTER);
+        // -------------------- TOP: Thanh tìm kiếm --------------------
+        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        top.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(200, 230, 240)),
+                "QUẢN LÝ KHUYẾN MÃI", 0, 0,
+                new Font("Segoe UI", Font.BOLD, 16),
+                AppColors.PRIMARY
+        ));
+        top.setBackground(new Color(245, 250, 250));
 
-        JButton addBtn = new JButton("+ Khuyến mãi");
-        styleButton(addBtn, AppColors.PRIMARY, Color.WHITE);
-        top.add(addBtn, BorderLayout.EAST);
+        JLabel lblSearch = new JLabel("Tìm kiếm:");
+        JTextField txtSearch = new JTextField(25);
+        JButton btnSearch = new JButton("Tìm");
+        JComboBox<String> cbType = new JComboBox<>(new String[]{"Tất cả", "Giảm giá", "Tặng phẩm"});
+        JComboBox<String> cbStatus = new JComboBox<>(new String[]{"Tất cả", "Kích hoạt", "Chưa áp dụng"});
+        JButton btnRefresh = new JButton("Làm mới");
+
+        styleButton(btnSearch, AppColors.PRIMARY, Color.WHITE);
+        styleButton(btnRefresh, AppColors.PRIMARY, Color.WHITE);
+
+        top.add(lblSearch);
+        top.add(txtSearch);
+        top.add(btnSearch);
+        top.add(new JLabel("Hình thức:"));
+        top.add(cbType);
+        top.add(new JLabel("Trạng thái:"));
+        top.add(cbStatus);
+        top.add(btnRefresh);
 
         add(top, BorderLayout.NORTH);
 
@@ -47,335 +69,277 @@ public class TAB_Promotion extends JPanel {
         JPanel left = new JPanel();
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
         left.setBorder(new EmptyBorder(6, 6, 6, 12));
+        left.setBackground(new Color(245, 250, 250));
 
         left.add(createFilterCard("Trạng thái", new String[]{"Tất cả", "Kích hoạt", "Chưa áp dụng"}));
         left.add(Box.createVerticalStrut(12));
         left.add(createFilterCard("Hiệu lực", new String[]{"Tất cả", "Còn hiệu lực", "Hết hiệu lực"}));
         left.add(Box.createVerticalGlue());
-
         add(left, BorderLayout.WEST);
 
-        // -------------------- CENTER: Bảng dữ liệu --------------------
-        JPanel main = new JPanel(new BorderLayout());
-        main.setBorder(new EmptyBorder(6, 6, 6, 6));
+        // -------------------- CENTER: Danh sách & Chi tiết --------------------
+        JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        mainSplit.setResizeWeight(0.6); // 60:40
+        mainSplit.setDividerSize(6);
+        mainSplit.setBackground(new Color(245, 250, 250));
+
+        // LEFT: Danh sách
+        JPanel mainLeft = new JPanel(new BorderLayout());
+        mainLeft.setBackground(new Color(245, 250, 250));
+        mainLeft.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(200, 230, 240)),
+                "Danh sách khuyến mãi",
+                0, 0,
+                new Font("Segoe UI", Font.BOLD, 14),
+                AppColors.PRIMARY
+        ));
 
         String[] cols = {"Tên chương trình", "Từ ngày", "Đến ngày", "Hình thức", "Trạng thái"};
         tableModel = new DefaultTableModel(cols, 0);
         JTable table = new JTable(tableModel);
-        table.setRowHeight(28);
-        table.setFillsViewportHeight(true);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        styleTable(table);
 
         JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createMatteBorder(1, 1, 1, 1, new Color(210, 210, 210)));
-        main.add(scroll, BorderLayout.CENTER);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(220, 230, 240)));
+        mainLeft.add(scroll, BorderLayout.CENTER);
 
-        add(main, BorderLayout.CENTER);
+        // RIGHT: Chi tiết
+        JPanel mainRight = createMainDetailPanel();
 
-        // -------------------- SỰ KIỆN: Nút thêm khuyến mãi --------------------
-        addBtn.addActionListener(e -> openAddPromotionDialog());
+        mainSplit.setLeftComponent(mainLeft);
+        mainSplit.setRightComponent(mainRight);
+        add(mainSplit, BorderLayout.CENTER);
     }
 
-    /**
-     * Hiển thị dialog thêm mới chương trình khuyến mãi
-     */
-    private void openAddPromotionDialog() {
-        JDialog dialog = new JDialog((Frame) null, "Thêm chương trình khuyến mãi", true);
-        dialog.setSize(950, 600);
-        dialog.setLocationRelativeTo(null);
-        dialog.setLayout(new BorderLayout(10, 10));
-        dialog.getContentPane().setBackground(AppColors.BACKGROUND);
+    /** Panel chi tiết bên phải */
+    private JPanel createMainDetailPanel() {
+        JPanel mainPanel = new JPanel(new BorderLayout(0, 10));
+        mainPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(200, 230, 240)),
+                "Thông tin khuyến mãi",
+                0, 0,
+                new Font("Segoe UI", Font.BOLD, 14),
+                AppColors.PRIMARY
+        ));
+        mainPanel.setBackground(new Color(240, 250, 250));
 
-        // ---------------- LEFT PANEL: Thông tin ----------------
+        condModel = new DefaultTableModel(
+                new String[]{"Mục tiêu", "Toán tử", "Giá trị 1", "Giá trị 2", "Sản phẩm"}, 0);
+        actModel = new DefaultTableModel(
+                new String[]{"Loại hành động", "Mục tiêu", "Giá trị 1", "Giá trị 2", "Sản phẩm"}, 0);
+
         JPanel infoPanel = createInfoPanel();
+        JPanel tablesPanel = createTablesPanel();
 
-        // ---------------- RIGHT PANEL: Điều kiện + Hành động ----------------
-        DefaultTableModel condModel = new DefaultTableModel(new String[]{"Mục tiêu", "Toán tử", "Giá trị 1", "Giá trị 2", "Sản phẩm"}, 0);
-        DefaultTableModel actModel = new DefaultTableModel(new String[]{"Loại hành động", "Mục tiêu", "Giá trị 1", "Giá trị 2", "Sản phẩm"}, 0);
+        // --- SplitPane trong: 40:60 ---
+        JSplitPane verticalSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        verticalSplit.setResizeWeight(0.4);
+        verticalSplit.setDividerSize(6);
+        verticalSplit.setTopComponent(infoPanel);
+        verticalSplit.setBottomComponent(tablesPanel);
+        verticalSplit.setBorder(null);
 
-        JPanel rightPanel = createRightPanel(dialog, condModel, actModel);
+        // --- Nút chức năng ---
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        buttonPanel.setBackground(new Color(245, 250, 250));
 
-        // ----------- SPLIT LAYOUT (Left - Right) -----------
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, infoPanel, rightPanel);
-        split.setResizeWeight(0.45);
-        split.setDividerSize(6);
-        split.setBorder(null);
+        JButton btnAdd = new JButton("Thêm mới");
+        styleButton(btnAdd, new Color(40, 167, 69), Color.WHITE);
+        JButton btnDelete = new JButton("Xóa");
+        styleButton(btnDelete, new Color(220, 53, 69), Color.WHITE);
+        JButton btnClear = new JButton("Xóa trắng");
+        styleButton(btnClear, AppColors.PRIMARY, Color.WHITE);
 
-        // ----------- Bottom Buttons -----------
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        bottom.setBackground(AppColors.BACKGROUND);
-        JButton btnCancel = new JButton("Hủy");
-        JButton btnSave = new JButton("Lưu chương trình");
-        styleButton(btnSave, AppColors.PRIMARY, Color.WHITE);
-        styleButton(btnCancel, AppColors.DARK, Color.WHITE);
-        bottom.add(btnCancel);
-        bottom.add(btnSave);
+        btnAdd.addActionListener(e -> handleSaveFromMainPanel());
+        btnClear.addActionListener(e -> handleClearMainPanel());
 
-        dialog.add(split, BorderLayout.CENTER);
-        dialog.add(bottom, BorderLayout.SOUTH);
+        buttonPanel.add(btnAdd);
+        buttonPanel.add(btnDelete);
+        buttonPanel.add(btnClear);
 
-        // -------------------- SỰ KIỆN --------------------
-        setupButtonActions(dialog, infoPanel, condModel, actModel, btnSave, btnCancel);
-
-        dialog.setVisible(true);
+        mainPanel.add(verticalSplit, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+        return mainPanel;
     }
 
-    // ============ TÁCH SỰ KIỆN RA =================
-
-    private void setupButtonActions(
-            JDialog dialog, JPanel infoPanel,
-            DefaultTableModel condModel, DefaultTableModel actModel,
-            JButton btnSave, JButton btnCancel
-    ) {
-        btnSave.addActionListener(e -> handleSavePromotion(dialog, infoPanel, condModel, actModel));
-        btnCancel.addActionListener(e -> handleCancelDialog(dialog));
-    }
-
-    private void handleSavePromotion(JDialog dialog, JPanel infoPanel,
-                                     DefaultTableModel condModel, DefaultTableModel actModel) {
-        // Sử dụng instance fields thay vì lấy từ component index
-        String name = txtNameField.getText().trim();
-        String start = dpStartDate.getFormattedDate();
-        String end = dpEndDate.getFormattedDate();
-        String type = (String) cbTypeField.getSelectedItem();
-        String status = (String) cbStatusField.getSelectedItem();
-
-        if (name.isEmpty()) {
-            JOptionPane.showMessageDialog(dialog, "Vui lòng nhập tên chương trình!");
-            return;
-        }
-
-        // Kiểm tra ngày kết thúc không được trước ngày bắt đầu
-        if (dpEndDate.getDate().before(dpStartDate.getDate())) {
-            JOptionPane.showMessageDialog(dialog, "Ngày kết thúc không thể trư��c ngày bắt đầu!");
-            return;
-        }
-
-        tableModel.addRow(new Object[]{name, start, end, type, status});
-
-        JOptionPane.showMessageDialog(dialog,
-                "✅ Đã lưu chương trình khuyến mãi!\n" +
-                        "Điều kiện: " + condModel.getRowCount() +
-                        " | Hành động: " + actModel.getRowCount());
-        dialog.dispose();
-    }
-
-    private void handleCancelDialog(JDialog dialog) {
-        dialog.dispose();
-    }
-
-    // ============ UI THÀNH PHẦN =================
-
+    /** Panel thông tin khuyến mãi */
     private JPanel createInfoPanel() {
-        JPanel infoPanel = new JPanel(new GridBagLayout());
-        infoPanel.setBorder(BorderFactory.createTitledBorder("Thông tin khuyến mãi"));
-        infoPanel.setBackground(AppColors.LIGHT);
+        JPanel infoPanel = new JPanel(new BorderLayout(0, 10));
+        infoPanel.setBackground(new Color(245, 250, 250));
+        infoPanel.setBorder(new EmptyBorder(5, 10, 5, 10));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 10, 8, 10);
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
+        JPanel grid = new JPanel(new GridLayout(3, 2, 15, 10));
+        grid.setOpaque(false);
 
-        int row = 0;
-
-        // Khởi tạo các fields
-        txtCodeField = new JTextField(20);
-        txtNameField = new JTextField(20);
-
-        // Tạo DatePicker cho ngày bắt đầu và kết thúc
-        Date today = new Date();
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(today);
-        cal.add(Calendar.MONTH, 6); // Mặc định kết thúc sau 6 tháng
-        Date sixMonthsLater = cal.getTime();
-
-        dpStartDate = new GUI_DatePicker(today);
-        dpEndDate = new GUI_DatePicker(sixMonthsLater);
-
-        // Thiết lập ràng buộc ban đầu
-        dpEndDate.setMinDate(today); // Ngày kết thúc không được trước ngày bắt đầu
-        dpStartDate.setMaxDate(sixMonthsLater); // Ngày bắt đầu không được sau ngày kết thúc
-
-        // Listener cho ngày bắt đầu: Khi thay đổi, cập nhật minDate của ngày kết thúc
-        dpStartDate.addPropertyChangeListener("date", evt -> {
-            Date startDate = (Date) evt.getNewValue();
-            dpEndDate.setMinDate(startDate);
-
-            // Nếu ngày kết thúc hiện tại < ngày bắt đầu mới, tự động điều chỉnh
-            if (dpEndDate.getDate().before(startDate)) {
-                dpEndDate.setDate(startDate);
-            }
-        });
-
-        // Listener cho ngày kết thúc: Khi thay đổi, cập nhật maxDate của ngày bắt đầu
-        dpEndDate.addPropertyChangeListener("date", evt -> {
-            Date endDate = (Date) evt.getNewValue();
-            dpStartDate.setMaxDate(endDate);
-
-            // Nếu ngày bắt đầu hiện tại > ngày kết thúc mới, tự động điều chỉnh
-            if (dpStartDate.getDate().after(endDate)) {
-                dpStartDate.setDate(endDate);
-            }
-        });
-
+        txtCodeField = new JTextField();
+        txtNameField = new JTextField();
+        dpStartDate = new DIALOG_DatePicker(new Date());
+        dpEndDate = new DIALOG_DatePicker(new Date());
         cbTypeField = new JComboBox<>(new String[]{"Giảm giá hóa đơn", "Tặng sản phẩm", "Giảm giá sản phẩm"});
         cbStatusField = new JComboBox<>(new String[]{"Kích hoạt", "Chưa áp dụng"});
+
+        grid.add(labeled("Mã chương trình:", txtCodeField));
+        grid.add(labeled("Hình thức:", cbTypeField));
+        grid.add(labeled("Tên chương trình:", txtNameField));
+        grid.add(labeled("Trạng thái:", cbStatusField));
+        grid.add(labeled("Từ ngày:", dpStartDate));
+        grid.add(labeled("Đến ngày:", dpEndDate));
+
         txtDescField = new JTextArea(3, 20);
         txtDescField.setLineWrap(true);
         txtDescField.setWrapStyleWord(true);
+        txtDescField.setBorder(BorderFactory.createLineBorder(new Color(210, 230, 240)));
+        JScrollPane descScroll = new JScrollPane(txtDescField);
+        descScroll.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(200, 230, 240)),
+                "Mô tả", 0, 0, new Font("Segoe UI", Font.BOLD, 12), AppColors.PRIMARY
+        ));
 
-        addRow(infoPanel, gbc, row++, "Mã chương trình:", txtCodeField);
-        addRow(infoPanel, gbc, row++, "Tên chương trình:", txtNameField);
-        addRow(infoPanel, gbc, row++, "Từ ngày:", dpStartDate);
-        addRow(infoPanel, gbc, row++, "Đến ngày:", dpEndDate);
-        addRow(infoPanel, gbc, row++, "Hình thức:", cbTypeField);
-        addRow(infoPanel, gbc, row++, "Trạng thái:", cbStatusField);
-        addRow(infoPanel, gbc, row++, "Mô tả:", new JScrollPane(txtDescField));
-
+        infoPanel.add(grid, BorderLayout.NORTH);
+        infoPanel.add(descScroll, BorderLayout.CENTER);
         return infoPanel;
     }
 
-    private JPanel createRightPanel(JDialog dialog, DefaultTableModel condModel, DefaultTableModel actModel) {
-        JPanel rightPanel = new JPanel();
-        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
-        rightPanel.setOpaque(false);
-
-        JPanel condPanel = createModernPanel("Điều kiện áp dụng");
-        JTable condTable = createTable(condModel);
-        JScrollPane condScroll = new JScrollPane(condTable);
-        JButton btnAddCond = createAddButton("+ Thêm điều kiện");
-        btnAddCond.addActionListener(e -> handleAddCondition(dialog, condModel));
-        condPanel.add(condScroll, BorderLayout.CENTER);
-        condPanel.add(btnAddCond, BorderLayout.SOUTH);
-
-        JPanel actPanel = createModernPanel("Hành động khuyến mãi");
-        JTable actTable = createTable(actModel);
-        JScrollPane actScroll = new JScrollPane(actTable);
-        JButton btnAddAction = createAddButton("+ Thêm hành động");
-        btnAddAction.addActionListener(e -> handleAddAction(dialog, actModel));
-        actPanel.add(actScroll, BorderLayout.CENTER);
-        actPanel.add(btnAddAction, BorderLayout.SOUTH);
-
-        rightPanel.add(condPanel);
-        rightPanel.add(Box.createVerticalStrut(10));
-        rightPanel.add(actPanel);
-        return rightPanel;
-    }
-
-    private void handleAddCondition(JDialog parent, DefaultTableModel model) {
-        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 8));
-        panel.add(new JLabel("Mục tiêu:"));
-        JComboBox<String> cbTarget = new JComboBox<>(new String[]{"PRODUCT_ID", "PRODUCT_QTY", "ORDER_SUBTOTAL"});
-        panel.add(cbTarget);
-        panel.add(new JLabel("Toán tử:"));
-        JComboBox<String> cbComp = new JComboBox<>(new String[]{"GREATER", "LESS", "EQUAL", "BETWEEN"});
-        panel.add(cbComp);
-        panel.add(new JLabel("Giá trị 1:"));
-        JTextField v1 = new JTextField();
-        panel.add(v1);
-        panel.add(new JLabel("Giá trị 2:"));
-        JTextField v2 = new JTextField();
-        panel.add(v2);
-        panel.add(new JLabel("Sản phẩm (nếu có):"));
-        JTextField prod = new JTextField();
-        panel.add(prod);
-
-        int r = JOptionPane.showConfirmDialog(parent, panel, "Thêm điều kiện", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r == JOptionPane.OK_OPTION) {
-            model.addRow(new Object[]{cbTarget.getSelectedItem(), cbComp.getSelectedItem(), v1.getText(), v2.getText(), prod.getText()});
-        }
-    }
-
-    private void handleAddAction(JDialog parent, DefaultTableModel model) {
-        JPanel panel = new JPanel(new GridLayout(5, 2, 8, 8));
-        panel.add(new JLabel("Loại hành động:"));
-        JComboBox<String> cbType = new JComboBox<>(new String[]{"PERCENT_DISCOUNT", "FIXED_DISCOUNT", "PRODUCT_GIFT"});
-        panel.add(cbType);
-        panel.add(new JLabel("Mục tiêu:"));
-        JComboBox<String> cbTarget = new JComboBox<>(new String[]{"PRODUCT", "ORDER_SUBTOTAL"});
-        panel.add(cbTarget);
-        panel.add(new JLabel("Giá trị 1:"));
-        JTextField v1 = new JTextField();
-        panel.add(v1);
-        panel.add(new JLabel("Giá trị 2:"));
-        JTextField v2 = new JTextField();
-        panel.add(v2);
-        panel.add(new JLabel("Sản phẩm (nếu có):"));
-        JTextField prod = new JTextField();
-        panel.add(prod);
-
-        int r = JOptionPane.showConfirmDialog(parent, panel, "Thêm hành động", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (r == JOptionPane.OK_OPTION) {
-            model.addRow(new Object[]{cbType.getSelectedItem(), cbTarget.getSelectedItem(), v1.getText(), v2.getText(), prod.getText()});
-        }
-    }
-
-    // ================== HỖ TRỢ GIAO DIỆN ==================
-
-    private JPanel createModernPanel(String title) {
-        JPanel p = new JPanel(new BorderLayout(8, 8));
-        p.setBorder(BorderFactory.createTitledBorder(title));
-        p.setBackground(AppColors.LIGHT);
+    private JPanel labeled(String text, Component c) {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        JLabel l = new JLabel(text);
+        l.setPreferredSize(new Dimension(110, 25));
+        p.add(l, BorderLayout.WEST);
+        p.add(c, BorderLayout.CENTER);
         return p;
     }
 
-    private JTable createTable(DefaultTableModel model) {
-        JTable t = new JTable(model);
-        t.setRowHeight(26);
-        t.setShowGrid(true);
-        t.setGridColor(AppColors.SECONDARY);
-        t.setBackground(Color.WHITE);
-        t.getTableHeader().setBackground(AppColors.PRIMARY);
-        t.getTableHeader().setForeground(Color.WHITE);
-        t.getTableHeader().setFont(t.getTableHeader().getFont().deriveFont(Font.BOLD));
-        return t;
+    private JPanel createTablesPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setBorder(new EmptyBorder(5, 10, 5, 10));
+
+        panel.add(createEditableSection("Điều kiện áp dụng", condModel));
+        panel.add(Box.createVerticalStrut(12));
+        panel.add(createEditableSection("Hành động khuyến mãi", actModel));
+
+        return panel;
     }
 
-    private JButton createAddButton(String text) {
-        JButton b = new JButton(text);
-        styleButton(b, AppColors.SECONDARY, Color.WHITE);
-        return b;
+    private JPanel createEditableSection(String title, DefaultTableModel model) {
+        JPanel section = new JPanel(new BorderLayout(5, 5));
+        section.setBackground(new Color(250, 252, 252));
+        section.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(210, 230, 240)),
+                title, 0, 0, new Font("Segoe UI", Font.BOLD, 13), AppColors.PRIMARY
+        ));
+
+        JTable table = createEditableTable(model);
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(210, 230, 240)));
+        scroll.getViewport().setBackground(Color.WHITE);
+
+        section.add(scroll, BorderLayout.CENTER);
+        return section;
+    }
+
+    /** Bảng editable tự thêm dòng */
+    private JTable createEditableTable(DefaultTableModel model) {
+        JTable table = new JTable(model) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return true; }
+        };
+        styleTable(table);
+
+        table.putClientProperty("terminateEditOnFocusLost", true);
+        model.addTableModelListener(e -> {
+            int last = model.getRowCount() - 1;
+            boolean filled = false;
+            for (int c = 0; c < model.getColumnCount(); c++) {
+                Object val = model.getValueAt(last, c);
+                if (val != null && !val.toString().trim().isEmpty()) { filled = true; break; }
+            }
+            if (filled) model.addRow(new Object[model.getColumnCount()]);
+        });
+
+        if (model.getRowCount() == 0)
+            model.addRow(new Object[model.getColumnCount()]);
+        return table;
+    }
+
+    private void handleSaveFromMainPanel() {
+        String name = txtNameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên chương trình!");
+            return;
+        }
+        if (dpEndDate.getDate().before(dpStartDate.getDate())) {
+            JOptionPane.showMessageDialog(this, "Ngày kết thúc không thể trước ngày bắt đầu!");
+            return;
+        }
+
+        tableModel.addRow(new Object[]{
+                name, dpStartDate.getFormattedDate(), dpEndDate.getFormattedDate(),
+                cbTypeField.getSelectedItem(), cbStatusField.getSelectedItem()
+        });
+        JOptionPane.showMessageDialog(this, "✅ Đã lưu chương trình khuyến mãi!");
+        handleClearMainPanel();
+    }
+
+    private void handleClearMainPanel() {
+        txtCodeField.setText("");
+        txtNameField.setText("");
+        txtDescField.setText("");
+        Date today = new Date();
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(today);
+        cal.add(Calendar.MONTH, 6);
+        dpStartDate.setDate(today);
+        dpEndDate.setDate(cal.getTime());
+        cbTypeField.setSelectedIndex(0);
+        cbStatusField.setSelectedIndex(0);
+        condModel.setRowCount(0);
+        actModel.setRowCount(0);
+    }
+
+    private void styleTable(JTable table) {
+        table.setRowHeight(26);
+        table.setShowGrid(true);
+        table.setGridColor(new Color(220, 220, 220));
+        table.setSelectionBackground(new Color(230, 245, 255));
+        table.setBackground(Color.WHITE);
+        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        table.getTableHeader().setBackground(AppColors.PRIMARY);
+        table.getTableHeader().setForeground(Color.WHITE);
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
     }
 
     private void styleButton(JButton b, Color bg, Color fg) {
         b.setBackground(bg);
         b.setForeground(fg);
         b.setFocusPainted(false);
-        b.setFont(b.getFont().deriveFont(Font.BOLD));
-        b.setPreferredSize(new Dimension(150, 35));
-    }
-
-    private void addRow(JPanel panel, GridBagConstraints gbc, int row, String label, Component field) {
-        gbc.gridx = 0;
-        gbc.gridy = row;
-        gbc.weightx = 0.3;
-        panel.add(new JLabel(label), gbc);
-
-        gbc.gridx = 1;
-        gbc.weightx = 0.7;
-        panel.add(field, gbc);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        b.setPreferredSize(new Dimension(120, 35));
     }
 
     private JPanel createFilterCard(String title, String[] options) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                BorderFactory.createLineBorder(new Color(210, 230, 240)),
                 new EmptyBorder(10, 10, 10, 10)
         ));
+        card.setBackground(new Color(245, 250, 250));
         JLabel t = new JLabel(title);
-        t.setFont(t.getFont().deriveFont(Font.BOLD, 14f));
+        t.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        t.setForeground(AppColors.PRIMARY);
         card.add(t);
         card.add(Box.createVerticalStrut(8));
-
         ButtonGroup g = new ButtonGroup();
-        for (String option : options) {
-            JRadioButton r = new JRadioButton(option);
+        for (String o : options) {
+            JRadioButton r = new JRadioButton(o);
+            r.setBackground(new Color(245, 250, 250));
             r.setFocusPainted(false);
             g.add(r);
             card.add(r);
-            card.add(Box.createVerticalStrut(6));
+            card.add(Box.createVerticalStrut(4));
         }
         return card;
     }
