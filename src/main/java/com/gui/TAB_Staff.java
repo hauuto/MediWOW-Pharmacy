@@ -298,6 +298,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
         formContent.add(createLabel("Tên đăng nhập:"), gbc);
         gbc.gridx = 1;
         txtUsername = createTextField();
+        txtUsername.setEditable(false);
         formContent.add(txtUsername, gbc);
 
         // Vai trò
