@@ -1,9 +1,7 @@
 package com.dao;
 
 import com.entities.Product;
-import com.entities.Staff;
 import com.interfaces.IProduct;
-import com.interfaces.IStaff;
 import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -15,10 +13,10 @@ import java.util.List;
  * @author Nguyễn Thanh Khôi
  */
 
-public class ProductDAO implements IProduct {
+public class DAO_Product implements IProduct {
     private final SessionFactory sessionFactory;
 
-    public ProductDAO() {
+    public DAO_Product() {
         this.sessionFactory = HibernateUtil.getSessionFactory();
     }
 
