@@ -138,9 +138,7 @@ public class GUI_Login {
 
 
         JFrame mainMenuFrame = new JFrame("MediWOW");
-        GUI_MainMenu mainMenu = new GUI_MainMenu();
-        // You can pass the currentStaff to GUI_MainMenu if needed
-        // mainMenu.setCurrentStaff(currentStaff);
+        GUI_MainMenu mainMenu = new GUI_MainMenu(currentStaff);
         mainMenuFrame.setContentPane(mainMenu.pnlMainMenu);
         mainMenuFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainMenuFrame.setLocationRelativeTo(null);
