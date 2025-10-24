@@ -35,6 +35,7 @@ public class StaffBUS implements IStaff {
     @Override
     public boolean addStaff(Staff s) {
         validateStaff(s);
+        checkDuplicates(s);
 
         String password = PasswordUtil.generatePassword();
         String hashedPassword = PasswordUtil.hashPassword(password);
@@ -58,6 +59,54 @@ public class StaffBUS implements IStaff {
     @Override
     public List<Staff> getAllStaffs() {
         return staffDAO.getAllStaffs();
+    }
+
+    @Override
+    public boolean existsByUsername(String username) {
+        return staffDAO.existsByUsername(username);
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        return staffDAO.existsByEmail(email);
+    }
+
+    @Override
+    public boolean existsByPhoneNumber(String phoneNumber) {
+        return staffDAO.existsByPhoneNumber(phoneNumber);
+    }
+
+    @Override
+    public boolean existsByLicenseNumber(String licenseNumber) {
+        return staffDAO.existsByLicenseNumber(licenseNumber);
+    }
+
+    private void checkDuplicates(Staff s) {
+        // Check duplicate username
+        if (existsByUsername(s.getUsername())) {
+            throw new IllegalArgumentException("Tên đăng nhập '" + s.getUsername() + "' đã tồn tại trong hệ thống");
+        }
+
+        // Check duplicate email
+        if (s.getEmail() != null && !s.getEmail().trim().isEmpty()) {
+            if (existsByEmail(s.getEmail())) {
+                throw new IllegalArgumentException("Email '" + s.getEmail() + "' đã được sử dụng bởi nhân viên khác");
+            }
+        }
+
+        // Check duplicate phone number
+        if (s.getPhoneNumber() != null && !s.getPhoneNumber().trim().isEmpty()) {
+            if (existsByPhoneNumber(s.getPhoneNumber())) {
+                throw new IllegalArgumentException("Số điện thoại '" + s.getPhoneNumber() + "' đã được sử dụng bởi nhân viên khác");
+            }
+        }
+
+        // Check duplicate license number
+        if (s.getLicenseNumber() != null && !s.getLicenseNumber().trim().isEmpty()) {
+            if (existsByLicenseNumber(s.getLicenseNumber())) {
+                throw new IllegalArgumentException("Số chứng chỉ '" + s.getLicenseNumber() + "' đã được sử dụng bởi nhân viên khác");
+            }
+        }
     }
 
 

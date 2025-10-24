@@ -6,6 +6,7 @@ import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
 import java.util.List;
 
@@ -52,6 +53,99 @@ public class StaffDAO implements IStaff {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean existsByUsername(String username) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(s) FROM Staff s WHERE s.username = :username",
+                Long.class
+            );
+            query.setParameter("username", username);
+            return query.getSingleResult() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(s) FROM Staff s WHERE s.email = :email",
+                Long.class
+            );
+            query.setParameter("email", email);
+            return query.getSingleResult() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean existsByPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return false;
+        }
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(s) FROM Staff s WHERE s.phoneNumber = :phoneNumber",
+                Long.class
+            );
+            query.setParameter("phoneNumber", phoneNumber);
+            return query.getSingleResult() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean existsByLicenseNumber(String licenseNumber) {
+        if (licenseNumber == null || licenseNumber.trim().isEmpty()) {
+            return false;
+        }
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(s) FROM Staff s WHERE s.licenseNumber = :licenseNumber",
+                Long.class
+            );
+            query.setParameter("licenseNumber", licenseNumber);
+            return query.getSingleResult() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         } finally {
             if (session != null && session.isOpen()) {
                 session.close();
