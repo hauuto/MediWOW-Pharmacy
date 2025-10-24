@@ -3,7 +3,7 @@
 
 
 -- INSERT INTO Staff (username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role) VALUES
--- ( 'manager1', 'password123', 'Tô Thanh Hậu', 'LIC123456', '0868182546', 'thanhhau670@gmail.com'
+-- ( 'manager1', 'password123', N'Tô Thanh Hậu', 'LIC123456', '0868182546', 'thanhhau670@gmail.com'
 -- , '2022-01-15', 1, 'MANAGER')
 
 

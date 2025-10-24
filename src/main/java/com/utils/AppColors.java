@@ -3,6 +3,10 @@ package com.utils;
 import java.awt.*;
 import java.util.ResourceBundle;
 
+/**
+ * @author Tô Thanh Hậu
+ */
+
 public class AppColors {
     private static final ResourceBundle rb = ResourceBundle.getBundle("colors");
 
