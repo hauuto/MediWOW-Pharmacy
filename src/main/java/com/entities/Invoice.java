@@ -166,7 +166,7 @@ public class Invoice {
     /**
      * @author Bùi Quốc Trụ
      *
-     * Calculate the subtotal of the invoice before applying promotions.
+     * Calculate the subtotal amount of the invoice.
      *
      * @return The subtotal amount.
      */
@@ -183,6 +183,34 @@ public class Invoice {
     /**
      * @author Bùi Quốc Trụ
      *
+     * Calculate the total VAT amount of the invoice.
+     *
+     * @return The total VAT amount.
+     */
+    public double calculateVatAmount() {
+        double vatAmount = 0.0;
+
+        for (InvoiceLine line : invoiceLineList) {
+            vatAmount += line.calculateVatAmount();
+        }
+
+        return vatAmount;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Calculate the subtotal including VAT.
+     *
+     * @return The subtotal with VAT.
+     */
+    public double calculateSubtotalWithVat() {
+        return calculateSubtotal() + calculateVatAmount();
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
      * Calculate the total discount applied to the invoice.
      *
      * @return The total discount.
@@ -191,7 +219,7 @@ public class Invoice {
         if (promotion == null)
             return 0.0;
 
-        double discount = calculateSubtotal();
+        double discount = calculateSubtotalWithVat();
         List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
                 .sorted((a, b) -> Integer.compare(a.getOrder(), b.getOrder()))
                 .toList();
@@ -203,7 +231,7 @@ public class Invoice {
                 discount -= discount * (action.getValue() / 100);
         }
 
-        return calculateSubtotal() - discount;
+        return calculateSubtotalWithVat() - discount;
     }
 
     /**
@@ -214,7 +242,7 @@ public class Invoice {
      * @return The total amount.
      */
     public double calculateTotal() {
-        return calculateSubtotal() - calculatePromotion();
+        return calculateSubtotalWithVat() - calculatePromotion();
     }
 
     @Override
