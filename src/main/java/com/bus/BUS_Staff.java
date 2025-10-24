@@ -1,6 +1,6 @@
 package com.bus;
 
-import com.dao.StaffDAO;
+import com.dao.DAO_Staff;
 import com.entities.Staff;
 import com.interfaces.IStaff;
 import com.utils.EmailUltil;
@@ -14,14 +14,14 @@ import java.util.List;
  * @author Tô Thanh Hậu
  */
 
-public class StaffBUS implements IStaff {
-    private final StaffDAO staffDAO;
+public class BUS_Staff implements IStaff {
+    private final DAO_Staff DAOStaff;
     private final EmailUltil emailUltil;
 
-    public StaffBUS() {
+    public BUS_Staff() {
         Dotenv dotenv = Dotenv.load();
 
-        this.staffDAO = new StaffDAO();
+        this.DAOStaff = new DAO_Staff();
         this.emailUltil = new EmailUltil(
                 dotenv.get("SMTP_HOST") != null ? dotenv.get("SMTP_HOST") : "smtp.gmail.com",
                 dotenv.get("SMTP_PORT") != null ? Integer.parseInt(dotenv.get("SMTP_PORT")) : 587,
@@ -41,7 +41,7 @@ public class StaffBUS implements IStaff {
         String hashedPassword = PasswordUtil.hashPassword(password);
         s.setPassword(hashedPassword);
 
-        boolean created = staffDAO.addStaff(s);
+        boolean created = DAOStaff.addStaff(s);
 
 
         if (created) {
@@ -63,7 +63,7 @@ public class StaffBUS implements IStaff {
         }
 
         // Kiểm tra nhân viên có tồn tại không
-        Staff existingStaff = staffDAO.getStaffById(s.getId());
+        Staff existingStaff = DAOStaff.getStaffById(s.getId());
         if (existingStaff == null) {
             throw new IllegalArgumentException("Nhân viên không tồn tại trong hệ thống");
         }
@@ -79,22 +79,22 @@ public class StaffBUS implements IStaff {
             s.setPassword(existingStaff.getPassword());
         }
 
-        return staffDAO.updateStaff(s);
+        return DAOStaff.updateStaff(s);
     }
 
     @Override
     public List<Staff> getAllStaffs() {
-        return staffDAO.getAllStaffs();
+        return DAOStaff.getAllStaffs();
     }
 
     @Override
     public Staff getStaffById(String id) {
-        return staffDAO.getStaffById(id);
+        return DAOStaff.getStaffById(id);
     }
 
     @Override
     public Staff getStaffByUsername(String username) {
-        return staffDAO.getStaffByUsername(username);
+        return DAOStaff.getStaffByUsername(username);
     }
 
     public Staff login(String username, String password) {
@@ -125,42 +125,42 @@ public class StaffBUS implements IStaff {
 
     @Override
     public boolean existsByUsername(String username) {
-        return staffDAO.existsByUsername(username);
+        return DAOStaff.existsByUsername(username);
     }
 
     @Override
     public boolean existsByEmail(String email) {
-        return staffDAO.existsByEmail(email);
+        return DAOStaff.existsByEmail(email);
     }
 
     @Override
     public boolean existsByPhoneNumber(String phoneNumber) {
-        return staffDAO.existsByPhoneNumber(phoneNumber);
+        return DAOStaff.existsByPhoneNumber(phoneNumber);
     }
 
     @Override
     public boolean existsByLicenseNumber(String licenseNumber) {
-        return staffDAO.existsByLicenseNumber(licenseNumber);
+        return DAOStaff.existsByLicenseNumber(licenseNumber);
     }
 
     @Override
     public boolean existsByUsernameExcludingId(String username, String excludeId) {
-        return staffDAO.existsByUsernameExcludingId(username, excludeId);
+        return DAOStaff.existsByUsernameExcludingId(username, excludeId);
     }
 
     @Override
     public boolean existsByEmailExcludingId(String email, String excludeId) {
-        return staffDAO.existsByEmailExcludingId(email, excludeId);
+        return DAOStaff.existsByEmailExcludingId(email, excludeId);
     }
 
     @Override
     public boolean existsByPhoneNumberExcludingId(String phoneNumber, String excludeId) {
-        return staffDAO.existsByPhoneNumberExcludingId(phoneNumber, excludeId);
+        return DAOStaff.existsByPhoneNumberExcludingId(phoneNumber, excludeId);
     }
 
     @Override
     public boolean existsByLicenseNumberExcludingId(String licenseNumber, String excludeId) {
-        return staffDAO.existsByLicenseNumberExcludingId(licenseNumber, excludeId);
+        return DAOStaff.existsByLicenseNumberExcludingId(licenseNumber, excludeId);
     }
 
     private void checkDuplicates(Staff s) {

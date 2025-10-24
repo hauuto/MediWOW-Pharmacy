@@ -1,6 +1,6 @@
 package com.gui;
 
-import com.bus.StaffBUS;
+import com.bus.BUS_Staff;
 import com.entities.Staff;
 import com.enums.Role;
 import com.utils.AppColors;
@@ -51,7 +51,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
 
-    private final StaffBUS staffBUS = new StaffBUS();
+    private final BUS_Staff BUSStaff = new BUS_Staff();
 
     private List<Staff> staffCache = new ArrayList<>();
 
@@ -634,7 +634,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
             staff.setActive(chkIsActive.isSelected());
 
-            boolean ok = staffBUS.addStaff(staff);
+            boolean ok = BUSStaff.addStaff(staff);
 
             if (ok) {
                 JOptionPane.showMessageDialog(this, "Thêm nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
@@ -690,7 +690,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
             );
 
             if (confirm == JOptionPane.YES_OPTION) {
-                boolean ok = staffBUS.updateStaff(staff);
+                boolean ok = BUSStaff.updateStaff(staff);
 
                 if (ok) {
                     JOptionPane.showMessageDialog(this, "Cập nhật nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
@@ -722,7 +722,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
     private void loadStaffTable() {
         try {
-            staffCache = staffBUS.getAllStaffs();
+            staffCache = BUSStaff.getAllStaffs();
             populateTable(staffCache);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Không thể tải dữ liệu" + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);

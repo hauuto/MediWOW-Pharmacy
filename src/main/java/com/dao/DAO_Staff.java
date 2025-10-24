@@ -14,10 +14,10 @@ import java.util.List;
  * @author Tô Thanh Hậu
  */
 
-public class StaffDAO implements IStaff {
+public class DAO_Staff implements IStaff {
     private final SessionFactory sessionFactory;
 
-    public StaffDAO() {
+    public DAO_Staff() {
         this.sessionFactory = HibernateUtil.getSessionFactory();
     }
 

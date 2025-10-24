@@ -1,6 +1,6 @@
 package com.gui;
 
-import com.bus.StaffBUS;
+import com.bus.BUS_Staff;
 import com.entities.Staff;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -29,12 +29,12 @@ public class GUI_Login {
     private JLabel lblFooter;
     public JPanel panel1;
 
-    private StaffBUS staffBUS;
+    private BUS_Staff BUSStaff;
     private Staff currentStaff;
 
 
     public GUI_Login() {
-        staffBUS = new StaffBUS();
+        BUSStaff = new BUS_Staff();
         btnLogin.addActionListener(e -> handleLogin());
 
         // Add Enter key listener for password field
@@ -78,7 +78,7 @@ public class GUI_Login {
             @Override
             protected Staff doInBackground() throws Exception {
                 try {
-                    return staffBUS.login(username, password);
+                    return BUSStaff.login(username, password);
                 } catch (IllegalArgumentException e) {
                     errorMessage = e.getMessage();
                     return null;
