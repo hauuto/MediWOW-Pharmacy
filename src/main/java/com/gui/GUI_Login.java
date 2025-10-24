@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.bus.StaffBUS;
+import com.entities.Staff;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 
@@ -27,13 +29,107 @@ public class GUI_Login {
     private JLabel lblFooter;
     public JPanel panel1;
 
+    private StaffBUS staffBUS;
+    private Staff currentStaff;
+
 
     public GUI_Login() {
+        staffBUS = new StaffBUS();
         btnLogin.addActionListener(e -> handleLogin());
+
+        // Add Enter key listener for password field
+        txtPassword.addActionListener(e -> handleLogin());
+
+        // Add Enter key listener for username field
+        txtLogin.addActionListener(e -> txtPassword.requestFocus());
     }
 
     private void handleLogin() {
-        openMainMenu();
+        String username = txtLogin.getText().trim();
+        String password = new String(txtPassword.getPassword());
+
+        // Validate input
+        if (username.isEmpty()) {
+            JOptionPane.showMessageDialog(pLogin,
+                    "Vui lòng nhập tên đăng nhập",
+                    "Lỗi đăng nhập",
+                    JOptionPane.WARNING_MESSAGE);
+            txtLogin.requestFocus();
+            return;
+        }
+
+        if (password.isEmpty()) {
+            JOptionPane.showMessageDialog(pLogin,
+                    "Vui lòng nhập mật khẩu",
+                    "Lỗi đăng nhập",
+                    JOptionPane.WARNING_MESSAGE);
+            txtPassword.requestFocus();
+            return;
+        }
+
+        // Disable login button to prevent multiple clicks
+        btnLogin.setEnabled(false);
+        btnLogin.setText("Đang đăng nhập...");
+
+        // Use SwingWorker to perform login in background
+        SwingWorker<Staff, Void> worker = new SwingWorker<Staff, Void>() {
+            private String errorMessage = null;
+
+            @Override
+            protected Staff doInBackground() throws Exception {
+                try {
+                    return staffBUS.login(username, password);
+                } catch (IllegalArgumentException e) {
+                    errorMessage = e.getMessage();
+                    return null;
+                } catch (Exception e) {
+                    errorMessage = "Lỗi kết nối đến cơ sở dữ liệu. Vui lòng thử lại sau.";
+                    e.printStackTrace();
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    currentStaff = get();
+
+                    if (currentStaff != null) {
+                        // Login successful
+                        JOptionPane.showMessageDialog(pLogin,
+                                "Đăng nhập thành công!\nXin chào, " + currentStaff.getFullName(),
+                                "Thành công",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        openMainMenu();
+                    } else {
+                        // Login failed
+                        JOptionPane.showMessageDialog(pLogin,
+                                errorMessage != null ? errorMessage : "Đăng nhập thất bại",
+                                "Lỗi đăng nhập",
+                                JOptionPane.ERROR_MESSAGE);
+
+                        // Clear password field
+                        txtPassword.setText("");
+                        txtPassword.requestFocus();
+
+                        // Re-enable login button
+                        btnLogin.setEnabled(true);
+                        btnLogin.setText("Đăng nhập");
+                    }
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(pLogin,
+                            "Đã xảy ra lỗi không mong muốn",
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
+                    e.printStackTrace();
+
+                    btnLogin.setEnabled(true);
+                    btnLogin.setText("Đăng nhập");
+                }
+            }
+        };
+
+        worker.execute();
     }
 
     private void openMainMenu() {
@@ -42,12 +138,19 @@ public class GUI_Login {
 
 
         JFrame mainMenuFrame = new JFrame("MediWOW");
-        mainMenuFrame.setContentPane(new GUI_MainMenu().pnlMainMenu);
+        GUI_MainMenu mainMenu = new GUI_MainMenu();
+        // You can pass the currentStaff to GUI_MainMenu if needed
+        // mainMenu.setCurrentStaff(currentStaff);
+        mainMenuFrame.setContentPane(mainMenu.pnlMainMenu);
         mainMenuFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainMenuFrame.setLocationRelativeTo(null);
         mainMenuFrame.setVisible(true);
         mainMenuFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 
+    }
+
+    public Staff getCurrentStaff() {
+        return currentStaff;
     }
 
 

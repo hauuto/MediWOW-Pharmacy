@@ -93,6 +93,37 @@ public class StaffBUS implements IStaff {
     }
 
     @Override
+    public Staff getStaffByUsername(String username) {
+        return staffDAO.getStaffByUsername(username);
+    }
+
+    public Staff login(String username, String password) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Tên đăng nhập không được để trống");
+        }
+
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Mật khẩu không được để tr��ng");
+        }
+
+        Staff staff = getStaffByUsername(username);
+
+        if (staff == null) {
+            throw new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không đúng");
+        }
+
+        if (!staff.isActive()) {
+            throw new IllegalArgumentException("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên");
+        }
+
+        if (!PasswordUtil.verifyPassword(password, staff.getPassword())) {
+            throw new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không đúng");
+        }
+
+        return staff;
+    }
+
+    @Override
     public boolean existsByUsername(String username) {
         return staffDAO.existsByUsername(username);
     }

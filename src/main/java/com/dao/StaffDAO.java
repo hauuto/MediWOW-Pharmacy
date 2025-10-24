@@ -100,6 +100,27 @@ public class StaffDAO implements IStaff {
     }
 
     @Override
+    public Staff getStaffByUsername(String username) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Staff> query = session.createQuery(
+                "FROM Staff s WHERE s.username = :username",
+                Staff.class
+            );
+            query.setParameter("username", username);
+            return query.uniqueResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
     public boolean existsByUsername(String username) {
         Session session = null;
         try {
