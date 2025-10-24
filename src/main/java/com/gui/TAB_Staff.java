@@ -4,6 +4,7 @@ import com.bus.StaffBUS;
 import com.entities.Staff;
 import com.enums.Role;
 import com.utils.AppColors;
+import com.utils.ExcelExporter;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -13,7 +14,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -412,8 +415,8 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         // Tạo ComboBox với RoleItem để hiển thị tiếng Việt
         RoleItem[] roleItems = new RoleItem[]{
-            new RoleItem(Role.PHARMACIST, "Dược sĩ"),
-            new RoleItem(Role.MANAGER, "Quản lý")
+                new RoleItem(Role.PHARMACIST, "Dược sĩ"),
+                new RoleItem(Role.MANAGER, "Quản lý")
         };
         cboRole = new JComboBox<>(roleItems);
         cboRole.setSelectedIndex(0); // Mặc định là Dược sĩ
@@ -547,8 +550,58 @@ public class TAB_Staff extends JFrame implements ActionListener {
             clearInput();
         } else if (o == btnRefresh) {
             refreshData();
+        } else if (o == btnExport) {
+            exportToExcel();
         }
 
+    }
+
+    private void exportToExcel() {
+        try {
+            // Kiểm tra có dữ liệu không
+            if (staffCache == null || staffCache.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Không có dữ liệu để xuất!",
+                        "Cảnh báo",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Tạo tên file với timestamp
+            String timestamp = LocalDateTime.now()
+                    .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String fileName = "DanhSachNhanVien_" + timestamp;
+
+            // Xuất Excel
+            String filePath = ExcelExporter.exportStaffToExcel(staffCache, fileName);
+
+            // Hiển thị thông báo thành công với tùy chọn mở file
+            int option = JOptionPane.showConfirmDialog(this,
+                    "Xuất Excel thành công!\nĐường dẫn: " + filePath + "\n\nBạn có muốn mở thư mục chứa file?",
+                    "Thành công",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE);
+
+            // Mở thư mục nếu người dùng chọn Yes
+            if (option == JOptionPane.YES_OPTION) {
+                try {
+                    File file = new File(filePath);
+                    Desktop.getDesktop().open(file.getParentFile());
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this,
+                            "Không thể mở thư mục: " + ex.getMessage(),
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Lỗi khi xuất Excel: " + ex.getMessage(),
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
     }
 
     private void refreshData() {
