@@ -3,6 +3,7 @@ package com.gui;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.utils.AppColors;
+import com.entities.Staff;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -38,6 +39,7 @@ public class GUI_MainMenu implements ActionListener {
     private JLabel lblSearch;
     private JComboBox comboBox1;
     private CardLayout cardLayout;
+    private Staff currentStaff;
 
 
     /**
@@ -50,8 +52,8 @@ public class GUI_MainMenu implements ActionListener {
     }
 
 
-    public GUI_MainMenu() {
-
+    public GUI_MainMenu(Staff staff) {
+        this.currentStaff = staff;
 
         pnlSearch.setBackground(AppColors.LIGHT);
         pnlLeftHeader.setBackground(AppColors.LIGHT);
@@ -80,7 +82,7 @@ public class GUI_MainMenu implements ActionListener {
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();
-        TAB_Staff staff = new TAB_Staff();
+        TAB_Staff staffTab = new TAB_Staff();
         TAB_Customer customer = new TAB_Customer();
 
         pnlMain.add(dashboard.pDashboard, "dashboard");
@@ -88,7 +90,7 @@ public class GUI_MainMenu implements ActionListener {
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic.pStatistic, "statistic");
         pnlMain.add(product.pProduct, "product");
-        pnlMain.add(staff.pnlStaff, "staff");
+        pnlMain.add(staffTab.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
 
         cbbOption.addActionListener(e -> {
@@ -103,6 +105,13 @@ public class GUI_MainMenu implements ActionListener {
             }
         });
 
+        // Update combobox with staff name
+        if (currentStaff != null) {
+            DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) cbbOption.getModel();
+            model.removeElementAt(0);
+            model.insertElementAt("Xin chào, " + currentStaff.getFullName(), 0);
+            cbbOption.setSelectedIndex(0);
+        }
 
         setActiveButton(btnHome);
         cardLayout.show(pnlMain, "dashboard");

@@ -1,6 +1,8 @@
 package com.dao;
 
+import com.entities.Lot;
 import com.entities.Product;
+import com.entities.UnitOfMeasure;
 import com.interfaces.IProduct;
 import com.utils.HibernateUtil;
 import org.hibernate.Session;
@@ -18,6 +20,31 @@ public class DAO_Product implements IProduct {
 
     public DAO_Product() {
         this.sessionFactory = HibernateUtil.getSessionFactory();
+    }
+
+    @Override
+    public Product getProductById(String id) {
+        return null;
+    }
+
+    @Override
+    public Lot getLotByBatchNumber(String batchNumber) {
+        return null;
+    }
+
+    @Override
+    public List<Lot> getAllLots() {
+        return List.of();
+    }
+
+    @Override
+    public UnitOfMeasure getUnitOfMeasureById(String id) {
+        return null;
+    }
+
+    @Override
+    public List<UnitOfMeasure> getAllUnitOfMeasures() {
+        return List.of();
     }
 
     @Override
