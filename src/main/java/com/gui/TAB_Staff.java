@@ -293,6 +293,9 @@ public class TAB_Staff extends JFrame implements ActionListener {
                 if (row >= 0) {
                     fillFormRow(row);
                 }
+                txtUsername.setEditable(false);
+                txtUsername.setBackground(AppColors.BACKGROUND);
+
 
             }
         });
@@ -660,6 +663,8 @@ public class TAB_Staff extends JFrame implements ActionListener {
         txtLicenseNumber.setText("");
         spnHireDate.setValue(new Date());
         chkIsActive.setSelected(true);
+        txtUsername.setEditable(true);
+        txtUsername.setBackground(Color.WHITE);
     }
 
     private void loadStaffTable() {
@@ -678,7 +683,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
             tableModel.addRow(new Object[]{
                     s.getId(),
                     s.getFullName(),
-                    getRoleDisplayName(s.getRole()), // Hiển thị tiếng Việt
+                    getRoleDisplayName(s.getRole()),
                     s.getPhoneNumber(),
                     s.getEmail(),
                     s.getHireDate().format(dtf),
