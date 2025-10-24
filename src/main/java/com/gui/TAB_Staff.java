@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.bus.StaffBUS;
+import com.entities.Staff;
 import com.enums.Role;
 import com.utils.AppColors;
 
@@ -10,11 +12,18 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
-public class TAB_Staff extends JFrame {
+public class TAB_Staff extends JFrame implements ActionListener {
     JPanel pnlStaff;
 
 
@@ -35,15 +44,29 @@ public class TAB_Staff extends JFrame {
 
     private JButton btnAdd;
     private JButton btnUpdate;
-    private JButton btnDelete;
     private JButton btnRefresh;
     private JButton btnExport;
     private JButton btnClear;
 
-    private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+
+    private final StaffBUS staffBUS = new StaffBUS();
+
+    private List<Staff> staffCache = new ArrayList<>();
+
 
     public TAB_Staff() {
         initComponents();
+
+        btnAdd.addActionListener(this);
+        btnClear.addActionListener(this);
+        btnRefresh.addActionListener(this);
+        btnRefresh.addActionListener(this);
+        btnExport.addActionListener(this);
+
+        loadStaffTable();
+
 
     }
 
@@ -58,7 +81,7 @@ public class TAB_Staff extends JFrame {
 
         // Center Panel - Split between Table and Form
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        splitPane.setDividerLocation(750);
+        splitPane.setDividerLocation(1200);
         splitPane.setLeftComponent(createTablePanel());
         splitPane.setRightComponent(createFormPanel());
         splitPane.setBorder(null);
@@ -161,17 +184,24 @@ public class TAB_Staff extends JFrame {
         tblStaff.setRowHeight(35);
         tblStaff.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblStaff.setShowGrid(true);
+        tblStaff.setCellEditor(null);
         tblStaff.setGridColor(AppColors.LIGHT);
         tblStaff.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
+                int row = tblStaff.getSelectedRow();
+                if (row >= 0) {
+                    fillFormRow(row);
+                }
+
             }
         });
 
         // Header styling
         JTableHeader header = tblStaff.getTableHeader();
+        header.setReorderingAllowed(false);
         header.setFont(new Font("Segoe UI", Font.BOLD, 13));
         header.setBackground(AppColors.PRIMARY);
-        header.setForeground(AppColors.DARK);
+        header.setForeground(AppColors.WHITE);
         header.setPreferredSize(new Dimension(header.getWidth(), 40));
 
         // Cell renderer for center alignment
@@ -210,16 +240,11 @@ public class TAB_Staff extends JFrame {
         buttonPanel.setBackground(AppColors.WHITE);
 
         btnAdd = createStyledButton("Thêm mới", new Color(34, 139, 34));
-
         btnUpdate = createStyledButton("Cập nhật", new Color(255, 165, 0));
-
-        btnDelete = createStyledButton("Xóa", new Color(220, 20, 60));
-
         btnClear = createStyledButton("Xóa trắng", AppColors.DARK);
 
         buttonPanel.add(btnAdd);
         buttonPanel.add(btnUpdate);
-        buttonPanel.add(btnDelete);
         buttonPanel.add(btnClear);
 
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -281,6 +306,7 @@ public class TAB_Staff extends JFrame {
         formContent.add(createLabel("Vai trò:"), gbc);
         gbc.gridx = 1;
         cboRole = new JComboBox<>(Role.values());
+        cboRole.setSelectedItem(Role.PHARMACIST);
         cboRole.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         styleComboBox(cboRole);
         formContent.add(cboRole, gbc);
@@ -400,6 +426,112 @@ public class TAB_Staff extends JFrame {
         ));
     }
 
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        Object o = e.getSource();
+        if (o == btnAdd) {
+            getStaffInfoFromGUI();
+        } else if (o == btnClear) {
+            clearInput();
+        }
+
+    }
+
+    public void getStaffInfoFromGUI() {
+        Staff staff = new Staff();
+        try {
+            staff.setFullName(txtFullName.getText().trim());
+            staff.setUsername(txtUsername.getText().trim());
+            staff.setRole((Role) cboRole.getSelectedItem());
+            staff.setPhoneNumber(txtPhoneNumber.getText().trim());
+            staff.setEmail(txtEmail.getText().trim());
+            staff.setLicenseNumber(txtLicenseNumber.getText().trim());
+
+            Date hireDate = (Date) spnHireDate.getValue();
+            LocalDate localHireDate = LocalDate.ofInstant(hireDate.toInstant(), ZoneId.systemDefault());
+            staff.setHireDate(localHireDate);
+
+            staff.setActive(chkIsActive.isSelected());
+
+            boolean ok = staffBUS.addStaff(staff);
+
+            if (ok) {
+                JOptionPane.showMessageDialog(this, "Thêm nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                clearInput();
+                loadStaffTable();
+            } else {
+                JOptionPane.showMessageDialog(this, "Thêm nhân viên thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+
+
+    }
+
+    public void clearInput() {
+        txtStaffId.setText("");
+        txtFullName.setText("");
+        txtUsername.setText("");
+        cboRole.setSelectedItem(Role.PHARMACIST);
+        txtPhoneNumber.setText("");
+        txtEmail.setText("");
+        txtLicenseNumber.setText("");
+        spnHireDate.setValue(new Date());
+        chkIsActive.setSelected(true);
+    }
+
+    private void loadStaffTable() {
+        try {
+            staffCache = staffBUS.getAllStaffs();
+            populateTable(staffCache);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Không thể tải dữ liệu" + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void populateTable(List<Staff> ls) {
+        tableModel.setRowCount(0);
+        if (ls == null) return;
+        for (Staff s : ls) {
+            tableModel.addRow(new Object[]{
+                    s.getId(),
+                    s.getFullName(),
+                    s.getRole(),
+                    s.getPhoneNumber(),
+                    s.getEmail(),
+                    s.getHireDate().format(dtf),
+                    s.isActive() ? "Hoạt động" : "Đã nghỉ việc"
+            });
+        }
+    }
+
+    private void fillFormRow(int row) {
+        if (row < 0 || staffCache == null || staffCache.isEmpty()) return;
+
+        int modelRow = (tblStaff.getRowSorter() != null) ? tblStaff.getRowSorter().convertRowIndexToModel(row) : row;
+
+        if (modelRow < 0 || modelRow >= staffCache.size()) return;
+        Staff s = staffCache.get(modelRow);
+
+        txtStaffId.setText(s.getId() != null ? s.getId().toString() : "");
+        txtFullName.setText(s.getFullName() != null ? s.getFullName() : "");
+        txtUsername.setText(s.getUsername() != null ? s.getUsername() : "");
+        cboRole.setSelectedItem(s.getRole() != null ? s.getRole() : Role.PHARMACIST);
+        txtPhoneNumber.setText(s.getPhoneNumber() != null ? s.getPhoneNumber() : "");
+        txtEmail.setText(s.getEmail() != null ? s.getEmail() : "");
+        txtLicenseNumber.setText(s.getLicenseNumber() != null ? s.getLicenseNumber() : "");
+
+        if (s.getHireDate() != null) {
+            Date utilDate = Date.from(s.getHireDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+            spnHireDate.setValue(utilDate);
+        }
+
+        chkIsActive.setSelected(s.isActive());
+    }
+
+
     {
 // GUI initializer generated by IntelliJ IDEA GUI Designer
 // >>> IMPORTANT!! <<<
@@ -425,5 +557,6 @@ public class TAB_Staff extends JFrame {
     public JComponent $$$getRootComponent$$$() {
         return pnlStaff;
     }
+
 
 }

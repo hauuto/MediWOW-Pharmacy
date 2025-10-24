@@ -11,7 +11,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.Locale;
 
-public class DialogChangePassword extends JDialog {
+public class DIALOG_ChangePassword extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
@@ -25,7 +25,7 @@ public class DialogChangePassword extends JDialog {
     private JTextField txtConfirmPassword;
     private JPanel pnlForm;
 
-    public DialogChangePassword() {
+    public DIALOG_ChangePassword() {
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
@@ -69,7 +69,7 @@ public class DialogChangePassword extends JDialog {
     }
 
     public static void main(String[] args) {
-        DialogChangePassword dialog = new DialogChangePassword();
+        DIALOG_ChangePassword dialog = new DIALOG_ChangePassword();
         dialog.pack();
         dialog.setVisible(true);
         System.exit(0);

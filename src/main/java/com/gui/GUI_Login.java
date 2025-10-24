@@ -47,7 +47,6 @@ public class GUI_Login {
         mainMenuFrame.setLocationRelativeTo(null);
         mainMenuFrame.setVisible(true);
         mainMenuFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-        mainMenuFrame.setResizable(false);
 
     }
 
