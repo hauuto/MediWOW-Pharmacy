@@ -2,31 +2,80 @@ package com.entities;
 
 import com.enums.DosageForm;
 import com.enums.ProductCategory;
+import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @author Bùi Quốc Trụ
+ * @author Bùi Quốc Trụ, Nguyễn Thanh Khôi
  */
+@Entity
+@Table(name = "Product")
 public class Product {
-    private final String id;
+
+
+    @Id
+    @UuidGenerator
+    @Column(name = "id", updatable = false, nullable = false, length = 50)
+    private String id;
+
+    @Column(name = "barcode")
     private String barcode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category")
     private ProductCategory category;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "form")
     private DosageForm form;
+
+    @Column(name = "name")
     private String name;
+
+    @Column(name = "shortName") // ✅ FIX
     private String shortName;
+
+    @Column(name = "manufacturer")
     private String manufacturer;
+
+    @Column(name = "activeIngredient") // ✅ FIX
     private String activeIngredient;
+
+    @Column(name = "vat")
     private double vat;
+
+    @Column(name = "strength")
     private String strength;
+
+    @Column(name = "description")
     private String description;
+
+    @Column(name = "baseUnitOfMeasure") // ✅ FIX
     private String baseUnitOfMeasure;
-    private List<UnitOfMeasure> unitOfMeasureList;
-    private List<Lot> lotList;
-    private final LocalDateTime creationDate;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<UnitOfMeasure> unitOfMeasureList = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Lot> lotList = new ArrayList<>();
+
+    @CreationTimestamp
+    @Column(name = "creationDate", updatable = false)
+    private LocalDateTime creationDate;
+
+    @UpdateTimestamp
+    @Column(name = "updateDate")
     private LocalDateTime updateDate;
 
+    protected Product() {}
+
+    // Existing constructor updated to no longer forcibly set creationDate (Hibernate will handle it)
     public Product(String id, String barcode, ProductCategory category, DosageForm form, String name, String shortName, String manufacturer, String activeIngredient, double vat, String strength, String description, String baseUnitOfMeasure, List<UnitOfMeasure> unitOfMeasureList, List<Lot> lotList, LocalDateTime updateDate) {
         this.id = id;
         this.barcode = barcode;
@@ -42,7 +91,7 @@ public class Product {
         this.baseUnitOfMeasure = baseUnitOfMeasure;
         this.unitOfMeasureList = unitOfMeasureList;
         this.lotList = lotList;
-        this.creationDate = LocalDateTime.now();
+        // creationDate will be populated by @CreationTimestamp
         this.updateDate = updateDate;
     }
 
