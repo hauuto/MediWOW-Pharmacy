@@ -12,10 +12,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -67,7 +64,48 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         loadStaffTable();
 
+        // Thêm listener cho các bộ lọc
+        setupSearchAndFilterListeners();
+    }
 
+    private void setupSearchAndFilterListeners() {
+        // Real-time search khi gõ
+        txtSearch.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                performSearch();
+            }
+        });
+
+        // Lọc khi thay đổi vai trò
+        cboFilterRole.addActionListener(e -> performSearch());
+
+        // Lọc khi thay đổi trạng thái
+        cboFilterStatus.addActionListener(e -> performSearch());
+    }
+
+    private void performSearch() {
+        String searchText = txtSearch.getText().trim().toLowerCase();
+        String selectedRole = (String) cboFilterRole.getSelectedItem();
+        String selectedStatus = (String) cboFilterStatus.getSelectedItem();
+
+        List<Staff> filteredList = new ArrayList<>();
+
+        for (Staff staff : staffCache) {
+            boolean matchesSearch = staff.getFullName().toLowerCase().contains(searchText) ||
+                    staff.getUsername().toLowerCase().contains(searchText) ||
+                    staff.getPhoneNumber().contains(searchText) ||
+                    staff.getEmail().toLowerCase().contains(searchText);
+
+            boolean matchesRole = "Tất cả".equals(selectedRole) || staff.getRole().toString().equals(selectedRole);
+            boolean matchesStatus = "Tất cả".equals(selectedStatus) || (staff.isActive() ? "Hoạt động" : "Đã nghỉ việc").equals(selectedStatus);
+
+            if (matchesSearch && matchesRole && matchesStatus) {
+                filteredList.add(staff);
+            }
+        }
+
+        populateTable(filteredList);
     }
 
     private void initComponents() {
@@ -298,7 +336,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
         formContent.add(createLabel("Tên đăng nhập:"), gbc);
         gbc.gridx = 1;
         txtUsername = createTextField();
-        txtUsername.setEditable(false);
         formContent.add(txtUsername, gbc);
 
         // Vai trò
@@ -500,11 +537,11 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
             // Xác nhận cập nhật
             int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Bạn có chắc chắn muốn cập nhật thông tin nhân viên này?",
-                "Xác nhận",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
+                    this,
+                    "Bạn có chắc chắn muốn cập nhật thông tin nhân viên này?",
+                    "Xác nhận",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
             );
 
             if (confirm == JOptionPane.YES_OPTION) {
