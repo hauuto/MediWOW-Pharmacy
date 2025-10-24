@@ -1,9 +1,10 @@
 package com.gui;
 
-import com.bus.StaffBUS;
+import com.bus.BUS_Staff;
 import com.entities.Staff;
 import com.enums.Role;
 import com.utils.AppColors;
+import com.utils.ExcelExporter;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -12,11 +13,10 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
+import java.io.File;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
     private JTextField txtPhoneNumber;
     private JTextField txtEmail;
     private JTextField txtLicenseNumber;
-    private JComboBox<Role> cboRole;
+    private JComboBox<RoleItem> cboRole; // Đổi từ Role sang RoleItem
     private JComboBox<String> cboFilterRole;
     private JComboBox<String> cboFilterStatus;
     private JSpinner spnHireDate;
@@ -51,23 +51,127 @@ public class TAB_Staff extends JFrame implements ActionListener {
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
 
-    private final StaffBUS staffBUS = new StaffBUS();
+    private final BUS_Staff BUSStaff = new BUS_Staff();
 
     private List<Staff> staffCache = new ArrayList<>();
+
+    // Helper class để chuyển đổi Role sang tiếng Việt
+    private static class RoleItem {
+        private final Role role;
+        private final String displayName;
+
+        public RoleItem(Role role, String displayName) {
+            this.role = role;
+            this.displayName = displayName;
+        }
+
+        public Role getRole() {
+            return role;
+        }
+
+        @Override
+        public String toString() {
+            return displayName;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            RoleItem roleItem = (RoleItem) obj;
+            return role == roleItem.role;
+        }
+
+        @Override
+        public int hashCode() {
+            return role != null ? role.hashCode() : 0;
+        }
+    }
+
+    // Phương thức helper để chuyển đổi Role sang tên tiếng Việt
+    private String getRoleDisplayName(Role role) {
+        if (role == Role.MANAGER) {
+            return "Quản lý";
+        } else if (role == Role.PHARMACIST) {
+            return "Dược sĩ";
+        }
+        return role.toString();
+    }
 
 
     public TAB_Staff() {
         initComponents();
 
         btnAdd.addActionListener(this);
+        btnUpdate.addActionListener(this);
         btnClear.addActionListener(this);
-        btnRefresh.addActionListener(this);
         btnRefresh.addActionListener(this);
         btnExport.addActionListener(this);
 
         loadStaffTable();
 
+        // Thêm listener cho các bộ lọc
+        setupSearchAndFilterListeners();
+    }
 
+    private void setupSearchAndFilterListeners() {
+        // Real-time search khi gõ
+        txtSearch.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                performSearch();
+            }
+        });
+
+        // Lọc khi thay đổi vai trò
+        cboFilterRole.addActionListener(e -> performSearch());
+
+        // Lọc khi thay đổi trạng thái
+        cboFilterStatus.addActionListener(e -> performSearch());
+    }
+
+    private void performSearch() {
+        String searchText = txtSearch.getText().trim().toLowerCase();
+        String selectedRole = (String) cboFilterRole.getSelectedItem();
+        String selectedStatus = (String) cboFilterStatus.getSelectedItem();
+
+        List<Staff> filteredList = new ArrayList<>();
+
+        for (Staff staff : staffCache) {
+            // Tìm kiếm theo: Mã NV, Họ tên, Username, SĐT, Email
+            boolean matchesSearch = searchText.isEmpty() ||
+                    staff.getId().toLowerCase().contains(searchText) ||
+                    staff.getFullName().toLowerCase().contains(searchText) ||
+                    staff.getUsername().toLowerCase().contains(searchText) ||
+                    (staff.getPhoneNumber() != null && staff.getPhoneNumber().contains(searchText)) ||
+                    (staff.getEmail() != null && staff.getEmail().toLowerCase().contains(searchText));
+
+            // Lọc theo vai trò - Map giá trị ComboBox với enum Role
+            boolean matchesRole = "Tất cả".equals(selectedRole);
+            if (!matchesRole) {
+                if ("Quản lý".equals(selectedRole) && staff.getRole() == Role.MANAGER) {
+                    matchesRole = true;
+                } else if ("Dược sĩ".equals(selectedRole) && staff.getRole() == Role.PHARMACIST) {
+                    matchesRole = true;
+                }
+            }
+
+            // Lọc theo trạng thái
+            boolean matchesStatus = "Tất cả".equals(selectedStatus);
+            if (!matchesStatus) {
+                if ("Hoạt động".equals(selectedStatus) && staff.isActive()) {
+                    matchesStatus = true;
+                } else if ("Ngưng hoạt động".equals(selectedStatus) && !staff.isActive()) {
+                    matchesStatus = true;
+                }
+            }
+
+            if (matchesSearch && matchesRole && matchesStatus) {
+                filteredList.add(staff);
+            }
+        }
+
+        populateTable(filteredList);
     }
 
     private void initComponents() {
@@ -192,6 +296,9 @@ public class TAB_Staff extends JFrame implements ActionListener {
                 if (row >= 0) {
                     fillFormRow(row);
                 }
+                txtUsername.setEditable(false);
+                txtUsername.setBackground(AppColors.BACKGROUND);
+
 
             }
         });
@@ -305,8 +412,14 @@ public class TAB_Staff extends JFrame implements ActionListener {
         gbc.gridy = 3;
         formContent.add(createLabel("Vai trò:"), gbc);
         gbc.gridx = 1;
-        cboRole = new JComboBox<>(Role.values());
-        cboRole.setSelectedItem(Role.PHARMACIST);
+
+        // Tạo ComboBox với RoleItem để hiển thị tiếng Việt
+        RoleItem[] roleItems = new RoleItem[]{
+                new RoleItem(Role.PHARMACIST, "Dược sĩ"),
+                new RoleItem(Role.MANAGER, "Quản lý")
+        };
+        cboRole = new JComboBox<>(roleItems);
+        cboRole.setSelectedIndex(0); // Mặc định là Dược sĩ
         cboRole.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         styleComboBox(cboRole);
         formContent.add(cboRole, gbc);
@@ -431,10 +544,74 @@ public class TAB_Staff extends JFrame implements ActionListener {
         Object o = e.getSource();
         if (o == btnAdd) {
             getStaffInfoFromGUI();
+        } else if (o == btnUpdate) {
+            updateStaffInfoFromGUI();
         } else if (o == btnClear) {
             clearInput();
+        } else if (o == btnRefresh) {
+            refreshData();
+        } else if (o == btnExport) {
+            exportToExcel();
         }
 
+    }
+
+    private void exportToExcel() {
+        try {
+            // Kiểm tra có dữ liệu không
+            if (staffCache == null || staffCache.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Không có dữ liệu để xuất!",
+                        "Cảnh báo",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Tạo tên file với timestamp
+            String timestamp = LocalDateTime.now()
+                    .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String fileName = "DanhSachNhanVien_" + timestamp;
+
+            // Xuất Excel
+            String filePath = ExcelExporter.exportStaffToExcel(staffCache, fileName);
+
+            // Hiển thị thông báo thành công với tùy chọn mở file
+            int option = JOptionPane.showConfirmDialog(this,
+                    "Xuất Excel thành công!\nĐường dẫn: " + filePath + "\n\nBạn có muốn mở thư mục chứa file?",
+                    "Thành công",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE);
+
+            // Mở thư mục nếu người dùng chọn Yes
+            if (option == JOptionPane.YES_OPTION) {
+                try {
+                    File file = new File(filePath);
+                    Desktop.getDesktop().open(file.getParentFile());
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this,
+                            "Không thể mở thư mục: " + ex.getMessage(),
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Lỗi khi xuất Excel: " + ex.getMessage(),
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }
+
+    private void refreshData() {
+        // Reset bộ lọc về mặc định
+        txtSearch.setText("");
+        cboFilterRole.setSelectedIndex(0); // "Tất cả"
+        cboFilterStatus.setSelectedIndex(0); // "Tất cả"
+
+        // Tải lại dữ liệu từ database
+        loadStaffTable();
     }
 
     public void getStaffInfoFromGUI() {
@@ -442,7 +619,11 @@ public class TAB_Staff extends JFrame implements ActionListener {
         try {
             staff.setFullName(txtFullName.getText().trim());
             staff.setUsername(txtUsername.getText().trim());
-            staff.setRole((Role) cboRole.getSelectedItem());
+
+            // Lấy Role từ RoleItem
+            RoleItem selectedRoleItem = (RoleItem) cboRole.getSelectedItem();
+            staff.setRole(selectedRoleItem != null ? selectedRoleItem.getRole() : Role.PHARMACIST);
+
             staff.setPhoneNumber(txtPhoneNumber.getText().trim());
             staff.setEmail(txtEmail.getText().trim());
             staff.setLicenseNumber(txtLicenseNumber.getText().trim());
@@ -453,7 +634,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
             staff.setActive(chkIsActive.isSelected());
 
-            boolean ok = staffBUS.addStaff(staff);
+            boolean ok = BUSStaff.addStaff(staff);
 
             if (ok) {
                 JOptionPane.showMessageDialog(this, "Thêm nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
@@ -470,21 +651,78 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
     }
 
+    public void updateStaffInfoFromGUI() {
+        try {
+            // Kiểm tra xem có chọn nhân viên không
+            String staffId = txtStaffId.getText().trim();
+            if (staffId.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn nhân viên cần cập nhật từ bảng!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Lấy thông tin từ form
+            Staff staff = new Staff();
+            staff.setId(staffId);
+            staff.setFullName(txtFullName.getText().trim());
+            staff.setUsername(txtUsername.getText().trim());
+
+            // Lấy Role từ RoleItem
+            RoleItem selectedRoleItem = (RoleItem) cboRole.getSelectedItem();
+            staff.setRole(selectedRoleItem != null ? selectedRoleItem.getRole() : Role.PHARMACIST);
+
+            staff.setPhoneNumber(txtPhoneNumber.getText().trim());
+            staff.setEmail(txtEmail.getText().trim());
+            staff.setLicenseNumber(txtLicenseNumber.getText().trim());
+
+            Date hireDate = (Date) spnHireDate.getValue();
+            LocalDate localHireDate = LocalDate.ofInstant(hireDate.toInstant(), ZoneId.systemDefault());
+            staff.setHireDate(localHireDate);
+
+            staff.setActive(chkIsActive.isSelected());
+
+            // Xác nhận cập nhật
+            int confirm = JOptionPane.showConfirmDialog(
+                    this,
+                    "Bạn có chắc chắn muốn cập nhật thông tin nhân viên này?",
+                    "Xác nhận",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                boolean ok = BUSStaff.updateStaff(staff);
+
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Cập nhật nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                    clearInput();
+                    loadStaffTable();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Cập nhật nhân viên thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     public void clearInput() {
         txtStaffId.setText("");
         txtFullName.setText("");
         txtUsername.setText("");
-        cboRole.setSelectedItem(Role.PHARMACIST);
+        cboRole.setSelectedIndex(0); // Mặc định Dược sĩ
         txtPhoneNumber.setText("");
         txtEmail.setText("");
         txtLicenseNumber.setText("");
         spnHireDate.setValue(new Date());
         chkIsActive.setSelected(true);
+        txtUsername.setEditable(true);
+        txtUsername.setBackground(Color.WHITE);
     }
 
     private void loadStaffTable() {
         try {
-            staffCache = staffBUS.getAllStaffs();
+            staffCache = BUSStaff.getAllStaffs();
             populateTable(staffCache);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Không thể tải dữ liệu" + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -498,7 +736,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
             tableModel.addRow(new Object[]{
                     s.getId(),
                     s.getFullName(),
-                    s.getRole(),
+                    getRoleDisplayName(s.getRole()),
                     s.getPhoneNumber(),
                     s.getEmail(),
                     s.getHireDate().format(dtf),
@@ -515,10 +753,20 @@ public class TAB_Staff extends JFrame implements ActionListener {
         if (modelRow < 0 || modelRow >= staffCache.size()) return;
         Staff s = staffCache.get(modelRow);
 
-        txtStaffId.setText(s.getId() != null ? s.getId().toString() : "");
+        txtStaffId.setText(s.getId() != null ? s.getId() : "");
         txtFullName.setText(s.getFullName() != null ? s.getFullName() : "");
         txtUsername.setText(s.getUsername() != null ? s.getUsername() : "");
-        cboRole.setSelectedItem(s.getRole() != null ? s.getRole() : Role.PHARMACIST);
+
+        // Chọn RoleItem tương ứng trong ComboBox
+        Role staffRole = s.getRole() != null ? s.getRole() : Role.PHARMACIST;
+        for (int i = 0; i < cboRole.getItemCount(); i++) {
+            RoleItem item = (RoleItem) cboRole.getItemAt(i);
+            if (item.getRole() == staffRole) {
+                cboRole.setSelectedIndex(i);
+                break;
+            }
+        }
+
         txtPhoneNumber.setText(s.getPhoneNumber() != null ? s.getPhoneNumber() : "");
         txtEmail.setText(s.getEmail() != null ? s.getEmail() : "");
         txtLicenseNumber.setText(s.getLicenseNumber() != null ? s.getLicenseNumber() : "");
