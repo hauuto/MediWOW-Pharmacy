@@ -92,13 +92,33 @@ public class TAB_Staff extends JFrame implements ActionListener {
         List<Staff> filteredList = new ArrayList<>();
 
         for (Staff staff : staffCache) {
-            boolean matchesSearch = staff.getFullName().toLowerCase().contains(searchText) ||
+            // Tìm kiếm theo: Mã NV, Họ tên, Username, SĐT, Email
+            boolean matchesSearch = searchText.isEmpty() ||
+                    staff.getId().toLowerCase().contains(searchText) ||
+                    staff.getFullName().toLowerCase().contains(searchText) ||
                     staff.getUsername().toLowerCase().contains(searchText) ||
-                    staff.getPhoneNumber().contains(searchText) ||
-                    staff.getEmail().toLowerCase().contains(searchText);
+                    (staff.getPhoneNumber() != null && staff.getPhoneNumber().contains(searchText)) ||
+                    (staff.getEmail() != null && staff.getEmail().toLowerCase().contains(searchText));
 
-            boolean matchesRole = "Tất cả".equals(selectedRole) || staff.getRole().toString().equals(selectedRole);
-            boolean matchesStatus = "Tất cả".equals(selectedStatus) || (staff.isActive() ? "Hoạt động" : "Đã nghỉ việc").equals(selectedStatus);
+            // Lọc theo vai trò - Map giá trị ComboBox với enum Role
+            boolean matchesRole = "Tất cả".equals(selectedRole);
+            if (!matchesRole) {
+                if ("Quản lý".equals(selectedRole) && staff.getRole() == Role.MANAGER) {
+                    matchesRole = true;
+                } else if ("Dược sĩ".equals(selectedRole) && staff.getRole() == Role.PHARMACIST) {
+                    matchesRole = true;
+                }
+            }
+
+            // Lọc theo trạng thái
+            boolean matchesStatus = "Tất cả".equals(selectedStatus);
+            if (!matchesStatus) {
+                if ("Hoạt động".equals(selectedStatus) && staff.isActive()) {
+                    matchesStatus = true;
+                } else if ("Ngưng hoạt động".equals(selectedStatus) && !staff.isActive()) {
+                    matchesStatus = true;
+                }
+            }
 
             if (matchesSearch && matchesRole && matchesStatus) {
                 filteredList.add(staff);
@@ -473,8 +493,20 @@ public class TAB_Staff extends JFrame implements ActionListener {
             updateStaffInfoFromGUI();
         } else if (o == btnClear) {
             clearInput();
+        } else if (o == btnRefresh) {
+            refreshData();
         }
 
+    }
+
+    private void refreshData() {
+        // Reset bộ lọc về mặc định
+        txtSearch.setText("");
+        cboFilterRole.setSelectedIndex(0); // "Tất cả"
+        cboFilterStatus.setSelectedIndex(0); // "Tất cả"
+
+        // Tải lại dữ liệu từ database
+        loadStaffTable();
     }
 
     public void getStaffInfoFromGUI() {
