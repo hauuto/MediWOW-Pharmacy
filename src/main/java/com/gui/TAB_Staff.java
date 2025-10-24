@@ -31,7 +31,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
     private JTextField txtPhoneNumber;
     private JTextField txtEmail;
     private JTextField txtLicenseNumber;
-    private JComboBox<Role> cboRole;
+    private JComboBox<RoleItem> cboRole; // Đổi từ Role sang RoleItem
     private JComboBox<String> cboFilterRole;
     private JComboBox<String> cboFilterStatus;
     private JSpinner spnHireDate;
@@ -51,6 +51,49 @@ public class TAB_Staff extends JFrame implements ActionListener {
     private final StaffBUS staffBUS = new StaffBUS();
 
     private List<Staff> staffCache = new ArrayList<>();
+
+    // Helper class để chuyển đổi Role sang tiếng Việt
+    private static class RoleItem {
+        private final Role role;
+        private final String displayName;
+
+        public RoleItem(Role role, String displayName) {
+            this.role = role;
+            this.displayName = displayName;
+        }
+
+        public Role getRole() {
+            return role;
+        }
+
+        @Override
+        public String toString() {
+            return displayName;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            RoleItem roleItem = (RoleItem) obj;
+            return role == roleItem.role;
+        }
+
+        @Override
+        public int hashCode() {
+            return role != null ? role.hashCode() : 0;
+        }
+    }
+
+    // Phương thức helper để chuyển đổi Role sang tên tiếng Việt
+    private String getRoleDisplayName(Role role) {
+        if (role == Role.MANAGER) {
+            return "Quản lý";
+        } else if (role == Role.PHARMACIST) {
+            return "Dược sĩ";
+        }
+        return role.toString();
+    }
 
 
     public TAB_Staff() {
@@ -363,8 +406,14 @@ public class TAB_Staff extends JFrame implements ActionListener {
         gbc.gridy = 3;
         formContent.add(createLabel("Vai trò:"), gbc);
         gbc.gridx = 1;
-        cboRole = new JComboBox<>(Role.values());
-        cboRole.setSelectedItem(Role.PHARMACIST);
+
+        // Tạo ComboBox với RoleItem để hiển thị tiếng Việt
+        RoleItem[] roleItems = new RoleItem[]{
+            new RoleItem(Role.PHARMACIST, "Dược sĩ"),
+            new RoleItem(Role.MANAGER, "Quản lý")
+        };
+        cboRole = new JComboBox<>(roleItems);
+        cboRole.setSelectedIndex(0); // Mặc định là Dược sĩ
         cboRole.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         styleComboBox(cboRole);
         formContent.add(cboRole, gbc);
@@ -514,7 +563,11 @@ public class TAB_Staff extends JFrame implements ActionListener {
         try {
             staff.setFullName(txtFullName.getText().trim());
             staff.setUsername(txtUsername.getText().trim());
-            staff.setRole((Role) cboRole.getSelectedItem());
+
+            // Lấy Role từ RoleItem
+            RoleItem selectedRoleItem = (RoleItem) cboRole.getSelectedItem();
+            staff.setRole(selectedRoleItem != null ? selectedRoleItem.getRole() : Role.PHARMACIST);
+
             staff.setPhoneNumber(txtPhoneNumber.getText().trim());
             staff.setEmail(txtEmail.getText().trim());
             staff.setLicenseNumber(txtLicenseNumber.getText().trim());
@@ -556,7 +609,11 @@ public class TAB_Staff extends JFrame implements ActionListener {
             staff.setId(staffId);
             staff.setFullName(txtFullName.getText().trim());
             staff.setUsername(txtUsername.getText().trim());
-            staff.setRole((Role) cboRole.getSelectedItem());
+
+            // Lấy Role từ RoleItem
+            RoleItem selectedRoleItem = (RoleItem) cboRole.getSelectedItem();
+            staff.setRole(selectedRoleItem != null ? selectedRoleItem.getRole() : Role.PHARMACIST);
+
             staff.setPhoneNumber(txtPhoneNumber.getText().trim());
             staff.setEmail(txtEmail.getText().trim());
             staff.setLicenseNumber(txtLicenseNumber.getText().trim());
@@ -597,7 +654,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
         txtStaffId.setText("");
         txtFullName.setText("");
         txtUsername.setText("");
-        cboRole.setSelectedItem(Role.PHARMACIST);
+        cboRole.setSelectedIndex(0); // Mặc định Dược sĩ
         txtPhoneNumber.setText("");
         txtEmail.setText("");
         txtLicenseNumber.setText("");
@@ -621,7 +678,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
             tableModel.addRow(new Object[]{
                     s.getId(),
                     s.getFullName(),
-                    s.getRole(),
+                    getRoleDisplayName(s.getRole()), // Hiển thị tiếng Việt
                     s.getPhoneNumber(),
                     s.getEmail(),
                     s.getHireDate().format(dtf),
@@ -638,10 +695,20 @@ public class TAB_Staff extends JFrame implements ActionListener {
         if (modelRow < 0 || modelRow >= staffCache.size()) return;
         Staff s = staffCache.get(modelRow);
 
-        txtStaffId.setText(s.getId() != null ? s.getId().toString() : "");
+        txtStaffId.setText(s.getId() != null ? s.getId() : "");
         txtFullName.setText(s.getFullName() != null ? s.getFullName() : "");
         txtUsername.setText(s.getUsername() != null ? s.getUsername() : "");
-        cboRole.setSelectedItem(s.getRole() != null ? s.getRole() : Role.PHARMACIST);
+
+        // Chọn RoleItem tương ứng trong ComboBox
+        Role staffRole = s.getRole() != null ? s.getRole() : Role.PHARMACIST;
+        for (int i = 0; i < cboRole.getItemCount(); i++) {
+            RoleItem item = (RoleItem) cboRole.getItemAt(i);
+            if (item.getRole() == staffRole) {
+                cboRole.setSelectedIndex(i);
+                break;
+            }
+        }
+
         txtPhoneNumber.setText(s.getPhoneNumber() != null ? s.getPhoneNumber() : "");
         txtEmail.setText(s.getEmail() != null ? s.getEmail() : "");
         txtLicenseNumber.setText(s.getLicenseNumber() != null ? s.getLicenseNumber() : "");
