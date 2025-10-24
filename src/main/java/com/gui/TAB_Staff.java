@@ -60,8 +60,8 @@ public class TAB_Staff extends JFrame implements ActionListener {
         initComponents();
 
         btnAdd.addActionListener(this);
+        btnUpdate.addActionListener(this);
         btnClear.addActionListener(this);
-        btnRefresh.addActionListener(this);
         btnRefresh.addActionListener(this);
         btnExport.addActionListener(this);
 
@@ -431,6 +431,8 @@ public class TAB_Staff extends JFrame implements ActionListener {
         Object o = e.getSource();
         if (o == btnAdd) {
             getStaffInfoFromGUI();
+        } else if (o == btnUpdate) {
+            updateStaffInfoFromGUI();
         } else if (o == btnClear) {
             clearInput();
         }
@@ -468,6 +470,57 @@ public class TAB_Staff extends JFrame implements ActionListener {
         }
 
 
+    }
+
+    public void updateStaffInfoFromGUI() {
+        try {
+            // Kiểm tra xem có chọn nhân viên không
+            String staffId = txtStaffId.getText().trim();
+            if (staffId.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn nhân viên cần cập nhật từ bảng!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Lấy thông tin từ form
+            Staff staff = new Staff();
+            staff.setId(staffId);
+            staff.setFullName(txtFullName.getText().trim());
+            staff.setUsername(txtUsername.getText().trim());
+            staff.setRole((Role) cboRole.getSelectedItem());
+            staff.setPhoneNumber(txtPhoneNumber.getText().trim());
+            staff.setEmail(txtEmail.getText().trim());
+            staff.setLicenseNumber(txtLicenseNumber.getText().trim());
+
+            Date hireDate = (Date) spnHireDate.getValue();
+            LocalDate localHireDate = LocalDate.ofInstant(hireDate.toInstant(), ZoneId.systemDefault());
+            staff.setHireDate(localHireDate);
+
+            staff.setActive(chkIsActive.isSelected());
+
+            // Xác nhận cập nhật
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Bạn có chắc chắn muốn cập nhật thông tin nhân viên này?",
+                "Xác nhận",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                boolean ok = staffBUS.updateStaff(staff);
+
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Cập nhật nhân viên thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                    clearInput();
+                    loadStaffTable();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Cập nhật nhân viên thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public void clearInput() {

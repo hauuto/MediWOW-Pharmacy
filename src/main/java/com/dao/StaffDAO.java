@@ -45,11 +45,50 @@ public class StaffDAO implements IStaff {
     }
 
     @Override
+    public boolean updateStaff(Staff s) {
+        Transaction transaction = null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            transaction = session.beginTransaction();
+            session.merge(s);
+            transaction.commit();
+            return true;
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
     public List<Staff> getAllStaffs() {
         Session session = null;
         try {
             session = sessionFactory.openSession();
             return session.createQuery("FROM Staff", Staff.class).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public Staff getStaffById(String id) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.get(Staff.class, id);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -142,6 +181,103 @@ public class StaffDAO implements IStaff {
                 Long.class
             );
             query.setParameter("licenseNumber", licenseNumber);
+            return query.getSingleResult() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean existsByUsernameExcludingId(String username, String excludeId) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(s) FROM Staff s WHERE s.username = :username AND s.id != :excludeId",
+                Long.class
+            );
+            query.setParameter("username", username);
+            query.setParameter("excludeId", excludeId);
+            return query.getSingleResult() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean existsByEmailExcludingId(String email, String excludeId) {
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(s) FROM Staff s WHERE s.email = :email AND s.id != :excludeId",
+                Long.class
+            );
+            query.setParameter("email", email);
+            query.setParameter("excludeId", excludeId);
+            return query.getSingleResult() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean existsByPhoneNumberExcludingId(String phoneNumber, String excludeId) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return false;
+        }
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(s) FROM Staff s WHERE s.phoneNumber = :phoneNumber AND s.id != :excludeId",
+                Long.class
+            );
+            query.setParameter("phoneNumber", phoneNumber);
+            query.setParameter("excludeId", excludeId);
+            return query.getSingleResult() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public boolean existsByLicenseNumberExcludingId(String licenseNumber, String excludeId) {
+        if (licenseNumber == null || licenseNumber.trim().isEmpty()) {
+            return false;
+        }
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(
+                "SELECT COUNT(s) FROM Staff s WHERE s.licenseNumber = :licenseNumber AND s.id != :excludeId",
+                Long.class
+            );
+            query.setParameter("licenseNumber", licenseNumber);
+            query.setParameter("excludeId", excludeId);
             return query.getSingleResult() > 0;
         } catch (Exception e) {
             e.printStackTrace();

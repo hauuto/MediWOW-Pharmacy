@@ -57,8 +57,39 @@ public class StaffBUS implements IStaff {
     }
 
     @Override
+    public boolean updateStaff(Staff s) {
+        if (s == null || s.getId() == null || s.getId().trim().isEmpty()) {
+            throw new IllegalArgumentException("Không tìm thấy thông tin nhân viên cần cập nhật");
+        }
+
+        // Kiểm tra nhân viên có tồn tại không
+        Staff existingStaff = staffDAO.getStaffById(s.getId());
+        if (existingStaff == null) {
+            throw new IllegalArgumentException("Nhân viên không tồn tại trong hệ thống");
+        }
+
+        // Validate thông tin
+        validateStaff(s);
+
+        // Kiểm tra trùng lặp (loại trừ chính nhân viên đang cập nhật)
+        checkDuplicatesForUpdate(s);
+
+        // Giữ nguyên mật khẩu cũ nếu không thay đổi
+        if (s.getPassword() == null || s.getPassword().trim().isEmpty()) {
+            s.setPassword(existingStaff.getPassword());
+        }
+
+        return staffDAO.updateStaff(s);
+    }
+
+    @Override
     public List<Staff> getAllStaffs() {
         return staffDAO.getAllStaffs();
+    }
+
+    @Override
+    public Staff getStaffById(String id) {
+        return staffDAO.getStaffById(id);
     }
 
     @Override
@@ -79,6 +110,26 @@ public class StaffBUS implements IStaff {
     @Override
     public boolean existsByLicenseNumber(String licenseNumber) {
         return staffDAO.existsByLicenseNumber(licenseNumber);
+    }
+
+    @Override
+    public boolean existsByUsernameExcludingId(String username, String excludeId) {
+        return staffDAO.existsByUsernameExcludingId(username, excludeId);
+    }
+
+    @Override
+    public boolean existsByEmailExcludingId(String email, String excludeId) {
+        return staffDAO.existsByEmailExcludingId(email, excludeId);
+    }
+
+    @Override
+    public boolean existsByPhoneNumberExcludingId(String phoneNumber, String excludeId) {
+        return staffDAO.existsByPhoneNumberExcludingId(phoneNumber, excludeId);
+    }
+
+    @Override
+    public boolean existsByLicenseNumberExcludingId(String licenseNumber, String excludeId) {
+        return staffDAO.existsByLicenseNumberExcludingId(licenseNumber, excludeId);
     }
 
     private void checkDuplicates(Staff s) {
@@ -104,6 +155,34 @@ public class StaffBUS implements IStaff {
         // Check duplicate license number
         if (s.getLicenseNumber() != null && !s.getLicenseNumber().trim().isEmpty()) {
             if (existsByLicenseNumber(s.getLicenseNumber())) {
+                throw new IllegalArgumentException("Số chứng chỉ '" + s.getLicenseNumber() + "' đã được sử dụng bởi nhân viên khác");
+            }
+        }
+    }
+
+    private void checkDuplicatesForUpdate(Staff s) {
+        // Check duplicate username (loại trừ chính nhân viên đang cập nhật)
+        if (existsByUsernameExcludingId(s.getUsername(), s.getId())) {
+            throw new IllegalArgumentException("Tên đăng nhập '" + s.getUsername() + "' đã tồn tại trong hệ thống");
+        }
+
+        // Check duplicate email
+        if (s.getEmail() != null && !s.getEmail().trim().isEmpty()) {
+            if (existsByEmailExcludingId(s.getEmail(), s.getId())) {
+                throw new IllegalArgumentException("Email '" + s.getEmail() + "' đã được sử dụng bởi nhân viên khác");
+            }
+        }
+
+        // Check duplicate phone number
+        if (s.getPhoneNumber() != null && !s.getPhoneNumber().trim().isEmpty()) {
+            if (existsByPhoneNumberExcludingId(s.getPhoneNumber(), s.getId())) {
+                throw new IllegalArgumentException("Số điện thoại '" + s.getPhoneNumber() + "' đã được sử dụng bởi nhân viên khác");
+            }
+        }
+
+        // Check duplicate license number
+        if (s.getLicenseNumber() != null && !s.getLicenseNumber().trim().isEmpty()) {
+            if (existsByLicenseNumberExcludingId(s.getLicenseNumber(), s.getId())) {
                 throw new IllegalArgumentException("Số chứng chỉ '" + s.getLicenseNumber() + "' đã được sử dụng bởi nhân viên khác");
             }
         }
