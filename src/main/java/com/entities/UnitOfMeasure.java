@@ -1,19 +1,33 @@
 package com.entities;
 
 import com.enums.LotStatus;
+import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * @author Bùi Quốc Trụ
+ * @author Bùi Quốc Trụ, Nguyễn Thanh Khôi
  */
+@Entity
+@Table(name = "UnitOfMeasure")
 public class UnitOfMeasure {
-    private final String id;
-    private final Product product;
+    @Id
+    @Column(name = "id")
+    private String id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product", nullable = false) // ✅ DB cột tên "product"
+    private Product product;
+
+    @Column(name = "name")
     private String name;
+
+    @Column(name = "baseUnitConversionRate")
     private double baseUnitConversionRate;
     private double basePriceConversionRate;
+
+    protected UnitOfMeasure() {}
 
     public UnitOfMeasure(String id, Product product, String name, double baseUnitConversionRate) {
         this.id = id;

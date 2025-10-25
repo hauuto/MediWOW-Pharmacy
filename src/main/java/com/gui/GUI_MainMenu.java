@@ -3,6 +3,7 @@ package com.gui;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.utils.AppColors;
+import com.entities.Staff;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -22,12 +23,12 @@ public class GUI_MainMenu implements ActionListener {
     private JPanel pnlMain;
     private JPanel pnlRightHeader;
     private JButton btnHome;
-    private JButton btnSelling;
+    private JButton btnSales;
     private JPanel pnlOption;
     private JComboBox cbbOption;
     private JButton btnProduct;
     private JButton btnPromotion;
-    private JButton btnStatistic;
+    private JButton btnStatistics;
     private JButton btnStaff;
     private JButton btnGuideLine;
     private JButton btnLogout;
@@ -38,7 +39,12 @@ public class GUI_MainMenu implements ActionListener {
     private JLabel lblSearch;
     private JComboBox comboBox1;
     private CardLayout cardLayout;
+    private Staff currentStaff;
 
+
+    /**
+     * @author Tô Thanh Hậu
+     */
     private void createUIComponents() {
         // TODO: place custom component creation code here
 
@@ -46,7 +52,8 @@ public class GUI_MainMenu implements ActionListener {
     }
 
 
-    public GUI_MainMenu() {
+    public GUI_MainMenu(Staff staff) {
+        this.currentStaff = staff;
 
         pnlSearch.setBackground(AppColors.LIGHT);
         pnlLeftHeader.setBackground(AppColors.LIGHT);
@@ -58,10 +65,10 @@ public class GUI_MainMenu implements ActionListener {
 
 
         btnHome.addActionListener(this);
-        btnSelling.addActionListener(this);
+        btnSales.addActionListener(this);
         btnProduct.addActionListener(this);
         btnPromotion.addActionListener(this);
-        btnStatistic.addActionListener(this);
+        btnStatistics.addActionListener(this);
         btnStaff.addActionListener(this);
         btnGuideLine.addActionListener(this);
         btnLogout.addActionListener(this);
@@ -75,7 +82,7 @@ public class GUI_MainMenu implements ActionListener {
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();
-        TAB_Staff staff = new TAB_Staff();
+        TAB_Staff staffTab = new TAB_Staff();
         TAB_Customer customer = new TAB_Customer();
 
         pnlMain.add(dashboard.pDashboard, "dashboard");
@@ -83,12 +90,12 @@ public class GUI_MainMenu implements ActionListener {
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic.pStatistic, "statistic");
         pnlMain.add(product.pProduct, "product");
-        pnlMain.add(staff.pnlStaff, "staff");
+        pnlMain.add(staffTab.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
 
         cbbOption.addActionListener(e -> {
             if (cbbOption.getSelectedIndex() == 1) {
-                JDialog changePasswordDialog = new DialogChangePassword();
+                JDialog changePasswordDialog = new DIALOG_ChangePassword();
                 changePasswordDialog.setTitle("Đổi mật khẩu");
                 changePasswordDialog.setSize(600, 300);
                 changePasswordDialog.setLocationRelativeTo(pnlMainMenu);
@@ -98,6 +105,13 @@ public class GUI_MainMenu implements ActionListener {
             }
         });
 
+        // Update combobox with staff name
+        if (currentStaff != null) {
+            DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) cbbOption.getModel();
+            model.removeElementAt(0);
+            model.insertElementAt("Xin chào, " + currentStaff.getFullName(), 0);
+            cbbOption.setSelectedIndex(0);
+        }
 
         setActiveButton(btnHome);
         cardLayout.show(pnlMain, "dashboard");
@@ -121,8 +135,8 @@ public class GUI_MainMenu implements ActionListener {
         if (src == btnHome) {
             setActiveButton(btnHome);
             cardLayout.show(pnlMain, "dashboard");
-        } else if (src == btnSelling) {
-            setActiveButton(btnSelling);
+        } else if (src == btnSales) {
+            setActiveButton(btnSales);
             cardLayout.show(pnlMain, "selling");
 
         } else if (src == btnProduct) {
@@ -133,8 +147,8 @@ public class GUI_MainMenu implements ActionListener {
             setActiveButton(btnPromotion);
             cardLayout.show(pnlMain, "promotion");
 
-        } else if (src == btnStatistic) {
-            setActiveButton(btnStatistic);
+        } else if (src == btnStatistics) {
+            setActiveButton(btnStatistics);
             cardLayout.show(pnlMain, "statistic");
 
         } else if (src == btnStaff) {
@@ -264,38 +278,38 @@ public class GUI_MainMenu implements ActionListener {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
         pnlMenu.add(btnHome, gbc);
-        btnSelling = new JButton();
-        btnSelling.setAlignmentY(0.5f);
-        btnSelling.setAutoscrolls(false);
-        btnSelling.setBackground(new Color(-1));
-        btnSelling.setBorderPainted(true);
-        btnSelling.setContentAreaFilled(true);
-        btnSelling.setDefaultCapable(true);
-        btnSelling.setDoubleBuffered(false);
-        btnSelling.setEnabled(true);
-        btnSelling.setFocusCycleRoot(false);
-        btnSelling.setFocusPainted(true);
-        Font btnSellingFont = this.$$$getFont$$$("Segoe UI", Font.BOLD, 16, btnSelling.getFont());
-        if (btnSellingFont != null) btnSelling.setFont(btnSellingFont);
-        btnSelling.setForeground(new Color(-16027943));
-        btnSelling.setHideActionText(false);
-        btnSelling.setHorizontalAlignment(2);
-        btnSelling.setIcon(new ImageIcon(getClass().getResource("/icons/btn_selling.png")));
-        btnSelling.setIconTextGap(10);
-        btnSelling.setMargin(new Insets(0, 10, 0, 0));
-        btnSelling.setPreferredSize(new Dimension(150, 50));
-        btnSelling.setRolloverEnabled(true);
-        btnSelling.setSelected(false);
-        btnSelling.setText("Bán hàng");
-        btnSelling.setToolTipText("Nhấp vào để bắt đầu bán hàng");
-        btnSelling.putClientProperty("hideActionText", Boolean.FALSE);
-        btnSelling.putClientProperty("html.disable", Boolean.FALSE);
+        btnSales = new JButton();
+        btnSales.setAlignmentY(0.5f);
+        btnSales.setAutoscrolls(false);
+        btnSales.setBackground(new Color(-1));
+        btnSales.setBorderPainted(true);
+        btnSales.setContentAreaFilled(true);
+        btnSales.setDefaultCapable(true);
+        btnSales.setDoubleBuffered(false);
+        btnSales.setEnabled(true);
+        btnSales.setFocusCycleRoot(false);
+        btnSales.setFocusPainted(true);
+        Font btnSalesFont = this.$$$getFont$$$("Segoe UI", Font.BOLD, 16, btnSales.getFont());
+        if (btnSalesFont != null) btnSales.setFont(btnSalesFont);
+        btnSales.setForeground(new Color(-16027943));
+        btnSales.setHideActionText(false);
+        btnSales.setHorizontalAlignment(2);
+        btnSales.setIcon(new ImageIcon(getClass().getResource("/icons/btn_selling.png")));
+        btnSales.setIconTextGap(10);
+        btnSales.setMargin(new Insets(0, 10, 0, 0));
+        btnSales.setPreferredSize(new Dimension(150, 50));
+        btnSales.setRolloverEnabled(true);
+        btnSales.setSelected(false);
+        btnSales.setText("Đơn hàng");
+        btnSales.setToolTipText("Nhấp vào để bắt đầu bán hàng");
+        btnSales.putClientProperty("hideActionText", Boolean.FALSE);
+        btnSales.putClientProperty("html.disable", Boolean.FALSE);
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pnlMenu.add(btnSelling, gbc);
+        pnlMenu.add(btnSales, gbc);
         btnProduct = new JButton();
         btnProduct.setAlignmentY(0.5f);
         btnProduct.setAutoscrolls(false);
@@ -360,38 +374,38 @@ public class GUI_MainMenu implements ActionListener {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
         pnlMenu.add(btnPromotion, gbc);
-        btnStatistic = new JButton();
-        btnStatistic.setAlignmentY(0.5f);
-        btnStatistic.setAutoscrolls(false);
-        btnStatistic.setBackground(new Color(-1));
-        btnStatistic.setBorderPainted(true);
-        btnStatistic.setContentAreaFilled(true);
-        btnStatistic.setDefaultCapable(true);
-        btnStatistic.setDoubleBuffered(false);
-        btnStatistic.setEnabled(true);
-        btnStatistic.setFocusCycleRoot(false);
-        btnStatistic.setFocusPainted(true);
-        Font btnStatisticFont = this.$$$getFont$$$("Segoe UI", Font.BOLD, 16, btnStatistic.getFont());
-        if (btnStatisticFont != null) btnStatistic.setFont(btnStatisticFont);
-        btnStatistic.setForeground(new Color(-16027943));
-        btnStatistic.setHideActionText(false);
-        btnStatistic.setHorizontalAlignment(2);
-        btnStatistic.setIcon(new ImageIcon(getClass().getResource("/icons/btn_statistic.png")));
-        btnStatistic.setIconTextGap(10);
-        btnStatistic.setMargin(new Insets(0, 10, 0, 0));
-        btnStatistic.setPreferredSize(new Dimension(150, 50));
-        btnStatistic.setRolloverEnabled(true);
-        btnStatistic.setSelected(false);
-        btnStatistic.setText("Thống kê");
-        btnStatistic.setToolTipText("Nhấp vào để bắt đầu thống kê");
-        btnStatistic.putClientProperty("hideActionText", Boolean.FALSE);
-        btnStatistic.putClientProperty("html.disable", Boolean.FALSE);
+        btnStatistics = new JButton();
+        btnStatistics.setAlignmentY(0.5f);
+        btnStatistics.setAutoscrolls(false);
+        btnStatistics.setBackground(new Color(-1));
+        btnStatistics.setBorderPainted(true);
+        btnStatistics.setContentAreaFilled(true);
+        btnStatistics.setDefaultCapable(true);
+        btnStatistics.setDoubleBuffered(false);
+        btnStatistics.setEnabled(true);
+        btnStatistics.setFocusCycleRoot(false);
+        btnStatistics.setFocusPainted(true);
+        Font btnStatisticsFont = this.$$$getFont$$$("Segoe UI", Font.BOLD, 16, btnStatistics.getFont());
+        if (btnStatisticsFont != null) btnStatistics.setFont(btnStatisticsFont);
+        btnStatistics.setForeground(new Color(-16027943));
+        btnStatistics.setHideActionText(false);
+        btnStatistics.setHorizontalAlignment(2);
+        btnStatistics.setIcon(new ImageIcon(getClass().getResource("/icons/btn_statistic.png")));
+        btnStatistics.setIconTextGap(10);
+        btnStatistics.setMargin(new Insets(0, 10, 0, 0));
+        btnStatistics.setPreferredSize(new Dimension(150, 50));
+        btnStatistics.setRolloverEnabled(true);
+        btnStatistics.setSelected(false);
+        btnStatistics.setText("Thống kê");
+        btnStatistics.setToolTipText("Nhấp vào để bắt đầu thống kê");
+        btnStatistics.putClientProperty("hideActionText", Boolean.FALSE);
+        btnStatistics.putClientProperty("html.disable", Boolean.FALSE);
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 4;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pnlMenu.add(btnStatistic, gbc);
+        pnlMenu.add(btnStatistics, gbc);
         btnStaff = new JButton();
         btnStaff.setAlignmentY(0.5f);
         btnStaff.setAutoscrolls(false);

@@ -1,26 +1,45 @@
 package com.entities;
 
 import com.enums.LotStatus;
+import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * @author Bùi Quốc Trụ
+ * @author Bùi Quốc Trụ, Nguyễn Thanh Khôi
  */
+@Entity
+@Table(name = "Lot")
 public class Lot {
-    private final String batchNumber;
-    private final Product product;
+    @Id
+    @Column(name = "batchNumber")
+    private String batchNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product", nullable = false) // ✅ DB cột tên "product"
+    private Product product;
+
+    @Column(name = "quantity")
     private int quantity;
-    private double rawPrice;
+
+    @Column(name = "mwPrice")
+    private double mwPrice;
+
+    @Column(name = "expiryDate")
     private LocalDateTime expiryDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private LotStatus status;
 
-    public Lot(String batchNumber, Product product, int quantity, double rawPrice, LocalDateTime expiryDate, LotStatus status) {
+    protected Lot() {}
+
+    public Lot(String batchNumber, Product product, int quantity, double mwPrice, LocalDateTime expiryDate, LotStatus status) {
         this.batchNumber = batchNumber;
         this.product = product;
         this.quantity = quantity;
-        this.rawPrice = rawPrice;
+        this.mwPrice = mwPrice;
         this.expiryDate = expiryDate;
         this.status = status;
     }
@@ -42,11 +61,11 @@ public class Lot {
     }
 
     public double getRawPrice() {
-        return rawPrice;
+        return mwPrice;
     }
 
     public void setRawPrice(double rawPrice) {
-        this.rawPrice = rawPrice;
+        this.mwPrice = rawPrice;
     }
 
     public LocalDateTime getExpiryDate() {

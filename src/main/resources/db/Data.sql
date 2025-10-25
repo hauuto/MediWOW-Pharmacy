@@ -3,8 +3,8 @@
 
 
 -- INSERT INTO Staff (username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role) VALUES
--- ( 'manager1', 'password123', 'Tô Thanh Hậu', 'LIC123456', '0868182546', 'thanhhau670@gmail.com'
--- , '2022-01-15', 1, 'MANAGER')
+-- ( 'admin', 'admin', N'Chúa', 'LIC123456', '0123456789', ''
+-- , '2025-1-10', 1, 'MANAGER')
 
 
 -- INSERT INTO PrescribedCustomer (id, name, phoneNumber, address) VALUES
