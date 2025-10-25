@@ -24,27 +24,106 @@ public class DAO_Product implements IProduct {
 
     @Override
     public Product getProductById(String id) {
-        return null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            // Fetch product with unitOfMeasureList first
+            Product product = session.createQuery(
+                "SELECT DISTINCT p FROM Product p " +
+                "LEFT JOIN FETCH p.unitOfMeasureList " +
+                "WHERE p.id = :id",
+                Product.class
+            ).setParameter("id", id).uniqueResult();
+
+            // Then fetch lotList for the same product
+            if (product != null) {
+                session.createQuery(
+                    "SELECT DISTINCT p FROM Product p " +
+                    "LEFT JOIN FETCH p.lotList " +
+                    "WHERE p.id = :id",
+                    Product.class
+                ).setParameter("id", id).uniqueResult();
+            }
+
+            return product;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
     }
 
     @Override
     public Lot getLotByBatchNumber(String batchNumber) {
-        return null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.createQuery(
+                "FROM Lot l WHERE l.batchNumber = :batchNumber",
+                Lot.class
+            ).setParameter("batchNumber", batchNumber).uniqueResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
     }
 
     @Override
     public List<Lot> getAllLots() {
-        return List.of();
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.createQuery("FROM Lot", Lot.class).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
     }
 
     @Override
     public UnitOfMeasure getUnitOfMeasureById(String id) {
-        return null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.createQuery(
+                "FROM UnitOfMeasure u WHERE u.id = :id",
+                UnitOfMeasure.class
+            ).setParameter("id", id).uniqueResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
     }
 
     @Override
     public List<UnitOfMeasure> getAllUnitOfMeasures() {
-        return List.of();
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.createQuery("FROM UnitOfMeasure", UnitOfMeasure.class).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
     }
 
     @Override
@@ -75,7 +154,24 @@ public class DAO_Product implements IProduct {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            return session.createQuery("FROM Product ", Product.class).list();
+            // Fetch products with unitOfMeasureList first
+            List<Product> products = session.createQuery(
+                "SELECT DISTINCT p FROM Product p " +
+                "LEFT JOIN FETCH p.unitOfMeasureList",
+                Product.class
+            ).list();
+
+            // Then fetch lotList for the same products
+            if (!products.isEmpty()) {
+                session.createQuery(
+                    "SELECT DISTINCT p FROM Product p " +
+                    "LEFT JOIN FETCH p.lotList " +
+                    "WHERE p IN :products",
+                    Product.class
+                ).setParameter("products", products).list();
+            }
+
+            return products;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
