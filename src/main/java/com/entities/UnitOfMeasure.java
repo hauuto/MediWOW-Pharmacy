@@ -1,9 +1,7 @@
 package com.entities;
 
-import com.enums.LotStatus;
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
@@ -25,6 +23,8 @@ public class UnitOfMeasure {
 
     @Column(name = "baseUnitConversionRate")
     private double baseUnitConversionRate;
+
+    @Transient
     private double basePriceConversionRate;
 
     protected UnitOfMeasure() {}
@@ -35,6 +35,13 @@ public class UnitOfMeasure {
         this.name = name;
         this.baseUnitConversionRate = baseUnitConversionRate;
         basePriceConversionRate = 1 / baseUnitConversionRate;
+    }
+
+    @PostLoad
+    private void calculateDerivedFields() {
+        if (baseUnitConversionRate != 0) {
+            basePriceConversionRate = 1 / baseUnitConversionRate;
+        }
     }
 
     public String getId() {
