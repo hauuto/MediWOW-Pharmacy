@@ -2,6 +2,7 @@ package com.entities;
 
 import com.enums.DosageForm;
 import com.enums.ProductCategory;
+import com.enums.LotStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -73,7 +74,7 @@ public class Product {
     @Column(name = "updateDate")
     private LocalDateTime updateDate;
 
-    protected Product() {}
+    public Product() {}
 
     // Existing constructor updated to no longer forcibly set creationDate (Hibernate will handle it)
     public Product(String id, String barcode, ProductCategory category, DosageForm form, String name, String shortName, String manufacturer, String activeIngredient, double vat, String strength, String description, String baseUnitOfMeasure, List<UnitOfMeasure> unitOfMeasureList, List<Lot> lotList, LocalDateTime updateDate) {
