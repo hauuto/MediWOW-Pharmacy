@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.bus.BUS_Product;
+import com.entities.Product;
 import com.utils.AppColors;
 
 import javax.swing.*;
@@ -15,6 +17,7 @@ import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
+import java.util.List;
 
 public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
@@ -22,6 +25,8 @@ public class TAB_Selling extends JFrame {
     private static final Color LIGHT_GRAY = new Color(210, 210, 210);
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
     private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
+
+    private List<Product> products;
 
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
@@ -33,7 +38,17 @@ public class TAB_Selling extends JFrame {
     // Field to hold the customer payment text field for cash button updates
     private JFormattedTextField txtCustomerPayment;
 
+    // Fields for search autocomplete
+    private JWindow searchWindow;
+    private JList<String> searchResultsList;
+    private DefaultListModel<String> searchResultsModel;
+    private List<Product> currentSearchResults;
+
     public TAB_Selling() {
+        BUS_Product busProduct = new BUS_Product();
+
+        products = busProduct.getAllProducts();
+
         $$$setupUI$$$();
         createSplitPane();
     }
@@ -59,7 +74,217 @@ public class TAB_Selling extends JFrame {
 
         boxSearchBarHorizontal.add(Box.createHorizontalStrut(5));
 
+        // Setup autocomplete
+        setupSearchAutocomplete(txtSearchInput);
+
         return boxSearchBarVertical;
+    }
+
+    /**
+     * Setup autocomplete functionality for product search
+     */
+    private void setupSearchAutocomplete(JTextField txtSearchInput) {
+        // Initialize search results
+        searchResultsModel = new DefaultListModel<>();
+        searchResultsList = new JList<>(searchResultsModel);
+        searchResultsList.setFont(new Font("Arial", Font.PLAIN, 14));
+        searchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        currentSearchResults = new java.util.ArrayList<>();
+
+        // Create a JWindow for dropdown (more stable than JPopupMenu)
+        searchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
+        JScrollPane scrollPane = new JScrollPane(searchResultsList);
+        searchWindow.add(scrollPane);
+        searchWindow.setFocusableWindowState(false);
+
+        // Add document listener to search as user types
+        txtSearchInput.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
+            }
+        });
+
+        // Handle mouse click on list
+        searchResultsList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int selectedIndex = searchResultsList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    selectProduct(selectedIndex, txtSearchInput);
+                }
+            }
+        });
+
+        // Handle keyboard navigation
+        txtSearchInput.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (searchWindow.isVisible()) {
+                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_DOWN) {
+                        int selectedIndex = searchResultsList.getSelectedIndex();
+                        if (selectedIndex < searchResultsModel.getSize() - 1) {
+                            searchResultsList.setSelectedIndex(selectedIndex + 1);
+                            searchResultsList.ensureIndexIsVisible(selectedIndex + 1);
+                        } else if (searchResultsModel.getSize() > 0) {
+                            searchResultsList.setSelectedIndex(0);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_UP) {
+                        int selectedIndex = searchResultsList.getSelectedIndex();
+                        if (selectedIndex > 0) {
+                            searchResultsList.setSelectedIndex(selectedIndex - 1);
+                            searchResultsList.ensureIndexIsVisible(selectedIndex - 1);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                        int selectedIndex = searchResultsList.getSelectedIndex();
+                        if (selectedIndex != -1) {
+                            selectProduct(selectedIndex, txtSearchInput);
+                            e.consume();
+                        }
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+                        searchWindow.setVisible(false);
+                        e.consume();
+                    }
+                }
+            }
+        });
+
+        // Hide search window when focus is lost
+        txtSearchInput.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                // Delay to allow click on list
+                Timer timer = new Timer(150, evt -> searchWindow.setVisible(false));
+                timer.setRepeats(false);
+                timer.start();
+            }
+        });
+    }
+
+    /**
+     * Perform search and update results
+     */
+    private void performSearch(JTextField txtSearchInput) {
+        String searchText = txtSearchInput.getText().trim();
+
+        // Check if it's placeholder text
+        if (searchText.isEmpty() ||
+            searchText.equals("Nhập mã/tên/tên rút gọn của thuốc...") ||
+            txtSearchInput.getForeground().equals(Color.GRAY)) {
+            searchWindow.setVisible(false);
+            return;
+        }
+
+        // Clear previous results
+        searchResultsModel.clear();
+        currentSearchResults.clear();
+
+        // Search products
+        String lowerSearch = searchText.toLowerCase();
+        for (Product product : products) {
+            boolean matches = false;
+
+            if (product.getId() != null && product.getId().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+            if (product.getName() != null && product.getName().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+            if (product.getShortName() != null && product.getShortName().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+
+            if (matches) {
+                currentSearchResults.add(product);
+                String displayText = String.format("%s - %s - %s",
+                    product.getId(),
+                    product.getName(),
+                    product.getShortName() != null ? product.getShortName() : "N/A");
+                searchResultsModel.addElement(displayText);
+            }
+        }
+
+        // Show or hide window based on results
+        if (!currentSearchResults.isEmpty()) {
+            // Position window below text field
+            Point location = txtSearchInput.getLocationOnScreen();
+            int width = txtSearchInput.getWidth();
+            int height = Math.min(200, currentSearchResults.size() * 20 + 5);
+
+            searchWindow.setLocation(location.x, location.y + txtSearchInput.getHeight());
+            searchWindow.setSize(width, height);
+            searchWindow.setVisible(true);
+        } else {
+            searchWindow.setVisible(false);
+        }
+    }
+
+    /**
+     * Handle product selection from search results
+     */
+    private void selectProduct(int selectedIndex, JTextField txtSearchInput) {
+        if (selectedIndex < 0 || selectedIndex >= currentSearchResults.size()) {
+            return;
+        }
+
+        Product selectedProduct = currentSearchResults.get(selectedIndex);
+        addProductToInvoice(selectedProduct);
+
+        // Clear search field and reset placeholder
+        txtSearchInput.setText("Nhập mã/tên/tên rút gọn của thuốc...");
+        txtSearchInput.setForeground(Color.GRAY);
+
+        // Hide search window
+        searchWindow.setVisible(false);
+    }
+
+    /**
+     * Add product to invoice line table
+     */
+    private void addProductToInvoice(Product product) {
+        // Check if product already exists
+        for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+            String existingId = (String) mdlInvoiceLine.getValueAt(i, 0);
+            if (existingId.equals(product.getId())) {
+                // Increase quantity
+                int currentQty = (int) mdlInvoiceLine.getValueAt(i, 3);
+                mdlInvoiceLine.setValueAt(currentQty + 1, i, 3);
+
+                // Update total
+                double unitPrice = (double) mdlInvoiceLine.getValueAt(i, 4);
+                mdlInvoiceLine.setValueAt((currentQty + 1) * unitPrice, i, 5);
+                return;
+            }
+        }
+
+        // Add new row
+        String unit = "N/A";
+        if (product.getUnitOfMeasureList() != null && !product.getUnitOfMeasureList().isEmpty()) {
+            unit = product.getUnitOfMeasureList().get(0).getName();
+        }
+
+        Object[] row = {
+            product.getId(),
+            product.getName(),
+            unit,
+            1,
+            0.0,
+            0.0
+        };
+
+        mdlInvoiceLine.addRow(row);
     }
 
     /**
