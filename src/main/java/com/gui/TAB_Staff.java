@@ -50,12 +50,14 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
+    private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
+    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
+
 
     private final BUS_Staff BUSStaff = new BUS_Staff();
 
     private List<Staff> staffCache = new ArrayList<>();
 
-    // Helper class để chuyển đổi Role sang tiếng Việt
     private static class RoleItem {
         private final Role role;
         private final String displayName;
@@ -88,7 +90,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
         }
     }
 
-    // Phương thức helper để chuyển đổi Role sang tên tiếng Việt
     private String getRoleDisplayName(Role role) {
         if (role == Role.MANAGER) {
             return "Quản lý";
@@ -115,7 +116,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
     }
 
     private void setupSearchAndFilterListeners() {
-        // Real-time search khi gõ
         txtSearch.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
@@ -123,10 +123,8 @@ public class TAB_Staff extends JFrame implements ActionListener {
             }
         });
 
-        // Lọc khi thay đổi vai trò
         cboFilterRole.addActionListener(e -> performSearch());
 
-        // Lọc khi thay đổi trạng thái
         cboFilterStatus.addActionListener(e -> performSearch());
     }
 
@@ -219,7 +217,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
                 new EmptyBorder(5, 10, 5, 10)
         ));
 
-        JButton btnSearch = createStyledButton("Tìm", AppColors.PRIMARY);
 
         // Filter
         JLabel lblFilterRole = new JLabel("Vai trò:");
@@ -242,7 +239,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         searchBar.add(lblSearch);
         searchBar.add(txtSearch);
-        searchBar.add(btnSearch);
         searchBar.add(Box.createHorizontalStrut(20));
         searchBar.add(lblFilterRole);
         searchBar.add(cboFilterRole);
@@ -261,6 +257,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
     private JPanel createTablePanel() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
+        panel.setMinimumSize(new Dimension(LEFT_PANEL_MINIMAL_WIDTH, 0));
         panel.setBackground(AppColors.WHITE);
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createTitledBorder(
@@ -362,6 +359,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
     private JPanel createFormPanel() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
+        panel.setMinimumSize(new Dimension(RIGHT_PANEL_MINIMAL_WIDTH, 0));
         panel.setBackground(AppColors.WHITE);
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createTitledBorder(

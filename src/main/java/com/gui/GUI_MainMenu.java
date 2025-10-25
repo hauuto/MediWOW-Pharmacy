@@ -167,7 +167,7 @@ public class GUI_MainMenu implements ActionListener {
 
                 // Open login window
                 JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
-                loginFrame.setContentPane(new GUI_Login().pLogin);
+                loginFrame.setContentPane(new GUI_Login().pnlLogin);
                 loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 loginFrame.setSize(1080, 600);
                 loginFrame.setLocationRelativeTo(null);
