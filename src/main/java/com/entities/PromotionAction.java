@@ -1,24 +1,80 @@
 package com.entities;
 
 import com.enums.PromotionEnum.*;
+import jakarta.persistence.*;
 
+/*
+@author Nguyễn Thanh Khôi
+ */
+@Entity
+@Table(name = "PromotionAction")
 public class PromotionAction {
+
+    @Id
+    @Column(length = 50) // ID do trigger SQL Server sinh: PRMA-XXXXXX
+    private String id;
+
+    // Many actions → 1 Promotion
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion", nullable = false)
+    private Promotion promotion;
+
+    @Column(name = "actionOrder", nullable = false)
+    private int actionOrder;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ActionType type;
-    private Target target;           // áp dụng lên ORDER_SUBTOTAL / PRODUCT
-    private Double value;            // % hoặc số tiền hoặc số lượng quà
-    private String productOrGift;    // nếu là PRODUCT_GIFT
-    private int order;
 
-    public PromotionAction(ActionType t, Target ta, Double v, String p, int o){
-        type=t; target=ta; value=v; productOrGift=p; order=o;
-    }
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Target target;
 
-    public ActionType getType() {
-        return type;
-    }
+    @Column(name = "primaryValue", nullable = false)
+    private Double primaryValue;
 
-    public void setType(ActionType type) {
+    @Column(name = "secondaryValue", nullable = true)
+    private Double secondaryValue;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product", nullable = true)
+    private Product product;
+
+
+
+
+
+    public PromotionAction() {}
+
+    public PromotionAction(ActionType type, Target target, Double primaryValue,
+                           Double secondaryValue, Product product, int order) {
         this.type = type;
+        this.target = target;
+        this.primaryValue = primaryValue;
+        this.secondaryValue = secondaryValue;
+        this.product = product;
+        this.actionOrder = order;
+    }
+
+    public String getId() { return id; }
+
+    public ActionType getType() { return type; }
+    public void setType(ActionType type) { this.type = type; }
+
+    public Promotion getPromotion() {
+        return promotion;
+    }
+
+    public void setPromotion(Promotion promotion) {
+        this.promotion = promotion;
+    }
+
+    public int getActionOrder() {
+        return actionOrder;
+    }
+
+    public void setActionOrder(int actionOrder) {
+        this.actionOrder = actionOrder;
     }
 
     public Target getTarget() {
@@ -29,27 +85,27 @@ public class PromotionAction {
         this.target = target;
     }
 
-    public Double getValue() {
-        return value;
+    public Double getPrimaryValue() {
+        return primaryValue;
     }
 
-    public void setValue(Double value) {
-        this.value = value;
+    public void setPrimaryValue(Double primaryValue) {
+        this.primaryValue = primaryValue;
     }
 
-    public String getProductOrGift() {
-        return productOrGift;
+    public Double getSecondaryValue() {
+        return secondaryValue;
     }
 
-    public void setProductOrGift(String productOrGift) {
-        this.productOrGift = productOrGift;
+    public void setSecondaryValue(Double secondaryValue) {
+        this.secondaryValue = secondaryValue;
     }
 
-    public int getOrder() {
-        return order;
+    public Product getProduct() {
+        return product;
     }
 
-    public void setOrder(int order) {
-        this.order = order;
+    public void setProduct(Product product) {
+        this.product = product;
     }
 }

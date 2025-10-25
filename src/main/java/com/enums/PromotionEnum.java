@@ -8,5 +8,5 @@ public class PromotionEnum {
         final String symbol; Comp(String s){this.symbol=s;} @Override public String toString(){return symbol;}
     }
     public enum ActionType { PERCENT_DISCOUNT, FIXED_DISCOUNT, PRODUCT_GIFT }
-
+    public enum ConditionType {PRODUCT_ID, PRODUCT_QTY, ORDER_SUBTOTAL}
 }
