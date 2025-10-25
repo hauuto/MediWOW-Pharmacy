@@ -44,7 +44,7 @@ public class Main {
         // Launch GUI on Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("MediWOW - Đăng nhập");
-            frame.setContentPane(new GUI_Login().pLogin);
+            frame.setContentPane(new GUI_Login().pnlLogin);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(1080, 600);
             frame.setLocationRelativeTo(null);
