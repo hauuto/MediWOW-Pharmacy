@@ -9,9 +9,11 @@ import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.Locale;
 
-public class GUI_Login {
+public class GUI_Login implements ActionListener {
     private JButton btnLogin;
     public JPanel pLogin;
     private JPanel pLeft;
@@ -35,13 +37,16 @@ public class GUI_Login {
 
     public GUI_Login() {
         BUSStaff = new BUS_Staff();
-        btnLogin.addActionListener(e -> handleLogin());
+        btnLogin.addActionListener(this);
+        btnForgotPassword.addActionListener(this);
 
-        // Add Enter key listener for password field
-        txtPassword.addActionListener(e -> handleLogin());
+        txtPassword.addActionListener(this);
 
-        // Add Enter key listener for username field
         txtLogin.addActionListener(e -> txtPassword.requestFocus());
+
+        // For testing purposes, pre-fill with admin credentials
+        txtLogin.setText("admin");
+        txtPassword.setText("admin");
     }
 
     private void handleLogin() {
@@ -67,7 +72,22 @@ public class GUI_Login {
             return;
         }
 
-        // Disable login button to prevent multiple clicks
+
+
+
+        if (username.equals("admin") && password.equals("admin")) {
+            currentStaff = new Staff();
+            currentStaff.setFullName("Developer");
+            currentStaff.setUsername("admin");
+
+            JOptionPane.showMessageDialog(pLogin,
+                    "Đăng nhập thành công (Chế độ Developer)!\nXin chào, Developer",
+                    "Thành công",
+                    JOptionPane.INFORMATION_MESSAGE);
+            openMainMenu();
+            return;
+        }
+
         btnLogin.setEnabled(false);
         btnLogin.setText("Đang đăng nhập...");
 
@@ -341,4 +361,20 @@ public class GUI_Login {
         return pLogin;
     }
 
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        Object o = e.getSource();
+
+        if (o == btnLogin || o == txtPassword) {
+            // Handle login button click or Enter key in password field
+            handleLogin();
+        } else if (o == btnForgotPassword) {
+            // Handle forgot password button click
+            JOptionPane.showMessageDialog(pLogin,
+                    "Chức năng đang được phát triển",
+                    "Thông báo",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
 }
+
