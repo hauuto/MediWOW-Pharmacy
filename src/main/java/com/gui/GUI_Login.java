@@ -187,9 +187,6 @@ public class GUI_Login implements ActionListener {
         mainMenuFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
-    public Staff getCurrentStaff() {
-        return currentStaff;
-    }
 
 
     {
@@ -386,10 +383,8 @@ public class GUI_Login implements ActionListener {
         Object o = e.getSource();
 
         if (o == btnLogin || o == txtPassword) {
-            // Handle login button click or Enter key in password field
             handleLogin();
         } else if (o == btnForgotPassword) {
-            // Handle forgot password button click
             JOptionPane.showMessageDialog(pnlLogin,
                     "Chức năng đang được phát triển",
                     "Thông báo",

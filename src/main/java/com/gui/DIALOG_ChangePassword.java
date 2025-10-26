@@ -268,7 +268,7 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
             boolean success = busStaff.changePassword(currentStaff, oldPassword, newPassword);
 
             if (success) {
-                passwordChanged = true; // Mark password as changed
+                passwordChanged = true;
                 JOptionPane.showMessageDialog(
                         this,
                         "Đổi mật khẩu thành công!",
