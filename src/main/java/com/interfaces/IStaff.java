@@ -15,6 +15,7 @@ public interface IStaff {
     public List<Staff> getAllStaffs();
     public Staff getStaffById(String id);
     public Staff getStaffByUsername(String username);
+    public Staff getStaffByEmail(String email);
     public boolean existsByUsername(String username);
     public boolean existsByEmail(String email);
     public boolean existsByPhoneNumber(String phoneNumber);

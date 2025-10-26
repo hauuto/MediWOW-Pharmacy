@@ -74,19 +74,6 @@ public class Staff {
     }
 
     public void setUsername(String username) {
-
-        if (username == null || username.isEmpty()) {
-            throw new IllegalArgumentException("Tên đăng nhập không được để trống");
-        }
-
-        if (username.length() < 5 || username.length() > 20) {
-            throw new IllegalArgumentException("Tên đăng nhập phải từ 5 đến 20 ký tự");
-        }
-
-        if (!username.matches("^[a-zA-Z0-9._-]+$")) {
-            throw new IllegalArgumentException("Tên đăng nhập chỉ được chứa chữ cái, số và các ký tự đặc biệt như . _ -");
-        }
-
         this.username = username;
     }
 

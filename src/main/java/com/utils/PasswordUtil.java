@@ -9,10 +9,8 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
  */
 public class PasswordUtil {
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-    private static final int DEFAULT_PASSWORD_LENGTH = 8;
     private static final String TEMP_PASSWORD_PREFIX = "Tmp";
     private static final SecureRandom random = new SecureRandom();
-    // BCrypt cost factor (log rounds). 10-12 is a reasonable default for desktop apps.
     private static final int BCRYPT_LOG_ROUNDS = 12;
 
 
@@ -29,13 +27,6 @@ public class PasswordUtil {
         return password.toString();
     }
 
-    public static String generatePassword(int length) {
-        StringBuilder password = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            password.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
-        }
-        return password.toString();
-    }
 
 
     public static boolean isTemporaryPassword(String plainPassword) {
@@ -47,7 +38,6 @@ public class PasswordUtil {
 
     public static String hashPassword(String password) {
         if (password == null) throw new IllegalArgumentException("password cannot be null");
-        // Favre BCrypt returns the bcrypt string with salt and cost embedded
         return BCrypt.withDefaults().hashToString(BCRYPT_LOG_ROUNDS, password.toCharArray());
     }
 
@@ -57,7 +47,6 @@ public class PasswordUtil {
             BCrypt.Result result = BCrypt.verifyer().verify(plainPassword.toCharArray(), hashedPassword);
             return result.verified;
         } catch (Exception e) {
-            // In case the hashedPassword is malformed or uses an unsupported format
             return false;
         }
     }
