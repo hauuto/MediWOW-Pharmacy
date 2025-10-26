@@ -17,7 +17,6 @@ public class Invoice {
     private final LocalDateTime creationDate;
     private final Staff creator;
     private String prescriptionCode;
-    private PrescribedCustomer prescribedCustomer;
     private List<InvoiceLine> invoiceLineList;
     private Promotion promotion;
     private PaymentMethod paymentMethod;
@@ -30,14 +29,13 @@ public class Invoice {
         this.creator = creator;
     }
 
-    public Invoice(String id, InvoiceType type, String notes, Staff creator, String prescriptionCode, PrescribedCustomer prescribedCustomer, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
+    public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
         this.id = id;
         this.type = type;
-        this.notes = notes;
-        this.creationDate = LocalDateTime.now();
+        this.creationDate = creationDate;
         this.creator = creator;
+        this.notes = notes;
         this.prescriptionCode = prescriptionCode;
-        this.prescribedCustomer = prescribedCustomer;
         this.invoiceLineList = invoiceLineList;
         this.promotion = promotion;
         this.paymentMethod = paymentMethod;
@@ -74,14 +72,6 @@ public class Invoice {
 
     public void setPrescriptionCode(String prescriptionCode) {
         this.prescriptionCode = prescriptionCode;
-    }
-
-    public PrescribedCustomer getPrescribedCustomer() {
-        return prescribedCustomer;
-    }
-
-    public void setPrescribedCustomer(PrescribedCustomer prescribedCustomer) {
-        this.prescribedCustomer = prescribedCustomer;
     }
 
     public List<InvoiceLine> getInvoiceLineList() {
