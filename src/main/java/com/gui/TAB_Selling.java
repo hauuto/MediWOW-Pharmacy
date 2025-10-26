@@ -1,10 +1,14 @@
 package com.gui;
 
+import com.bus.BUS_Product;
+import com.entities.Product;
+import com.entities.UnitOfMeasure;
 import com.utils.AppColors;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
@@ -15,13 +19,21 @@ import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
 
-    private static final Color LIGHT_GRAY = new Color(210, 210, 210);
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
     private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
+
+    private List<Product> products;
+
+    // Map to store product reference for each row (key: product ID)
+    private Map<String, Product> productMap;
 
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
@@ -33,7 +45,18 @@ public class TAB_Selling extends JFrame {
     // Field to hold the customer payment text field for cash button updates
     private JFormattedTextField txtCustomerPayment;
 
+    // Fields for search autocomplete
+    private JWindow searchWindow;
+    private JList<String> searchResultsList;
+    private DefaultListModel<String> searchResultsModel;
+    private List<Product> currentSearchResults;
+
     public TAB_Selling() {
+        BUS_Product busProduct = new BUS_Product();
+
+        products = busProduct.getAllProducts();
+        productMap = new HashMap<>();
+
         $$$setupUI$$$();
         createSplitPane();
     }
@@ -59,7 +82,224 @@ public class TAB_Selling extends JFrame {
 
         boxSearchBarHorizontal.add(Box.createHorizontalStrut(5));
 
+        // Setup autocomplete
+        setupSearchAutocomplete(txtSearchInput);
+
         return boxSearchBarVertical;
+    }
+
+    /**
+     * Setup autocomplete functionality for product search
+     */
+    private void setupSearchAutocomplete(JTextField txtSearchInput) {
+        // Initialize search results
+        searchResultsModel = new DefaultListModel<>();
+        searchResultsList = new JList<>(searchResultsModel);
+        searchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
+        searchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        currentSearchResults = new ArrayList<>();
+
+        // Create a JWindow for dropdown (more stable than JPopupMenu)
+        searchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
+        JScrollPane scrollPane = new JScrollPane(searchResultsList);
+        searchWindow.add(scrollPane);
+        searchWindow.setFocusableWindowState(false);
+
+        // Add document listener to search as user types
+        txtSearchInput.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
+            }
+        });
+
+        // Handle mouse click on list
+        searchResultsList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int selectedIndex = searchResultsList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    selectProduct(selectedIndex, txtSearchInput);
+                }
+            }
+        });
+
+        // Handle keyboard navigation
+        txtSearchInput.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (searchWindow.isVisible()) {
+                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_DOWN) {
+                        int selectedIndex = searchResultsList.getSelectedIndex();
+                        if (selectedIndex < searchResultsModel.getSize() - 1) {
+                            searchResultsList.setSelectedIndex(selectedIndex + 1);
+                            searchResultsList.ensureIndexIsVisible(selectedIndex + 1);
+                        } else if (searchResultsModel.getSize() > 0) {
+                            searchResultsList.setSelectedIndex(0);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_UP) {
+                        int selectedIndex = searchResultsList.getSelectedIndex();
+                        if (selectedIndex > 0) {
+                            searchResultsList.setSelectedIndex(selectedIndex - 1);
+                            searchResultsList.ensureIndexIsVisible(selectedIndex - 1);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                        int selectedIndex = searchResultsList.getSelectedIndex();
+                        if (selectedIndex != -1) {
+                            selectProduct(selectedIndex, txtSearchInput);
+                            e.consume();
+                        }
+                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+                        searchWindow.setVisible(false);
+                        e.consume();
+                    }
+                }
+            }
+        });
+
+        // Hide search window when focus is lost
+        txtSearchInput.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                // Delay to allow click on list
+                Timer timer = new Timer(150, evt -> searchWindow.setVisible(false));
+                timer.setRepeats(false);
+                timer.start();
+            }
+        });
+    }
+
+    /**
+     * Perform search and update results
+     */
+    private void performSearch(JTextField txtSearchInput) {
+        String searchText = txtSearchInput.getText().trim();
+
+        // Check if it's placeholder text
+        if (searchText.isEmpty() ||
+            searchText.equals("Nhập mã/tên/tên rút gọn của thuốc...") ||
+            txtSearchInput.getForeground().equals(Color.GRAY)) {
+            searchWindow.setVisible(false);
+            return;
+        }
+
+        // Clear previous results
+        searchResultsModel.clear();
+        currentSearchResults.clear();
+
+        // Search products
+        String lowerSearch = searchText.toLowerCase();
+        for (Product product : products) {
+            boolean matches = false;
+
+            if (product.getId() != null && product.getId().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+            if (product.getName() != null && product.getName().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+            if (product.getShortName() != null && product.getShortName().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+
+            if (matches) {
+                currentSearchResults.add(product);
+                String displayText = String.format("%s - %s - %s",
+                    product.getId(),
+                    product.getName(),
+                    product.getShortName() != null ? product.getShortName() : "N/A");
+                searchResultsModel.addElement(displayText);
+            }
+        }
+
+        // Show or hide window based on results
+        if (!currentSearchResults.isEmpty()) {
+            // Position window below text field
+            Point location = txtSearchInput.getLocationOnScreen();
+            int width = txtSearchInput.getWidth();
+            // Show up to 5 items before scrollbar appears (each item ~25px with font 16)
+            int maxVisibleItems = 5;
+            int itemHeight = 25;
+            int maxHeight = maxVisibleItems * itemHeight;
+            int height = Math.min(maxHeight, currentSearchResults.size() * itemHeight);
+
+            searchWindow.setLocation(location.x, location.y + txtSearchInput.getHeight());
+            searchWindow.setSize(width, height);
+            searchWindow.setVisible(true);
+        } else {
+            searchWindow.setVisible(false);
+        }
+    }
+
+    /**
+     * Handle product selection from search results
+     */
+    private void selectProduct(int selectedIndex, JTextField txtSearchInput) {
+        if (selectedIndex < 0 || selectedIndex >= currentSearchResults.size()) {
+            return;
+        }
+
+        Product selectedProduct = currentSearchResults.get(selectedIndex);
+        addProductToInvoice(selectedProduct);
+
+        // Clear search field completely
+        txtSearchInput.setText("");
+        txtSearchInput.setForeground(Color.BLACK);
+
+        // Hide search window
+        searchWindow.setVisible(false);
+    }
+
+    /**
+     * Add product to invoice line table
+     */
+    private void addProductToInvoice(Product product) {
+        // Check if product already exists
+        for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+            String existingId = (String) mdlInvoiceLine.getValueAt(i, 0);
+            if (existingId.equals(product.getId())) {
+                // Increase quantity
+                int currentQty = (int) mdlInvoiceLine.getValueAt(i, 3);
+                mdlInvoiceLine.setValueAt(currentQty + 1, i, 3);
+
+                // Update total
+                double unitPrice = (double) mdlInvoiceLine.getValueAt(i, 4);
+                mdlInvoiceLine.setValueAt((currentQty + 1) * unitPrice, i, 5);
+                return;
+            }
+        }
+
+        // Add new row
+        String unit = "N/A";
+        if (product.getBaseUnitOfMeasure() != null && !product.getBaseUnitOfMeasure().isEmpty()) {
+            unit = product.getBaseUnitOfMeasure();
+        }
+
+        Object[] row = {
+            product.getId(),
+            product.getName(),
+            unit,
+            1,
+            0.0,
+            0.0
+        };
+
+        mdlInvoiceLine.addRow(row);
+
+        // Store product reference in map
+        productMap.put(product.getId(), product);
     }
 
     /**
@@ -142,7 +382,7 @@ public class TAB_Selling extends JFrame {
 
         // Create right panel for invoice
         JPanel pnlRight = new JPanel(new BorderLayout());
-        pnlRight.setBackground(LIGHT_GRAY);
+        pnlRight.setBackground(AppColors.WHITE);
         pnlRight.setMinimumSize(new Dimension(RIGHT_PANEL_MINIMAL_WIDTH, 0));
         pnlRight.add(createInvoice(), BorderLayout.NORTH);
 
@@ -156,20 +396,28 @@ public class TAB_Selling extends JFrame {
         String[] columnHeaders = {"Mã thuốc", "Tên thuốc", "Đơn vị", "Số lượng", "Đơn giá", "Thành tiền"};
 
         mdlInvoiceLine = new DefaultTableModel(columnHeaders, 0) {
-            // Make only "Số lượng" (column 3) and "Đơn giá" (column 4) editable
+            // Make only "Đơn vị" (column 2) and "Số lượng" (column 3) editable
             @Override
             public boolean isCellEditable(int row, int column) {
-                return (column == 3 || column == 4);
+                return (column == 2 || column == 3);
             }
         };
 
         tblInvoiceLine = new JTable(mdlInvoiceLine);
         tblInvoiceLine.setFont(new Font("Arial", Font.PLAIN, 16));
         tblInvoiceLine.getTableHeader().setReorderingAllowed(false);
+        tblInvoiceLine.setRowHeight(35); // Increase row height to accommodate spinner
 
         tblInvoiceLine.getTableHeader().setBackground(AppColors.PRIMARY);
         tblInvoiceLine.getTableHeader().setForeground(Color.WHITE);
         tblInvoiceLine.getTableHeader().setFont(new Font("Arial", Font.BOLD, 16));
+
+        // Set custom cell editor for "Đơn vị" column (column index 2)
+        tblInvoiceLine.getColumnModel().getColumn(2).setCellEditor(new UnitOfMeasureCellEditor());
+
+        // Set custom cell editor and renderer for "Số lượng" column (column index 3)
+        tblInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
+        tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
 
         scrInvoiceLine = new JScrollPane(tblInvoiceLine);
     }
@@ -204,7 +452,7 @@ public class TAB_Selling extends JFrame {
         button.setOpaque(true);
         button.setBackground(Color.WHITE);
         if (text.equalsIgnoreCase("Thanh toán"))
-            button.setBackground(LIGHT_GRAY);
+            button.setBackground(AppColors.WHITE);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         // Add mouse listener for hover and click effects
@@ -222,7 +470,7 @@ public class TAB_Selling extends JFrame {
                 button.setBackground(Color.WHITE);
 
                 if (text.equalsIgnoreCase("Thanh toán"))
-                    button.setBackground(LIGHT_GRAY);
+                    button.setBackground(AppColors.WHITE);
             }
 
             @Override
@@ -233,7 +481,7 @@ public class TAB_Selling extends JFrame {
             @Override
             public void mouseReleased(MouseEvent e) {
                 if (button.contains(e.getPoint())) {
-                    button.setBackground(LIGHT_GRAY);
+                    button.setBackground(AppColors.WHITE);
 
                     if (text.equalsIgnoreCase("Thanh toán"))
                         button.setBackground(Color.WHITE);
@@ -241,7 +489,7 @@ public class TAB_Selling extends JFrame {
                     button.setBackground(Color.WHITE);
 
                     if (text.equalsIgnoreCase("Thanh toán"))
-                        button.setBackground(LIGHT_GRAY);
+                        button.setBackground(AppColors.WHITE);
                 }
             }
         });
@@ -557,6 +805,204 @@ public class TAB_Selling extends JFrame {
      */
     public JComponent $$$getRootComponent$$$() {
         return pnlSelling;
+    }
+
+    /**
+     * Custom cell editor for Unit of Measure column with dropdown
+     */
+    private class UnitOfMeasureCellEditor extends DefaultCellEditor {
+        private JComboBox<String> comboBox;
+        private String currentProductId;
+
+        public UnitOfMeasureCellEditor() {
+            super(new JComboBox<>());
+            comboBox = (JComboBox<String>) getComponent();
+            comboBox.setFont(new Font("Arial", Font.PLAIN, 16));
+
+            // Override the UI to control popup positioning
+            comboBox.setUI(new javax.swing.plaf.basic.BasicComboBoxUI() {
+                @Override
+                protected javax.swing.plaf.basic.ComboPopup createPopup() {
+                    return new javax.swing.plaf.basic.BasicComboPopup(comboBox) {
+                        @Override
+                        public void show() {
+                            // Get the combo box location on screen
+                            Point comboLocation = comboBox.getLocationOnScreen();
+
+                            // Calculate popup dimensions
+                            Dimension popupSize = new Dimension(
+                                comboBox.getWidth(),
+                                getPopupHeightForRowCount(comboBox.getMaximumRowCount())
+                            );
+
+                            // Position directly below the combo box
+                            int x = 0;  // Relative to combo box
+                            int y = comboBox.getHeight();  // Below the combo box
+
+                            // Check if popup would go off-screen
+                            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+                            if (comboLocation.y + comboBox.getHeight() + popupSize.height > screenSize.height) {
+                                // Show above if not enough space below
+                                y = -popupSize.height;
+                            }
+
+                            // Set the popup size
+                            scroller.setMaximumSize(popupSize);
+                            scroller.setPreferredSize(popupSize);
+                            scroller.setMinimumSize(popupSize);
+
+                            // Select the current item
+                            int selectedIndex = comboBox.getSelectedIndex();
+                            if (selectedIndex == -1) {
+                                list.clearSelection();
+                            } else {
+                                list.setSelectedIndex(selectedIndex);
+                                list.ensureIndexIsVisible(selectedIndex);
+                            }
+
+                            // Show the popup at the calculated position
+                            setLightWeightPopupEnabled(comboBox.isLightWeightPopupEnabled());
+                            show(comboBox, x, y);
+                        }
+                    };
+                }
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            // Get the product ID from the current row
+            currentProductId = (String) table.getValueAt(row, 0);
+
+            // Get the product from the map
+            Product product = productMap.get(currentProductId);
+
+            // Clear and repopulate combo box
+            comboBox.removeAllItems();
+
+            if (product != null) {
+                // Add base unit of measure
+                if (product.getBaseUnitOfMeasure() != null && !product.getBaseUnitOfMeasure().isEmpty()) {
+                    comboBox.addItem(product.getBaseUnitOfMeasure());
+                }
+
+                // Add all other units of measure
+                if (product.getUnitOfMeasureList() != null) {
+                    for (UnitOfMeasure uom : product.getUnitOfMeasureList()) {
+                        if (uom.getName() != null && !uom.getName().isEmpty()) {
+                            // Don't add duplicate if it's same as base unit
+                            if (!uom.getName().equals(product.getBaseUnitOfMeasure())) {
+                                comboBox.addItem(uom.getName());
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Set current value
+            if (value != null) {
+                comboBox.setSelectedItem(value);
+            }
+
+            return comboBox;
+        }
+    }
+
+    /**
+     * Custom cell editor for Quantity column with spinner
+     */
+    private class QuantitySpinnerEditor extends DefaultCellEditor {
+        private JSpinner spinner;
+        private SpinnerNumberModel spinnerModel;
+
+        public QuantitySpinnerEditor() {
+            super(new JTextField());
+            spinnerModel = new SpinnerNumberModel(1, 1, 9999, 1);
+            spinner = new JSpinner(spinnerModel);
+            spinner.setFont(new Font("Arial", Font.PLAIN, 16));
+
+            // Make the spinner text field center-aligned
+            JComponent editor = spinner.getEditor();
+            if (editor instanceof JSpinner.DefaultEditor) {
+                JTextField textField = ((JSpinner.DefaultEditor) editor).getTextField();
+                textField.setHorizontalAlignment(JTextField.CENTER);
+                textField.setFont(new Font("Arial", Font.PLAIN, 16));
+            }
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            // Set the current value
+            if (value instanceof Integer) {
+                spinner.setValue(value);
+            } else {
+                spinner.setValue(1);
+            }
+            return spinner;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return spinner.getValue();
+        }
+
+        @Override
+        public boolean stopCellEditing() {
+            try {
+                spinner.commitEdit();
+            } catch (java.text.ParseException e) {
+                // If commit fails, use the current value
+            }
+            return super.stopCellEditing();
+        }
+    }
+
+    /**
+     * Custom cell renderer for Quantity column to always show spinner
+     */
+    private class QuantitySpinnerRenderer implements TableCellRenderer {
+        private final JSpinner spinner;
+
+        public QuantitySpinnerRenderer() {
+            SpinnerNumberModel model = new SpinnerNumberModel(1, 1, 9999, 1);
+            spinner = new JSpinner(model);
+            spinner.setFont(new Font("Arial", Font.PLAIN, 16));
+
+            // Make the spinner text field center-aligned
+            JComponent editor = spinner.getEditor();
+            if (editor instanceof JSpinner.DefaultEditor) {
+                JTextField textField = ((JSpinner.DefaultEditor) editor).getTextField();
+                textField.setHorizontalAlignment(JTextField.CENTER);
+                textField.setFont(new Font("Arial", Font.PLAIN, 16));
+            }
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            // Set the current value
+            if (value instanceof Integer) {
+                spinner.setValue(value);
+            } else {
+                spinner.setValue(1);
+            }
+
+            // Set background color based on selection
+            if (isSelected) {
+                spinner.setBackground(table.getSelectionBackground());
+                JComponent editor = spinner.getEditor();
+                if (editor instanceof JSpinner.DefaultEditor) {
+                    ((JSpinner.DefaultEditor) editor).getTextField().setBackground(table.getSelectionBackground());
+                }
+            } else {
+                spinner.setBackground(table.getBackground());
+                JComponent editor = spinner.getEditor();
+                if (editor instanceof JSpinner.DefaultEditor) {
+                    ((JSpinner.DefaultEditor) editor).getTextField().setBackground(table.getBackground());
+                }
+            }
+
+            return spinner;
+        }
     }
 
     /**

@@ -9,8 +9,8 @@ import com.interfaces.IPromotion;
 
 import java.time.LocalDate;
 import java.util.List;
-/*
-* @author Nguyễn Thanh Khôi
+/**
+ * @author Nguyễn Thanh Khôi
  */
 public class BUS_Promotion implements IPromotion {
 
