@@ -23,6 +23,13 @@ public class Invoice {
     private PaymentMethod paymentMethod;
     private Invoice referencedInvoice;
 
+    public Invoice(InvoiceType type, Staff creator) {
+        this.id = "placeholder-id"; // Placeholder ID, should be replaced with actual ID generation logic
+        this.type = type;
+        this.creationDate = LocalDateTime.now();
+        this.creator = creator;
+    }
+
     public Invoice(String id, InvoiceType type, String notes, Staff creator, String prescriptionCode, PrescribedCustomer prescribedCustomer, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
         this.id = id;
         this.type = type;

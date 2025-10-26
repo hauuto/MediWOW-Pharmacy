@@ -8,8 +8,8 @@ import com.interfaces.IProduct;
 
 import java.util.List;
 
-/*
-    * @author Nguyễn Thanh Khôi
+/**
+ * @author Nguyễn Thanh Khôi
  */
 public class BUS_Product implements IProduct {
 
