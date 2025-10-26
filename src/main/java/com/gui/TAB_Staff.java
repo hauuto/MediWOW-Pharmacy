@@ -51,7 +51,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
-    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
+    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 500;
 
 
     private final BUS_Staff BUSStaff = new BUS_Staff();
@@ -183,7 +183,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         // Center Panel - Split between Table and Form
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        splitPane.setDividerLocation(1200);
         splitPane.setLeftComponent(createTablePanel());
         splitPane.setRightComponent(createFormPanel());
         splitPane.setBorder(null);
