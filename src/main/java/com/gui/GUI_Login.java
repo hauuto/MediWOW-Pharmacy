@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.bus.BUS_Staff;
+import com.entities.Staff;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 
@@ -7,13 +9,15 @@ import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.Locale;
 
-public class GUI_Login {
+public class GUI_Login implements ActionListener {
     private JButton btnLogin;
-    public JPanel pLogin;
-    private JPanel pLeft;
-    private JPanel pRight;
+    public JPanel pnlLogin;
+    private JPanel pnlLeft;
+    private JPanel pnlRight;
     private JLabel lblLogo;
     private JLabel lblBanner;
     private JLabel lblWelcome;
@@ -22,32 +26,148 @@ public class GUI_Login {
     private JTextField txtLogin;
     private JLabel lblPassword;
     private JPasswordField txtPassword;
-    private JPanel pButton;
+    private JPanel pnlButton;
     private JButton btnForgotPassword;
     private JLabel lblFooter;
-    public JPanel panel1;
+
+    private BUS_Staff BUSStaff;
+    private Staff currentStaff;
 
 
     public GUI_Login() {
-        btnLogin.addActionListener(e -> handleLogin());
+        BUSStaff = new BUS_Staff();
+        btnLogin.addActionListener(this);
+        btnForgotPassword.addActionListener(this);
+
+        txtPassword.addActionListener(this);
+
+        txtLogin.addActionListener(e -> txtPassword.requestFocus());
+
+        // For testing purposes, pre-fill with admin credentials
+        txtLogin.setText("admin");
+        txtPassword.setText("admin");
     }
 
     private void handleLogin() {
-        openMainMenu();
+        String username = txtLogin.getText().trim();
+        String password = new String(txtPassword.getPassword());
+
+        // Validate input
+        if (username.isEmpty()) {
+            JOptionPane.showMessageDialog(pnlLogin,
+                    "Vui lòng nhập tên đăng nhập",
+                    "Lỗi đăng nhập",
+                    JOptionPane.WARNING_MESSAGE);
+            txtLogin.requestFocus();
+            return;
+        }
+
+        if (password.isEmpty()) {
+            JOptionPane.showMessageDialog(pnlLogin,
+                    "Vui lòng nhập mật khẩu",
+                    "Lỗi đăng nhập",
+                    JOptionPane.WARNING_MESSAGE);
+            txtPassword.requestFocus();
+            return;
+        }
+
+
+
+
+        if (username.equals("admin") && password.equals("admin")) {
+            currentStaff = new Staff();
+            currentStaff.setFullName("Developer");
+            currentStaff.setUsername("admin");
+
+            JOptionPane.showMessageDialog(pnlLogin,
+                    "Đăng nhập thành công (Chế độ Developer)!\nXin chào, Developer",
+                    "Thành công",
+                    JOptionPane.INFORMATION_MESSAGE);
+            openMainMenu();
+            return;
+        }
+
+        btnLogin.setEnabled(false);
+        btnLogin.setText("Đang đăng nhập...");
+
+        // Use SwingWorker to perform login in background
+        SwingWorker<Staff, Void> worker = new SwingWorker<Staff, Void>() {
+            private String errorMessage = null;
+
+            @Override
+            protected Staff doInBackground() throws Exception {
+                try {
+                    return BUSStaff.login(username, password);
+                } catch (IllegalArgumentException e) {
+                    errorMessage = e.getMessage();
+                    return null;
+                } catch (Exception e) {
+                    errorMessage = "Lỗi kết nối đến cơ sở dữ liệu. Vui lòng thử lại sau.";
+                    e.printStackTrace();
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    currentStaff = get();
+
+                    if (currentStaff != null) {
+                        // Login successful
+                        JOptionPane.showMessageDialog(pnlLogin,
+                                "Đăng nhập thành công!\nXin chào, " + currentStaff.getFullName(),
+                                "Thành công",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        openMainMenu();
+                    } else {
+                        // Login failed
+                        JOptionPane.showMessageDialog(pnlLogin,
+                                errorMessage != null ? errorMessage : "Đăng nhập thất bại",
+                                "Lỗi đăng nhập",
+                                JOptionPane.ERROR_MESSAGE);
+
+                        // Clear password field
+                        txtPassword.setText("");
+                        txtPassword.requestFocus();
+
+                        // Re-enable login button
+                        btnLogin.setEnabled(true);
+                        btnLogin.setText("Đăng nhập");
+                    }
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(pnlLogin,
+                            "Đã xảy ra lỗi không mong muốn",
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
+                    e.printStackTrace();
+
+                    btnLogin.setEnabled(true);
+                    btnLogin.setText("Đăng nhập");
+                }
+            }
+        };
+
+        worker.execute();
     }
 
     private void openMainMenu() {
-        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(pLogin);
+        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(pnlLogin);
         frame.dispose();
 
 
         JFrame mainMenuFrame = new JFrame("MediWOW");
-        mainMenuFrame.setContentPane(new GUI_MainMenu().pnlMainMenu);
+        GUI_MainMenu mainMenu = new GUI_MainMenu(currentStaff);
+        mainMenuFrame.setContentPane(mainMenu.pnlMainMenu);
         mainMenuFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainMenuFrame.setLocationRelativeTo(null);
         mainMenuFrame.setVisible(true);
         mainMenuFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
 
+    }
+
+    public Staff getCurrentStaff() {
+        return currentStaff;
     }
 
 
@@ -66,14 +186,14 @@ public class GUI_Login {
      * @noinspection ALL
      */
     private void $$$setupUI$$$() {
-        pLogin = new JPanel();
-        pLogin.setLayout(new GridBagLayout());
-        pLogin.setBackground(new Color(-2236963));
-        pLogin.setOpaque(false);
-        pLogin.setPreferredSize(new Dimension(1080, 600));
-        pLeft = new JPanel();
-        pLeft.setLayout(new GridBagLayout());
-        pLeft.setBackground(new Color(-2236963));
+        pnlLogin = new JPanel();
+        pnlLogin.setLayout(new GridBagLayout());
+        pnlLogin.setBackground(new Color(-2236963));
+        pnlLogin.setOpaque(false);
+        pnlLogin.setPreferredSize(new Dimension(1080, 600));
+        pnlLeft = new JPanel();
+        pnlLeft.setLayout(new GridBagLayout());
+        pnlLeft.setBackground(new Color(-2236963));
         GridBagConstraints gbc;
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -81,7 +201,7 @@ public class GUI_Login {
         gbc.weightx = 1.0;
         gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
-        pLogin.add(pLeft, gbc);
+        pnlLogin.add(pnlLeft, gbc);
         lblLogo = new JLabel();
         lblLogo.setIcon(new ImageIcon(getClass().getResource("/images/logo.png")));
         lblLogo.setText("");
@@ -90,7 +210,7 @@ public class GUI_Login {
         gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.EAST;
         gbc.ipadx = 200;
-        pLeft.add(lblLogo, gbc);
+        pnlLeft.add(lblLogo, gbc);
         lblBanner = new JLabel();
         lblBanner.setIcon(new ImageIcon(getClass().getResource("/images/login_banner.png")));
         lblBanner.setText("");
@@ -98,18 +218,18 @@ public class GUI_Login {
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.anchor = GridBagConstraints.WEST;
-        pLeft.add(lblBanner, gbc);
-        pRight = new JPanel();
-        pRight.setLayout(new GridBagLayout());
-        pRight.setAutoscrolls(false);
-        pRight.setForeground(new Color(-2236963));
+        pnlLeft.add(lblBanner, gbc);
+        pnlRight = new JPanel();
+        pnlRight.setLayout(new GridBagLayout());
+        pnlRight.setAutoscrolls(false);
+        pnlRight.setForeground(new Color(-2236963));
         gbc = new GridBagConstraints();
         gbc.gridx = 1;
         gbc.gridy = 0;
         gbc.weightx = 1000.0;
         gbc.fill = GridBagConstraints.BOTH;
         gbc.ipady = 20;
-        pLogin.add(pRight, gbc);
+        pnlLogin.add(pnlRight, gbc);
         lblWelcome = new JLabel();
         Font lblWelcomeFont = this.$$$getFont$$$(null, Font.BOLD, 36, lblWelcome.getFont());
         if (lblWelcomeFont != null) lblWelcome.setFont(lblWelcomeFont);
@@ -119,7 +239,7 @@ public class GUI_Login {
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.WEST;
-        pRight.add(lblWelcome, gbc);
+        pnlRight.add(lblWelcome, gbc);
         lblSubWelcome = new JLabel();
         Font lblSubWelcomeFont = this.$$$getFont$$$(null, Font.PLAIN, 20, lblSubWelcome.getFont());
         if (lblSubWelcomeFont != null) lblSubWelcome.setFont(lblSubWelcomeFont);
@@ -130,7 +250,7 @@ public class GUI_Login {
         gbc.gridy = 1;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(20, 0, 50, 0);
-        pRight.add(lblSubWelcome, gbc);
+        pnlRight.add(lblSubWelcome, gbc);
         lblLogin = new JLabel();
         Font lblLoginFont = this.$$$getFont$$$(null, -1, 16, lblLogin.getFont());
         if (lblLoginFont != null) lblLogin.setFont(lblLoginFont);
@@ -141,7 +261,7 @@ public class GUI_Login {
         gbc.gridy = 2;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(0, 0, 10, 0);
-        pRight.add(lblLogin, gbc);
+        pnlRight.add(lblLogin, gbc);
         txtLogin = new JTextField();
         Font txtLoginFont = this.$$$getFont$$$(null, -1, 16, txtLogin.getFont());
         if (txtLoginFont != null) txtLogin.setFont(txtLoginFont);
@@ -153,7 +273,7 @@ public class GUI_Login {
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(0, 0, 20, 0);
-        pRight.add(txtLogin, gbc);
+        pnlRight.add(txtLogin, gbc);
         lblPassword = new JLabel();
         Font lblPasswordFont = this.$$$getFont$$$(null, -1, 16, lblPassword.getFont());
         if (lblPasswordFont != null) lblPassword.setFont(lblPasswordFont);
@@ -164,7 +284,7 @@ public class GUI_Login {
         gbc.gridy = 4;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(0, 0, 10, 0);
-        pRight.add(lblPassword, gbc);
+        pnlRight.add(lblPassword, gbc);
         txtPassword = new JPasswordField();
         txtPassword.setPreferredSize(new Dimension(70, 30));
         txtPassword.setToolTipText("Nhập mật khẩu");
@@ -173,14 +293,14 @@ public class GUI_Login {
         gbc.gridy = 5;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        pRight.add(txtPassword, gbc);
-        pButton = new JPanel();
-        pButton.setLayout(new GridLayoutManager(1, 2, new Insets(30, 0, 0, 0), -1, -1));
+        pnlRight.add(txtPassword, gbc);
+        pnlButton = new JPanel();
+        pnlButton.setLayout(new GridLayoutManager(1, 2, new Insets(30, 0, 0, 0), -1, -1));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 6;
         gbc.fill = GridBagConstraints.BOTH;
-        pRight.add(pButton, gbc);
+        pnlRight.add(pnlButton, gbc);
         btnLogin = new JButton();
         btnLogin.setBackground(new Color(-16012317));
         Font btnLoginFont = this.$$$getFont$$$(null, -1, 16, btnLogin.getFont());
@@ -188,7 +308,7 @@ public class GUI_Login {
         btnLogin.setForeground(new Color(-1286));
         btnLogin.setText("Đăng nhập");
         btnLogin.setToolTipText("Nhấp vào để đăng nhập");
-        pButton.add(btnLogin, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
+        pnlButton.add(btnLogin, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
         btnForgotPassword = new JButton();
         btnForgotPassword.setBackground(new Color(-16012317));
         btnForgotPassword.setDoubleBuffered(true);
@@ -197,7 +317,7 @@ public class GUI_Login {
         btnForgotPassword.setForeground(new Color(-1286));
         btnForgotPassword.setText("Quên mật khẩu");
         btnForgotPassword.setToolTipText("Đặt lại mật khẩu");
-        pButton.add(btnForgotPassword, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
+        pnlButton.add(btnForgotPassword, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 50), null, 0, false));
         lblFooter = new JLabel();
         Font lblFooterFont = this.$$$getFont$$$(null, -1, 16, lblFooter.getFont());
         if (lblFooterFont != null) lblFooter.setFont(lblFooterFont);
@@ -206,7 +326,7 @@ public class GUI_Login {
         gbc.gridx = 0;
         gbc.gridy = 7;
         gbc.insets = new Insets(100, 0, 0, 0);
-        pRight.add(lblFooter, gbc);
+        pnlRight.add(lblFooter, gbc);
         lblLogin.setLabelFor(txtLogin);
         lblPassword.setLabelFor(txtPassword);
     }
@@ -237,7 +357,23 @@ public class GUI_Login {
      * @noinspection ALL
      */
     public JComponent $$$getRootComponent$$$() {
-        return pLogin;
+        return pnlLogin;
     }
 
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        Object o = e.getSource();
+
+        if (o == btnLogin || o == txtPassword) {
+            // Handle login button click or Enter key in password field
+            handleLogin();
+        } else if (o == btnForgotPassword) {
+            // Handle forgot password button click
+            JOptionPane.showMessageDialog(pnlLogin,
+                    "Chức năng đang được phát triển",
+                    "Thông báo",
+                    JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
 }
+

@@ -60,12 +60,34 @@ public class InvoiceLine {
         if (oldestLot == null)
             return 0.0;
 
-        double baseUomSubtotal = oldestLot.getRawPrice() * (1 + product.getVat() / 100) * quantity;
+        double baseUomSubtotal = oldestLot.getRawPrice() * quantity;
 
         if (unitOfMeasure != null) // If the unit of measure is specified (not using base UOM), convert the subtotal
             return baseUomSubtotal * unitOfMeasure.getBasePriceConversionRate();
 
         return baseUomSubtotal;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Calculate the VAT amount for this invoice line.
+     *
+     * @return The VAT amount for this invoice line.
+     */
+    public double calculateVatAmount() {
+        return calculateSubtotal() * (product.getVat() / 100.0);
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Calculate the total amount (subtotal + VAT) for this invoice line.
+     *
+     * @return The total amount for this invoice line.
+     */
+    public double calculateTotalAmount() {
+        return calculateSubtotal() + calculateVatAmount();
     }
 
     @Override

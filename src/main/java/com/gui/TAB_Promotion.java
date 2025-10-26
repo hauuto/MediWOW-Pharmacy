@@ -1,8 +1,10 @@
 package com.gui;
 
 import com.utils.AppColors;
+import com.enums.PromotionEnum;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.Calendar;
@@ -20,6 +22,9 @@ public class TAB_Promotion extends JPanel {
     private DefaultTableModel tableModel;
     private DefaultTableModel condModel;
     private DefaultTableModel actModel;
+
+    private TableModelListener condListener;
+    private TableModelListener actListener;
 
     private JTextField txtCodeField;
     private JTextField txtNameField;
@@ -232,6 +237,24 @@ public class TAB_Promotion extends JPanel {
         ));
 
         JTable table = createEditableTable(model);
+
+        // Set combo box cell editors for enum columns
+        if (model == condModel) {
+            // condModel columns: 0: Mục tiêu (Target), 1: Toán tử (Comp)
+            try {
+                javax.swing.table.TableColumnModel cm = table.getColumnModel();
+                cm.getColumn(0).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Target.values())));
+                cm.getColumn(1).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Comp.values())));
+            } catch (Exception ignored) {}
+        } else if (model == actModel) {
+            // actModel columns: 0: Loại hành động (ActionType), 1: Mục tiêu (Target)
+            try {
+                javax.swing.table.TableColumnModel cm = table.getColumnModel();
+                cm.getColumn(0).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.ActionType.values())));
+                cm.getColumn(1).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Target.values())));
+            } catch (Exception ignored) {}
+        }
+
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(210, 230, 240)));
         scroll.getViewport().setBackground(Color.WHITE);
@@ -249,7 +272,11 @@ public class TAB_Promotion extends JPanel {
         styleTable(table);
 
         table.putClientProperty("terminateEditOnFocusLost", true);
-        model.addTableModelListener(e -> {
+        table.setForeground(Color.BLACK);
+        table.setSelectionForeground(Color.BLACK); // Màu chữ khi cell được chọn
+
+        TableModelListener listener = e -> {
+            if (model.getRowCount() == 0) return; // Tránh lỗi khi bảng rỗng
             int last = model.getRowCount() - 1;
             boolean filled = false;
             for (int c = 0; c < model.getColumnCount(); c++) {
@@ -257,7 +284,12 @@ public class TAB_Promotion extends JPanel {
                 if (val != null && !val.toString().trim().isEmpty()) { filled = true; break; }
             }
             if (filled) model.addRow(new Object[model.getColumnCount()]);
-        });
+        };
+        model.addTableModelListener(listener);
+
+        // Lưu listener để có thể remove sau
+        if (model == condModel) condListener = listener;
+        else if (model == actModel) actListener = listener;
 
         if (model.getRowCount() == 0)
             model.addRow(new Object[model.getColumnCount()]);
@@ -295,8 +327,17 @@ public class TAB_Promotion extends JPanel {
         dpEndDate.setDate(cal.getTime());
         cbTypeField.setSelectedIndex(0);
         cbStatusField.setSelectedIndex(0);
+
+        // Clear và thêm lại dòng trống - tạm remove listener để tránh lỗi
+        if (condListener != null) condModel.removeTableModelListener(condListener);
         condModel.setRowCount(0);
+        condModel.addRow(new Object[condModel.getColumnCount()]);
+        if (condListener != null) condModel.addTableModelListener(condListener);
+
+        if (actListener != null) actModel.removeTableModelListener(actListener);
         actModel.setRowCount(0);
+        actModel.addRow(new Object[actModel.getColumnCount()]);
+        if (actListener != null) actModel.addTableModelListener(actListener);
     }
 
     private void styleTable(JTable table) {
@@ -304,6 +345,7 @@ public class TAB_Promotion extends JPanel {
         table.setShowGrid(true);
         table.setGridColor(new Color(220, 220, 220));
         table.setSelectionBackground(new Color(230, 245, 255));
+        table.setSelectionForeground(Color.BLACK); // Màu chữ khi dòng được chọn
         table.setBackground(Color.WHITE);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.getTableHeader().setBackground(AppColors.PRIMARY);
