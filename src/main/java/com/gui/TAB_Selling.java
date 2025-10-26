@@ -2,11 +2,13 @@ package com.gui;
 
 import com.bus.BUS_Product;
 import com.entities.Product;
+import com.entities.UnitOfMeasure;
 import com.utils.AppColors;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
@@ -18,7 +20,9 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
@@ -28,6 +32,9 @@ public class TAB_Selling extends JFrame {
     private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
 
     private List<Product> products;
+
+    // Map to store product reference for each row (key: product ID)
+    private Map<String, Product> productMap;
 
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
@@ -49,6 +56,7 @@ public class TAB_Selling extends JFrame {
         BUS_Product busProduct = new BUS_Product();
 
         products = busProduct.getAllProducts();
+        productMap = new HashMap<>();
 
         $$$setupUI$$$();
         createSplitPane();
@@ -276,8 +284,8 @@ public class TAB_Selling extends JFrame {
 
         // Add new row
         String unit = "N/A";
-        if (product.getUnitOfMeasureList() != null && !product.getUnitOfMeasureList().isEmpty()) {
-            unit = product.getUnitOfMeasureList().get(0).getName();
+        if (product.getBaseUnitOfMeasure() != null && !product.getBaseUnitOfMeasure().isEmpty()) {
+            unit = product.getBaseUnitOfMeasure();
         }
 
         Object[] row = {
@@ -290,6 +298,9 @@ public class TAB_Selling extends JFrame {
         };
 
         mdlInvoiceLine.addRow(row);
+
+        // Store product reference in map
+        productMap.put(product.getId(), product);
     }
 
     /**
@@ -386,20 +397,28 @@ public class TAB_Selling extends JFrame {
         String[] columnHeaders = {"Mã thuốc", "Tên thuốc", "Đơn vị", "Số lượng", "Đơn giá", "Thành tiền"};
 
         mdlInvoiceLine = new DefaultTableModel(columnHeaders, 0) {
-            // Make only "Số lượng" (column 3) and "Đơn giá" (column 4) editable
+            // Make only "Đơn vị" (column 2) and "Số lượng" (column 3) editable
             @Override
             public boolean isCellEditable(int row, int column) {
-                return (column == 3 || column == 4);
+                return (column == 2 || column == 3);
             }
         };
 
         tblInvoiceLine = new JTable(mdlInvoiceLine);
         tblInvoiceLine.setFont(new Font("Arial", Font.PLAIN, 16));
         tblInvoiceLine.getTableHeader().setReorderingAllowed(false);
+        tblInvoiceLine.setRowHeight(35); // Increase row height to accommodate spinner
 
         tblInvoiceLine.getTableHeader().setBackground(AppColors.PRIMARY);
         tblInvoiceLine.getTableHeader().setForeground(Color.WHITE);
         tblInvoiceLine.getTableHeader().setFont(new Font("Arial", Font.BOLD, 16));
+
+        // Set custom cell editor for "Đơn vị" column (column index 2)
+        tblInvoiceLine.getColumnModel().getColumn(2).setCellEditor(new UnitOfMeasureCellEditor());
+
+        // Set custom cell editor and renderer for "Số lượng" column (column index 3)
+        tblInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
+        tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
 
         scrInvoiceLine = new JScrollPane(tblInvoiceLine);
     }
@@ -787,6 +806,204 @@ public class TAB_Selling extends JFrame {
      */
     public JComponent $$$getRootComponent$$$() {
         return pnlSelling;
+    }
+
+    /**
+     * Custom cell editor for Unit of Measure column with dropdown
+     */
+    private class UnitOfMeasureCellEditor extends DefaultCellEditor {
+        private JComboBox<String> comboBox;
+        private String currentProductId;
+
+        public UnitOfMeasureCellEditor() {
+            super(new JComboBox<>());
+            comboBox = (JComboBox<String>) getComponent();
+            comboBox.setFont(new Font("Arial", Font.PLAIN, 16));
+
+            // Override the UI to control popup positioning
+            comboBox.setUI(new javax.swing.plaf.basic.BasicComboBoxUI() {
+                @Override
+                protected javax.swing.plaf.basic.ComboPopup createPopup() {
+                    return new javax.swing.plaf.basic.BasicComboPopup(comboBox) {
+                        @Override
+                        public void show() {
+                            // Get the combo box location on screen
+                            Point comboLocation = comboBox.getLocationOnScreen();
+
+                            // Calculate popup dimensions
+                            Dimension popupSize = new Dimension(
+                                comboBox.getWidth(),
+                                getPopupHeightForRowCount(comboBox.getMaximumRowCount())
+                            );
+
+                            // Position directly below the combo box
+                            int x = 0;  // Relative to combo box
+                            int y = comboBox.getHeight();  // Below the combo box
+
+                            // Check if popup would go off-screen
+                            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+                            if (comboLocation.y + comboBox.getHeight() + popupSize.height > screenSize.height) {
+                                // Show above if not enough space below
+                                y = -popupSize.height;
+                            }
+
+                            // Set the popup size
+                            scroller.setMaximumSize(popupSize);
+                            scroller.setPreferredSize(popupSize);
+                            scroller.setMinimumSize(popupSize);
+
+                            // Select the current item
+                            int selectedIndex = comboBox.getSelectedIndex();
+                            if (selectedIndex == -1) {
+                                list.clearSelection();
+                            } else {
+                                list.setSelectedIndex(selectedIndex);
+                                list.ensureIndexIsVisible(selectedIndex);
+                            }
+
+                            // Show the popup at the calculated position
+                            setLightWeightPopupEnabled(comboBox.isLightWeightPopupEnabled());
+                            show(comboBox, x, y);
+                        }
+                    };
+                }
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            // Get the product ID from the current row
+            currentProductId = (String) table.getValueAt(row, 0);
+
+            // Get the product from the map
+            Product product = productMap.get(currentProductId);
+
+            // Clear and repopulate combo box
+            comboBox.removeAllItems();
+
+            if (product != null) {
+                // Add base unit of measure
+                if (product.getBaseUnitOfMeasure() != null && !product.getBaseUnitOfMeasure().isEmpty()) {
+                    comboBox.addItem(product.getBaseUnitOfMeasure());
+                }
+
+                // Add all other units of measure
+                if (product.getUnitOfMeasureList() != null) {
+                    for (UnitOfMeasure uom : product.getUnitOfMeasureList()) {
+                        if (uom.getName() != null && !uom.getName().isEmpty()) {
+                            // Don't add duplicate if it's same as base unit
+                            if (!uom.getName().equals(product.getBaseUnitOfMeasure())) {
+                                comboBox.addItem(uom.getName());
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Set current value
+            if (value != null) {
+                comboBox.setSelectedItem(value);
+            }
+
+            return comboBox;
+        }
+    }
+
+    /**
+     * Custom cell editor for Quantity column with spinner
+     */
+    private class QuantitySpinnerEditor extends DefaultCellEditor {
+        private JSpinner spinner;
+        private SpinnerNumberModel spinnerModel;
+
+        public QuantitySpinnerEditor() {
+            super(new JTextField());
+            spinnerModel = new SpinnerNumberModel(1, 1, 9999, 1);
+            spinner = new JSpinner(spinnerModel);
+            spinner.setFont(new Font("Arial", Font.PLAIN, 16));
+
+            // Make the spinner text field center-aligned
+            JComponent editor = spinner.getEditor();
+            if (editor instanceof JSpinner.DefaultEditor) {
+                JTextField textField = ((JSpinner.DefaultEditor) editor).getTextField();
+                textField.setHorizontalAlignment(JTextField.CENTER);
+                textField.setFont(new Font("Arial", Font.PLAIN, 16));
+            }
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            // Set the current value
+            if (value instanceof Integer) {
+                spinner.setValue(value);
+            } else {
+                spinner.setValue(1);
+            }
+            return spinner;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return spinner.getValue();
+        }
+
+        @Override
+        public boolean stopCellEditing() {
+            try {
+                spinner.commitEdit();
+            } catch (java.text.ParseException e) {
+                // If commit fails, use the current value
+            }
+            return super.stopCellEditing();
+        }
+    }
+
+    /**
+     * Custom cell renderer for Quantity column to always show spinner
+     */
+    private class QuantitySpinnerRenderer implements TableCellRenderer {
+        private final JSpinner spinner;
+
+        public QuantitySpinnerRenderer() {
+            SpinnerNumberModel model = new SpinnerNumberModel(1, 1, 9999, 1);
+            spinner = new JSpinner(model);
+            spinner.setFont(new Font("Arial", Font.PLAIN, 16));
+
+            // Make the spinner text field center-aligned
+            JComponent editor = spinner.getEditor();
+            if (editor instanceof JSpinner.DefaultEditor) {
+                JTextField textField = ((JSpinner.DefaultEditor) editor).getTextField();
+                textField.setHorizontalAlignment(JTextField.CENTER);
+                textField.setFont(new Font("Arial", Font.PLAIN, 16));
+            }
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            // Set the current value
+            if (value instanceof Integer) {
+                spinner.setValue(value);
+            } else {
+                spinner.setValue(1);
+            }
+
+            // Set background color based on selection
+            if (isSelected) {
+                spinner.setBackground(table.getSelectionBackground());
+                JComponent editor = spinner.getEditor();
+                if (editor instanceof JSpinner.DefaultEditor) {
+                    ((JSpinner.DefaultEditor) editor).getTextField().setBackground(table.getSelectionBackground());
+                }
+            } else {
+                spinner.setBackground(table.getBackground());
+                JComponent editor = spinner.getEditor();
+                if (editor instanceof JSpinner.DefaultEditor) {
+                    ((JSpinner.DefaultEditor) editor).getTextField().setBackground(table.getBackground());
+                }
+            }
+
+            return spinner;
+        }
     }
 
     /**
