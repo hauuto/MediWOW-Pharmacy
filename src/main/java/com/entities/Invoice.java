@@ -23,6 +23,13 @@ public class Invoice {
     private PaymentMethod paymentMethod;
     private Invoice referencedInvoice;
 
+    public Invoice(InvoiceType type, Staff creator) {
+        this.id = "placeholder-id"; // Placeholder ID, should be replaced with actual ID generation logic
+        this.type = type;
+        this.creationDate = LocalDateTime.now();
+        this.creator = creator;
+    }
+
     public Invoice(String id, InvoiceType type, String notes, Staff creator, String prescriptionCode, PrescribedCustomer prescribedCustomer, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
         this.id = id;
         this.type = type;
@@ -221,14 +228,14 @@ public class Invoice {
 
         double discount = calculateSubtotalWithVat();
         List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
-                .sorted((a, b) -> Integer.compare(a.getOrder(), b.getOrder()))
+                .sorted((a, b) -> Integer.compare(a.getActionOrder(), b.getActionOrder()))
                 .toList();
 
         for (PromotionAction action : sortedActionOrderList) {
             if (action.getType().equals(PromotionEnum.ActionType.FIXED_DISCOUNT))
-                discount -= action.getValue();
+                discount -= action.getPrimaryValue();
             else if (action.getType().equals(PromotionEnum.ActionType.PERCENT_DISCOUNT))
-                discount -= discount * (action.getValue() / 100);
+                discount -= discount * (action.getPrimaryValue() / 100);
         }
 
         return calculateSubtotalWithVat() - discount;
