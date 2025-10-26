@@ -1,5 +1,3 @@
-
-
 -- Trigger to auto-generate Staff ID based on role --
 -- Author: To Thanh Hau--
 -- SEQUENCE to prevent ID conflicts among different roles, using when there are many inserts staff on one time --
@@ -41,14 +39,24 @@ INSTEAD OF INSERT
 
         DECLARE @CurrenYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
 
+        -- Generate ID for MANAGER
         UPDATE @StaffToInsert
         SET id = 'MAN' + @CurrenYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.ManagerSeg AS NVARCHAR(4)),4)
         WHERE role = 'MANAGER';
 
+        -- Generate ID for PHARMACIST
         UPDATE @StaffToInsert
         SET id = 'PHA' + @CurrenYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.PharmacistSeg AS NVARCHAR(4)),4)
         WHERE role = 'PHARMACIST';
 
+
+        UPDATE @StaffToInsert
+        SET username = CASE
+            WHEN LEFT(id, 3) = 'MAN' THEN 'quanly' + SUBSTRING(id, 6, 2) + RIGHT(id, 4)
+            WHEN LEFT(id, 3) = 'PHA' THEN 'nhanvien' + SUBSTRING(id, 6, 2) + RIGHT(id, 4)
+            ELSE username
+        END
+        WHERE username IS NULL OR username = '';
 
         INSERT INTO Staff (id, username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role)
         SELECT
@@ -89,6 +97,3 @@ GO
 
 
 --
-
-
-

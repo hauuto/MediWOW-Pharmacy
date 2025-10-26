@@ -121,6 +121,27 @@ public class DAO_Staff implements IStaff {
     }
 
     @Override
+    public Staff getStaffByEmail(String email) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Query<Staff> query = session.createQuery(
+                "FROM Staff s WHERE s.email = :email",
+                Staff.class);
+            query.setParameter("email", email);
+            return query.uniqueResult();
+
+        }catch (Exception e){
+            e.printStackTrace();
+            return null;
+        }finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
     public boolean existsByUsername(String username) {
         Session session = null;
         try {

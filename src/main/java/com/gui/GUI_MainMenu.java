@@ -93,25 +93,23 @@ public class GUI_MainMenu implements ActionListener {
         pnlMain.add(staffTab.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
 
-        cbbOption.addActionListener(e -> {
-            if (cbbOption.getSelectedIndex() == 1) {
-                JDialog changePasswordDialog = new DIALOG_ChangePassword();
-                changePasswordDialog.setTitle("Đổi mật khẩu");
-                changePasswordDialog.setSize(600, 300);
-                changePasswordDialog.setLocationRelativeTo(pnlMainMenu);
-                changePasswordDialog.setResizable(false);
-                changePasswordDialog.setVisible(true);
-                cbbOption.setSelectedIndex(0);
-            }
-        });
-
-        // Update combobox with staff name
+        // Update combobox with staff name BEFORE adding listener
         if (currentStaff != null) {
             DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) cbbOption.getModel();
             model.removeElementAt(0);
             model.insertElementAt("Xin chào, " + currentStaff.getFullName(), 0);
             cbbOption.setSelectedIndex(0);
         }
+
+        // Add ActionListener AFTER updating the combobox to prevent triggering during initialization
+        cbbOption.addActionListener(e -> {
+            if (cbbOption.getSelectedIndex() == 1) {
+                JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                DIALOG_ChangePassword changePasswordDialog = new DIALOG_ChangePassword(parentFrame, currentStaff);
+                changePasswordDialog.setVisible(true);
+                cbbOption.setSelectedIndex(0);
+            }
+        });
 
         setActiveButton(btnHome);
         cardLayout.show(pnlMain, "dashboard");
