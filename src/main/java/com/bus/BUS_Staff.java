@@ -42,12 +42,13 @@ public class BUS_Staff implements IStaff {
         s.setPassword(hashedPassword);
 
         boolean created = DAOStaff.addStaff(s);
+        Staff staff = getStaffByEmail(s.getEmail());
 
 
         if (created) {
             String email = s.getEmail();
             if (email != null && !email.trim().isEmpty()) {
-                emailUltil.sendPasswordEmail(email,s.getFullName(),s.getUsername(),password);
+                emailUltil.sendPasswordEmail(email,staff.getFullName(),staff.getUsername(),password);
 
             }
 
@@ -95,6 +96,11 @@ public class BUS_Staff implements IStaff {
     @Override
     public Staff getStaffByUsername(String username) {
         return DAOStaff.getStaffByUsername(username);
+    }
+
+    @Override
+    public Staff getStaffByEmail(String email) {
+        return DAOStaff.getStaffByEmail(email);
     }
 
     public Staff login(String username, String password) {
@@ -228,9 +234,6 @@ public class BUS_Staff implements IStaff {
             throw new IllegalArgumentException("Họ và tên không được để trống");
         }
 
-        if (s.getUsername() == null || s.getUsername().trim().isEmpty()){
-            throw new IllegalArgumentException("Tên đăng nhập không được để trống");
-        }
 
         boolean hasPhoneNumber = s.getPhoneNumber() != null && !s.getPhoneNumber().trim().isEmpty();
         boolean hasEmail = s.getEmail() != null && !s.getEmail().trim().isEmpty();
@@ -244,5 +247,58 @@ public class BUS_Staff implements IStaff {
         }
     }
 
+
+    public boolean changePassword(Staff staff, String oldPassword, String newPassword) {
+        // Validate inputs
+        if (staff == null || staff.getId() == null || staff.getId().trim().isEmpty()) {
+            throw new IllegalArgumentException("Không tìm thấy thông tin nhân viên");
+        }
+
+        if (oldPassword == null || oldPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập mật khẩu cũ");
+        }
+
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập mật khẩu mới");
+        }
+
+        if (newPassword.length() < 6) {
+            throw new IllegalArgumentException("Mật khẩu mới phải có ít nhất 6 ký tự");
+        }
+
+        // Verify old password
+        if (!PasswordUtil.verifyPassword(oldPassword, staff.getPassword())) {
+            throw new IllegalArgumentException("Mật khẩu cũ không chính xác");
+        }
+
+        // Check if new password is same as old password
+        if (oldPassword.equals(newPassword)) {
+            throw new IllegalArgumentException("Mật khẩu mới không được trùng với mật khẩu cũ");
+        }
+
+        // Hash new password
+        String hashedPassword = PasswordUtil.hashPassword(newPassword);
+        staff.setPassword(hashedPassword);
+
+        // Update in database
+        boolean success = DAOStaff.updateStaff(staff);
+        
+        if (!success) {
+            throw new RuntimeException("Đổi mật khẩu thất bại! Vui lòng thử lại");
+        }
+
+        return true;
+    }
+
+
+    public boolean isUsingTemporaryPassword(Staff staff, String plainPassword) {
+        // Only non-MANAGER staff need to change password on first login
+        if (staff.getRole() == com.enums.Role.MANAGER) {
+            return false;
+        }
+
+        // Use PasswordUtil to check if password matches temporary password format
+        return PasswordUtil.isTemporaryPassword(plainPassword);
+    }
 
 }
