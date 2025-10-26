@@ -1,6 +1,6 @@
 package com.gui;
 
-import com.dao.DAO_Staff;
+import com.bus.BUS_Staff;
 import com.entities.Staff;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -24,12 +24,12 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
     private JLabel lblConfirmPassword;
     private JLabel lblTitle;
     private Staff currentStaff;
-    private DAO_Staff daoStaff;
+    private BUS_Staff busStaff;
 
     public DIALOG_ChangePassword(Frame parent, Staff staff) {
         super(parent, "Đổi mật khẩu", true);
         this.currentStaff = staff;
-        this.daoStaff = new DAO_Staff();
+        this.busStaff = new BUS_Staff();
         initComponents();
         setupUI();
     }
@@ -212,7 +212,7 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
         String confirmPassword = new String(confirmPass);
 
         try {
-            // Validate inputs
+            // Basic UI validation
             if (oldPassword.isEmpty()) {
                 showError("Vui lòng nhập mật khẩu cũ!");
                 txtOldPassword.requestFocus();
@@ -231,30 +231,7 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
                 return;
             }
 
-            // Validate old password
-            if (!oldPassword.equals(currentStaff.getPassword())) {
-                showError("Mật khẩu cũ không chính xác!");
-                txtOldPassword.setText("");
-                txtOldPassword.requestFocus();
-                return;
-            }
-
-            // Validate new password
-            if (newPassword.length() < 6) {
-                showError("Mật khẩu mới phải có ít nhất 6 ký tự!");
-                txtNewPassword.requestFocus();
-                return;
-            }
-
-            // Check if new password is same as old password
-            if (oldPassword.equals(newPassword)) {
-                showError("Mật khẩu mới không được trùng với mật khẩu cũ!");
-                txtNewPassword.setText("");
-                txtNewPassword.requestFocus();
-                return;
-            }
-
-            // Validate password confirmation
+            // Check password confirmation match
             if (!newPassword.equals(confirmPassword)) {
                 showError("Xác nhận mật khẩu không khớp!");
                 txtConfirmPassword.setText("");
@@ -262,9 +239,9 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
                 return;
             }
 
-            // Update password
-            currentStaff.setPassword(newPassword);
-            boolean success = daoStaff.updateStaff(currentStaff);
+            // Call BUS layer to handle validation and password change
+            // BUS will handle: old password verification, new password validation, hashing, and database update
+            boolean success = busStaff.changePassword(currentStaff, oldPassword, newPassword);
 
             if (success) {
                 JOptionPane.showMessageDialog(
@@ -274,14 +251,24 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
                         JOptionPane.INFORMATION_MESSAGE
                 );
                 dispose();
-            } else {
-                showError("Đổi mật khẩu thất bại! Vui lòng thử lại.");
             }
 
         } catch (IllegalArgumentException ex) {
+            // Handle validation errors from BUS layer
             showError(ex.getMessage());
+
+            // Clear and focus appropriate field based on error message
+            if (ex.getMessage().contains("mật khẩu cũ")) {
+                txtOldPassword.setText("");
+                txtOldPassword.requestFocus();
+            } else if (ex.getMessage().contains("mật khẩu mới")) {
+                txtNewPassword.setText("");
+                txtNewPassword.requestFocus();
+            }
+        } catch (Exception ex) {
+            showError("Đã xảy ra lỗi: " + ex.getMessage());
         } finally {
-            // Clear sensitive data
+            // Clear sensitive data from memory
             Arrays.fill(oldPass, '0');
             Arrays.fill(newPass, '0');
             Arrays.fill(confirmPass, '0');
@@ -315,7 +302,7 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
         SwingUtilities.invokeLater(() -> {
             // Create a test staff for demonstration
             Staff testStaff = new Staff();
-            testStaff.setPassword("123456");
+            testStaff.setPassword("$2a$12$hashed_password_here"); // BCrypt hash example
             testStaff.setUsername("admin");
             testStaff.setFullName("Test User");
 

@@ -244,5 +244,54 @@ public class BUS_Staff implements IStaff {
         }
     }
 
+    /**
+     * Change password for a staff member with validation and hashing
+     * @param staff The staff member whose password needs to be changed
+     * @param oldPassword The current password (plain text)
+     * @param newPassword The new password (plain text)
+     * @return true if password was changed successfully
+     * @throws IllegalArgumentException if validation fails
+     */
+    public boolean changePassword(Staff staff, String oldPassword, String newPassword) {
+        // Validate inputs
+        if (staff == null || staff.getId() == null || staff.getId().trim().isEmpty()) {
+            throw new IllegalArgumentException("Không tìm thấy thông tin nhân viên");
+        }
+
+        if (oldPassword == null || oldPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập mật khẩu cũ");
+        }
+
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập mật khẩu mới");
+        }
+
+        if (newPassword.length() < 6) {
+            throw new IllegalArgumentException("Mật khẩu mới phải có ít nhất 6 ký tự");
+        }
+
+        // Verify old password
+        if (!PasswordUtil.verifyPassword(oldPassword, staff.getPassword())) {
+            throw new IllegalArgumentException("Mật khẩu cũ không chính xác");
+        }
+
+        // Check if new password is same as old password
+        if (oldPassword.equals(newPassword)) {
+            throw new IllegalArgumentException("Mật khẩu mới không được trùng với mật khẩu cũ");
+        }
+
+        // Hash new password
+        String hashedPassword = PasswordUtil.hashPassword(newPassword);
+        staff.setPassword(hashedPassword);
+
+        // Update in database
+        boolean success = DAOStaff.updateStaff(staff);
+        
+        if (!success) {
+            throw new RuntimeException("Đổi mật khẩu thất bại! Vui lòng thử lại");
+        }
+
+        return true;
+    }
 
 }
