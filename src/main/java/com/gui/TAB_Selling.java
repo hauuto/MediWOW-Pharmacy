@@ -17,6 +17,7 @@ import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TAB_Selling extends JFrame {
@@ -87,9 +88,9 @@ public class TAB_Selling extends JFrame {
         // Initialize search results
         searchResultsModel = new DefaultListModel<>();
         searchResultsList = new JList<>(searchResultsModel);
-        searchResultsList.setFont(new Font("Arial", Font.PLAIN, 14));
+        searchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
         searchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        currentSearchResults = new java.util.ArrayList<>();
+        currentSearchResults = new ArrayList<>();
 
         // Create a JWindow for dropdown (more stable than JPopupMenu)
         searchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
@@ -221,7 +222,11 @@ public class TAB_Selling extends JFrame {
             // Position window below text field
             Point location = txtSearchInput.getLocationOnScreen();
             int width = txtSearchInput.getWidth();
-            int height = Math.min(200, currentSearchResults.size() * 20 + 5);
+            // Show up to 5 items before scrollbar appears (each item ~25px with font 16)
+            int maxVisibleItems = 5;
+            int itemHeight = 25;
+            int maxHeight = maxVisibleItems * itemHeight;
+            int height = Math.min(maxHeight, currentSearchResults.size() * itemHeight);
 
             searchWindow.setLocation(location.x, location.y + txtSearchInput.getHeight());
             searchWindow.setSize(width, height);
@@ -242,9 +247,9 @@ public class TAB_Selling extends JFrame {
         Product selectedProduct = currentSearchResults.get(selectedIndex);
         addProductToInvoice(selectedProduct);
 
-        // Clear search field and reset placeholder
-        txtSearchInput.setText("Nhập mã/tên/tên rút gọn của thuốc...");
-        txtSearchInput.setForeground(Color.GRAY);
+        // Clear search field completely
+        txtSearchInput.setText("");
+        txtSearchInput.setForeground(Color.BLACK);
 
         // Hide search window
         searchWindow.setVisible(false);
