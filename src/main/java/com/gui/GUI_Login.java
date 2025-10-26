@@ -71,9 +71,6 @@ public class GUI_Login implements ActionListener {
             return;
         }
 
-
-
-
         if (username.equals("admin") && password.equals("admin")) {
             currentStaff = new Staff();
             currentStaff.setFullName("Developer");
@@ -83,12 +80,15 @@ public class GUI_Login implements ActionListener {
                     "Đăng nhập thành công (Chế độ Developer)!\nXin chào, Developer",
                     "Thành công",
                     JOptionPane.INFORMATION_MESSAGE);
-            openMainMenu();
+            openMainMenu(password);
             return;
         }
 
         btnLogin.setEnabled(false);
         btnLogin.setText("Đang đăng nhập...");
+
+        // Store password for temporary password check
+        final String loginPassword = password;
 
         // Use SwingWorker to perform login in background
         SwingWorker<Staff, Void> worker = new SwingWorker<Staff, Void>() {
@@ -97,7 +97,7 @@ public class GUI_Login implements ActionListener {
             @Override
             protected Staff doInBackground() throws Exception {
                 try {
-                    return BUSStaff.login(username, password);
+                    return BUSStaff.login(username, loginPassword);
                 } catch (IllegalArgumentException e) {
                     errorMessage = e.getMessage();
                     return null;
@@ -119,7 +119,7 @@ public class GUI_Login implements ActionListener {
                                 "Đăng nhập thành công!\nXin chào, " + currentStaff.getFullName(),
                                 "Thành công",
                                 JOptionPane.INFORMATION_MESSAGE);
-                        openMainMenu();
+                        openMainMenu(loginPassword);
                     } else {
                         // Login failed
                         JOptionPane.showMessageDialog(pnlLogin,
@@ -151,11 +151,33 @@ public class GUI_Login implements ActionListener {
         worker.execute();
     }
 
-    private void openMainMenu() {
-        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(pnlLogin);
-        frame.dispose();
+    private void openMainMenu(String plainPassword) {
+        JFrame loginFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlLogin);
 
+        // Check if staff is using temporary password (first login)
+        // This checks the password pattern without needing a database column
+        if (BUSStaff.isUsingTemporaryPassword(currentStaff, plainPassword)) {
+            // Show mandatory password change dialog
+            DIALOG_ChangePassword changePasswordDialog = new DIALOG_ChangePassword(loginFrame, currentStaff, true);
+            changePasswordDialog.setVisible(true);
 
+            // Check if password was actually changed using the dialog's flag
+            if (!changePasswordDialog.isPasswordChanged()) {
+                // User closed dialog without changing password
+                JOptionPane.showMessageDialog(
+                        pnlLogin,
+                        "Bạn phải đổi mật khẩu lần đầu để sử dụng hệ thống!",
+                        "Yêu cầu đổi mật khẩu",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+        }
+
+        // Close login frame
+        loginFrame.dispose();
+
+        // Open main menu
         JFrame mainMenuFrame = new JFrame("MediWOW");
         GUI_MainMenu mainMenu = new GUI_MainMenu(currentStaff);
         mainMenuFrame.setContentPane(mainMenu.pnlMainMenu);
@@ -163,7 +185,6 @@ public class GUI_Login implements ActionListener {
         mainMenuFrame.setLocationRelativeTo(null);
         mainMenuFrame.setVisible(true);
         mainMenuFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
-
     }
 
     public Staff getCurrentStaff() {

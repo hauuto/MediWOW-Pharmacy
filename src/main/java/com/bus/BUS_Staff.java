@@ -294,4 +294,21 @@ public class BUS_Staff implements IStaff {
         return true;
     }
 
+    /**
+     * Check if staff is using temporary/first-time password
+     * Temporary passwords have format: TmpXXXXX (8 characters starting with "Tmp")
+     * @param staff The staff to check
+     * @param plainPassword The plain text password used to login
+     * @return true if this is a temporary password (first login)
+     */
+    public boolean isUsingTemporaryPassword(Staff staff, String plainPassword) {
+        // Only non-MANAGER staff need to change password on first login
+        if (staff.getRole() == com.enums.Role.MANAGER) {
+            return false;
+        }
+
+        // Use PasswordUtil to check if password matches temporary password format
+        return PasswordUtil.isTemporaryPassword(plainPassword);
+    }
+
 }

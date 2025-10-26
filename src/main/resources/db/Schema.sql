@@ -162,6 +162,3 @@ CREATE INDEX idx_promotionaction_promotion ON PromotionAction(promotion);
 CREATE INDEX idx_promotion_effectiveDate ON Promotion(effectiveDate);
 CREATE INDEX idx_promotion_endDate ON Promotion(endDate);
 CREATE INDEX idx_promotion_isActive ON Promotion(isActive);
-
-
-

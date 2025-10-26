@@ -25,11 +25,18 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
     private JLabel lblTitle;
     private Staff currentStaff;
     private BUS_Staff busStaff;
+    private boolean isFirstLogin;
+    private boolean passwordChanged = false;
 
     public DIALOG_ChangePassword(Frame parent, Staff staff) {
+        this(parent, staff, false);
+    }
+
+    public DIALOG_ChangePassword(Frame parent, Staff staff, boolean isFirstLogin) {
         super(parent, "Đổi mật khẩu", true);
         this.currentStaff = staff;
         this.busStaff = new BUS_Staff();
+        this.isFirstLogin = isFirstLogin;
         initComponents();
         setupUI();
     }
@@ -37,7 +44,7 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
     private void initComponents() {
         // Initialize components
         contentPane = new JPanel();
-        lblTitle = new JLabel("ĐỔI MẬT KHẨU");
+        lblTitle = new JLabel(isFirstLogin ? "ĐỔI MẬT KHẨU LẦN ĐẦU" : "ĐỔI MẬT KHẨU");
         lblOldPassword = new JLabel("Mật khẩu cũ:");
         lblNewPassword = new JLabel("Mật khẩu mới:");
         lblConfirmPassword = new JLabel("Xác nhận mật khẩu:");
@@ -157,29 +164,46 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
         btnCancel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         pnlButton.add(btnOK);
-        pnlButton.add(btnCancel);
+
+        // Only add Cancel button if NOT first login (first login is mandatory)
+        if (!isFirstLogin) {
+            pnlButton.add(btnCancel);
+        }
 
         contentPane.add(pnlButton, BorderLayout.SOUTH);
 
         // Set content pane and dialog properties
         setContentPane(contentPane);
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+
+        // If first login, prevent closing without changing password
+        if (isFirstLogin) {
+            setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        } else {
+            setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        }
+
         getRootPane().setDefaultButton(btnOK);
 
-        // Window listener
+        // Window listener - only allow closing if not first login
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                onCancel();
+                if (!isFirstLogin) {
+                    onCancel();
+                } else {
+                    showError("Bạn phải đổi mật khẩu để tiếp tục sử dụng hệ thống!");
+                }
             }
         });
 
-        // ESC key listener
-        contentPane.registerKeyboardAction(
-                e -> onCancel(),
-                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
-                JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT
-        );
+        // ESC key listener - only allow ESC if not first login
+        if (!isFirstLogin) {
+            contentPane.registerKeyboardAction(
+                    e -> onCancel(),
+                    KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                    JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT
+            );
+        }
 
         // Set dialog size and location
         pack();
@@ -244,6 +268,7 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
             boolean success = busStaff.changePassword(currentStaff, oldPassword, newPassword);
 
             if (success) {
+                passwordChanged = true; // Mark password as changed
                 JOptionPane.showMessageDialog(
                         this,
                         "Đổi mật khẩu thành công!",
@@ -290,6 +315,15 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
                 "Lỗi",
                 JOptionPane.ERROR_MESSAGE
         );
+    }
+
+    /**
+     * Check if password was successfully changed
+     *
+     * @return true if password was changed
+     */
+    public boolean isPasswordChanged() {
+        return passwordChanged;
     }
 
     public static void main(String[] args) {
