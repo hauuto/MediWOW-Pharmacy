@@ -1,17 +1,16 @@
 package com.gui;
 
+import com.dao.DAO_Staff;
+import com.entities.Staff;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.utils.AppColors;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.FontUIResource;
-import javax.swing.text.StyleContext;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Arrays;
-import java.util.Locale;
 
 public class DIALOG_ChangePassword extends JDialog implements ActionListener {
     private JPanel contentPane;
@@ -24,9 +23,13 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
     private JLabel lblNewPassword;
     private JLabel lblConfirmPassword;
     private JLabel lblTitle;
+    private Staff currentStaff;
+    private DAO_Staff daoStaff;
 
-    public DIALOG_ChangePassword(Frame parent) {
+    public DIALOG_ChangePassword(Frame parent, Staff staff) {
         super(parent, "Đổi mật khẩu", true);
+        this.currentStaff = staff;
+        this.daoStaff = new DAO_Staff();
         initComponents();
         setupUI();
     }
@@ -199,17 +202,90 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
     }
 
     private void onOK() {
-        // TODO: Add validation and password change logic here
+        // Get password values
         char[] oldPass = txtOldPassword.getPassword();
         char[] newPass = txtNewPassword.getPassword();
         char[] confirmPass = txtConfirmPassword.getPassword();
 
-        // Clear sensitive data
-        Arrays.fill(oldPass, '0');
-        Arrays.fill(newPass, '0');
-        Arrays.fill(confirmPass, '0');
+        String oldPassword = new String(oldPass);
+        String newPassword = new String(newPass);
+        String confirmPassword = new String(confirmPass);
 
-        dispose();
+        try {
+            // Validate inputs
+            if (oldPassword.isEmpty()) {
+                showError("Vui lòng nhập mật khẩu cũ!");
+                txtOldPassword.requestFocus();
+                return;
+            }
+
+            if (newPassword.isEmpty()) {
+                showError("Vui lòng nhập mật khẩu mới!");
+                txtNewPassword.requestFocus();
+                return;
+            }
+
+            if (confirmPassword.isEmpty()) {
+                showError("Vui lòng xác nhận mật khẩu mới!");
+                txtConfirmPassword.requestFocus();
+                return;
+            }
+
+            // Validate old password
+            if (!oldPassword.equals(currentStaff.getPassword())) {
+                showError("Mật khẩu cũ không chính xác!");
+                txtOldPassword.setText("");
+                txtOldPassword.requestFocus();
+                return;
+            }
+
+            // Validate new password
+            if (newPassword.length() < 6) {
+                showError("Mật khẩu mới phải có ít nhất 6 ký tự!");
+                txtNewPassword.requestFocus();
+                return;
+            }
+
+            // Check if new password is same as old password
+            if (oldPassword.equals(newPassword)) {
+                showError("Mật khẩu mới không được trùng với mật khẩu cũ!");
+                txtNewPassword.setText("");
+                txtNewPassword.requestFocus();
+                return;
+            }
+
+            // Validate password confirmation
+            if (!newPassword.equals(confirmPassword)) {
+                showError("Xác nhận mật khẩu không khớp!");
+                txtConfirmPassword.setText("");
+                txtConfirmPassword.requestFocus();
+                return;
+            }
+
+            // Update password
+            currentStaff.setPassword(newPassword);
+            boolean success = daoStaff.updateStaff(currentStaff);
+
+            if (success) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Đổi mật khẩu thành công!",
+                        "Thành công",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+                dispose();
+            } else {
+                showError("Đổi mật khẩu thất bại! Vui lòng thử lại.");
+            }
+
+        } catch (IllegalArgumentException ex) {
+            showError(ex.getMessage());
+        } finally {
+            // Clear sensitive data
+            Arrays.fill(oldPass, '0');
+            Arrays.fill(newPass, '0');
+            Arrays.fill(confirmPass, '0');
+        }
     }
 
     private void onCancel() {
@@ -220,6 +296,15 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
         dispose();
     }
 
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(
+                this,
+                message,
+                "Lỗi",
+                JOptionPane.ERROR_MESSAGE
+        );
+    }
+
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -228,7 +313,13 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
         }
 
         SwingUtilities.invokeLater(() -> {
-            DIALOG_ChangePassword dialog = new DIALOG_ChangePassword(null);
+            // Create a test staff for demonstration
+            Staff testStaff = new Staff();
+            testStaff.setPassword("123456");
+            testStaff.setUsername("admin");
+            testStaff.setFullName("Test User");
+
+            DIALOG_ChangePassword dialog = new DIALOG_ChangePassword(null, testStaff);
             dialog.setVisible(true);
         });
     }
@@ -261,5 +352,4 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
     public JComponent $$$getRootComponent$$$() {
         return contentPane;
     }
-
 }

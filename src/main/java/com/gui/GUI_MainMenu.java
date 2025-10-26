@@ -96,7 +96,7 @@ public class GUI_MainMenu implements ActionListener {
         cbbOption.addActionListener(e -> {
             if (cbbOption.getSelectedIndex() == 1) {
                 JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
-                DIALOG_ChangePassword changePasswordDialog = new DIALOG_ChangePassword(parentFrame);
+                DIALOG_ChangePassword changePasswordDialog = new DIALOG_ChangePassword(parentFrame, currentStaff);
                 changePasswordDialog.setVisible(true);
                 cbbOption.setSelectedIndex(0);
             }
