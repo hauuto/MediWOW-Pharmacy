@@ -27,7 +27,6 @@ import java.util.Map;
 public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
 
-    private static final Color LIGHT_GRAY = new Color(210, 210, 210);
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
     private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
 
@@ -383,7 +382,7 @@ public class TAB_Selling extends JFrame {
 
         // Create right panel for invoice
         JPanel pnlRight = new JPanel(new BorderLayout());
-        pnlRight.setBackground(LIGHT_GRAY);
+        pnlRight.setBackground(AppColors.WHITE);
         pnlRight.setMinimumSize(new Dimension(RIGHT_PANEL_MINIMAL_WIDTH, 0));
         pnlRight.add(createInvoice(), BorderLayout.NORTH);
 
@@ -453,7 +452,7 @@ public class TAB_Selling extends JFrame {
         button.setOpaque(true);
         button.setBackground(Color.WHITE);
         if (text.equalsIgnoreCase("Thanh toán"))
-            button.setBackground(LIGHT_GRAY);
+            button.setBackground(AppColors.WHITE);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         // Add mouse listener for hover and click effects
@@ -471,7 +470,7 @@ public class TAB_Selling extends JFrame {
                 button.setBackground(Color.WHITE);
 
                 if (text.equalsIgnoreCase("Thanh toán"))
-                    button.setBackground(LIGHT_GRAY);
+                    button.setBackground(AppColors.WHITE);
             }
 
             @Override
@@ -482,7 +481,7 @@ public class TAB_Selling extends JFrame {
             @Override
             public void mouseReleased(MouseEvent e) {
                 if (button.contains(e.getPoint())) {
-                    button.setBackground(LIGHT_GRAY);
+                    button.setBackground(AppColors.WHITE);
 
                     if (text.equalsIgnoreCase("Thanh toán"))
                         button.setBackground(Color.WHITE);
@@ -490,7 +489,7 @@ public class TAB_Selling extends JFrame {
                     button.setBackground(Color.WHITE);
 
                     if (text.equalsIgnoreCase("Thanh toán"))
-                        button.setBackground(LIGHT_GRAY);
+                        button.setBackground(AppColors.WHITE);
                 }
             }
         });
