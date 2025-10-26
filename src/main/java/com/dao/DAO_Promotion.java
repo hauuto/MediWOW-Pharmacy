@@ -77,7 +77,7 @@ public class DAO_Promotion implements IPromotion {
     public List<PromotionAction> getActionsByPromotionId(String promotionId) {
         try (Session session = sessionFactory.openSession()) {
             Query<PromotionAction> query = session.createQuery(
-                    "FROM PromotionAction a WHERE a.promotion.id = :promotionId ORDER BY a.order ASC",
+                    "FROM PromotionAction a WHERE a.promotion.id = :promotionId ORDER BY a.actionOrder ASC",
                     PromotionAction.class
             );
             query.setParameter("promotionId", promotionId);
