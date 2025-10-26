@@ -29,10 +29,10 @@ public class Invoice {
         this.creator = creator;
     }
 
-    public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
+    public Invoice(String id, InvoiceType type, Staff creator, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
         this.id = id;
         this.type = type;
-        this.creationDate = creationDate;
+        this.creationDate = LocalDateTime.now();
         this.creator = creator;
         this.notes = notes;
         this.prescriptionCode = prescriptionCode;
