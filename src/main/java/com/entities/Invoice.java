@@ -3,24 +3,59 @@ package com.entities;
 import com.enums.InvoiceType;
 import com.enums.PaymentMethod;
 import com.enums.PromotionEnum;
+import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * @author Bùi Quốc Trụ
  */
+@Entity
+@Table(name = "Invoice")
 public class Invoice {
-    private final String id;
-    private final InvoiceType type;
+    @Id
+    @UuidGenerator
+    @Column(name = "id", updatable = false, nullable = false, length = 50)
+    private String id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 50)
+    private InvoiceType type;
+
+    @Column(name = "notes", columnDefinition = "NVARCHAR(MAX)")
     private String notes;
-    private final LocalDateTime creationDate;
-    private final Staff creator;
+
+    @CreationTimestamp
+    @Column(name = "creationDate", updatable = false, nullable = false)
+    private LocalDateTime creationDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "creator", nullable = false)
+    private Staff creator;
+
+    @Column(name = "prescriptionCode", length = 100)
     private String prescriptionCode;
-    private List<InvoiceLine> invoiceLineList;
+
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<InvoiceLine> invoiceLineList = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promotion")
     private Promotion promotion;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "paymentMethod", nullable = false, length = 50)
     private PaymentMethod paymentMethod;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "referencedInvoice")
     private Invoice referencedInvoice;
+
+    protected Invoice() {}
 
     public Invoice(InvoiceType type, Staff creator) {
         this.id = "placeholder-id"; // Placeholder ID, should be replaced with actual ID generation logic
@@ -29,14 +64,14 @@ public class Invoice {
         this.creator = creator;
     }
 
-    public Invoice(String id, InvoiceType type, Staff creator, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
+    public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
         this.id = id;
         this.type = type;
-        this.creationDate = LocalDateTime.now();
+        this.creationDate = creationDate;
         this.creator = creator;
         this.notes = notes;
         this.prescriptionCode = prescriptionCode;
-        this.invoiceLineList = invoiceLineList;
+        this.invoiceLineList = invoiceLineList != null ? invoiceLineList : new ArrayList<>();
         this.promotion = promotion;
         this.paymentMethod = paymentMethod;
         this.referencedInvoice = referencedInvoice;

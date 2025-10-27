@@ -21,7 +21,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +33,7 @@ public class TAB_Selling extends JFrame {
     private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
 
     private Invoice invoice;
+    private List<String> previousPrescriptionCodes;
     private List<Product> products;
 
     // Map to store product reference for each row (key: product ID)
