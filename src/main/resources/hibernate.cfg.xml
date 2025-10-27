@@ -48,7 +48,6 @@
         <mapping class="com.entities.Invoice"/>
         <mapping class="com.entities.InvoiceLine"/>
         <mapping class="com.entities.Lot"/>
-        <mapping class="com.entities.PrescribedCustomer"/>
         <mapping class="com.entities.Promotion"/>
         <mapping class="com.entities.PromotionAction"/>
         <mapping class="com.entities.PromotionCondition"/>

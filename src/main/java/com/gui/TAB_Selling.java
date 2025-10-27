@@ -1,8 +1,11 @@
 package com.gui;
 
 import com.bus.BUS_Product;
+import com.entities.Invoice;
 import com.entities.Product;
+import com.entities.Staff;
 import com.entities.UnitOfMeasure;
+import com.enums.InvoiceType;
 import com.utils.AppColors;
 
 import javax.swing.*;
@@ -30,6 +33,7 @@ public class TAB_Selling extends JFrame {
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
     private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
 
+    private Invoice invoice;
     private List<Product> products;
 
     // Map to store product reference for each row (key: product ID)
@@ -51,7 +55,9 @@ public class TAB_Selling extends JFrame {
     private DefaultListModel<String> searchResultsModel;
     private List<Product> currentSearchResults;
 
-    public TAB_Selling() {
+    public TAB_Selling(Staff creator) {
+        this.invoice = new Invoice(InvoiceType.SALES, creator);
+
         BUS_Product busProduct = new BUS_Product();
 
         products = busProduct.getAllProducts();
