@@ -182,6 +182,7 @@ public class TAB_Product {
             bindProductFromTableRow(row);
             isBindingFromTable = false;
             setEditMode(false);
+            enableEditIfRowSelected();
         });
         // === PATCH: cho phép bấm Chỉnh sửa khi đã chọn 1 dòng
         if (btnEdit != null) btnEdit.setEnabled(true);
@@ -431,21 +432,22 @@ public class TAB_Product {
         styleButton(btnSave,   new Color(40, 167, 69), Color.WHITE);
         styleButton(btnCancel, new Color(220, 53, 69), Color.WHITE);
 
+        // === PATCH: Yêu cầu chọn dòng trước khi vào chế độ chỉnh sửa + tránh selection listener reset
         btnEdit.addActionListener(e -> {
-            // === PATCH: bắt buộc chọn 1 dòng trước khi vào Edit
-            int sel = tblProducts.getSelectedRow();
+            int sel = (tblProducts != null) ? tblProducts.getSelectedRow() : -1;
             if (sel < 0) {
                 warn("Vui lòng chọn 1 dòng trong Danh sách sản phẩm trước khi Chỉnh sửa.");
                 return;
             }
-
-            // Khóa các dòng hiện có ở UOM/Lô → chỉ dòng mới thêm trong phiên sửa mới editable
-            uomModel.lockRowsBefore(uomModel.getRowCount());
-            lotModel.lockRowsBefore(lotModel.getRowCount());
-
-            setEditMode(true);
+            // Chặn tạm sự kiện chọn dòng nếu có bắn lại ngay khi chuyển chế độ
+            suppressSelectionEvent = true;
+            try {
+                setEditMode(true);
+            } finally {
+                // nhả cờ sau khi UI đã vào chế độ chỉnh sửa
+                SwingUtilities.invokeLater(() -> suppressSelectionEvent = false);
+            }
         });
-        // === PATCH: mặc định chưa chọn danh sách → không cho bấm Chỉnh sửa
         btnEdit.setEnabled(false);
 
         btnSave.addActionListener(e -> {
@@ -466,6 +468,8 @@ public class TAB_Product {
         btnCancel.addActionListener(e -> onCancel());
 
         bar.add(btnEdit); // btnSave/btnCancel tự show khi vào edit mode
+        SwingUtilities.invokeLater(this::enableEditIfRowSelected);
+
         return bar;
     }
 
@@ -855,6 +859,12 @@ public class TAB_Product {
 
         @Override public boolean isCellEditable(int r, int c) {
             return editable && !ro(c) && (r >= editableRowStart);
+        }
+    }
+
+    private void enableEditIfRowSelected() {
+        if (btnEdit != null && tblProducts != null) {
+            btnEdit.setEnabled(tblProducts.getSelectedRow() >= 0);
         }
     }
 
