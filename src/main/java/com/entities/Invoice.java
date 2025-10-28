@@ -10,6 +10,7 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author Bùi Quốc Trụ
@@ -273,9 +274,104 @@ public class Invoice {
     }
 
     /**
+     * Check if the invoice satisfies all promotion conditions
+     *
+     * @return true if all conditions are met, false otherwise
+     */
+    public boolean checkPromotionConditions() {
+        if (promotion == null)
+            return false;
+
+        Set<PromotionCondition> conditions = promotion.getConditions();
+        if (conditions == null || conditions.isEmpty())
+            return true; // No conditions means promotion is always applicable
+
+        // All conditions must be satisfied
+        for (PromotionCondition condition : conditions) {
+            if (!checkSingleCondition(condition)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if a single promotion condition is satisfied
+     */
+    private boolean checkSingleCondition(PromotionCondition condition) {
+        if (condition.getTarget() == PromotionEnum.Target.PRODUCT) {
+            return checkProductCondition(condition);
+        } else if (condition.getTarget() == PromotionEnum.Target.ORDER_SUBTOTAL) {
+            return checkOrderCondition(condition);
+        }
+        return false;
+    }
+
+    /**
+     * Check product-targeted condition (e.g., buy X quantity of product Y)
+     */
+    private boolean checkProductCondition(PromotionCondition condition) {
+        Product targetProduct = condition.getProduct();
+        if (targetProduct == null)
+            return false;
+
+        // Calculate total quantity of target product in invoice
+        int totalQuantity = 0;
+        for (InvoiceLine line : invoiceLineList) {
+            if (line.getProduct().getId().equals(targetProduct.getId())) {
+                totalQuantity += line.getQuantity();
+            }
+        }
+
+        // Compare based on condition type and comparator
+        if (condition.getConditionType() == PromotionEnum.ConditionType.PRODUCT_QTY) {
+            return compareValues(totalQuantity, condition.getPrimaryValue(), condition.getComparator());
+        }
+
+        return false;
+    }
+
+    /**
+     * Check order subtotal condition (e.g., order total >= X)
+     */
+    private boolean checkOrderCondition(PromotionCondition condition) {
+        if (condition.getConditionType() == PromotionEnum.ConditionType.ORDER_SUBTOTAL) {
+            double subtotalWithVat = calculateSubtotalWithVat();
+            return compareValues(subtotalWithVat, condition.getPrimaryValue(), condition.getComparator());
+        }
+
+        return false;
+    }
+
+    /**
+     * Compare two values based on comparator
+     */
+    private boolean compareValues(double actualValue, double requiredValue, PromotionEnum.Comp comparator) {
+        switch (comparator) {
+            case EQUAL:
+                return actualValue == requiredValue;
+            case GREATER:
+                return actualValue > requiredValue;
+            case GREATER_EQUAL:
+                return actualValue >= requiredValue;
+            case LESS:
+                return actualValue < requiredValue;
+            case LESS_EQUAL:
+                return actualValue <= requiredValue;
+            case BETWEEN:
+                // BETWEEN requires secondaryValue - not implemented yet
+                return false;
+            default:
+                return false;
+        }
+    }
+
+    /**
      * @author Bùi Quốc Trụ
      *
      * Calculate the total discount applied to the invoice.
+     * Only applies discount if conditions are satisfied.
      *
      * @return The total discount.
      */
@@ -283,19 +379,69 @@ public class Invoice {
         if (promotion == null)
             return 0.0;
 
-        double discount = calculateSubtotalWithVat();
+        // Check if conditions are satisfied before calculating discount
+        if (!checkPromotionConditions())
+            return 0.0;
+
+        double totalDiscount = 0.0;
         List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
                 .sorted((a, b) -> Integer.compare(a.getActionOrder(), b.getActionOrder()))
                 .toList();
 
         for (PromotionAction action : sortedActionOrderList) {
-            if (action.getType().equals(PromotionEnum.ActionType.FIXED_DISCOUNT))
-                discount -= action.getPrimaryValue();
-            else if (action.getType().equals(PromotionEnum.ActionType.PERCENT_DISCOUNT))
-                discount -= discount * (action.getPrimaryValue() / 100);
+            if (action.getTarget() == PromotionEnum.Target.PRODUCT) {
+                // Apply discount to specific product(s)
+                totalDiscount += calculateProductDiscount(action);
+            } else if (action.getTarget() == PromotionEnum.Target.ORDER_SUBTOTAL) {
+                // Apply discount to order subtotal with VAT
+                totalDiscount += calculateOrderDiscount(action);
+            }
         }
 
-        return calculateSubtotalWithVat() - discount;
+        return totalDiscount;
+    }
+
+    /**
+     * Calculate discount for product-targeted promotion action
+     */
+    private double calculateProductDiscount(PromotionAction action) {
+        double discount = 0.0;
+        Product targetProduct = action.getProduct();
+
+        if (targetProduct == null)
+            return 0.0;
+
+        // Find matching invoice lines for the target product
+        for (InvoiceLine line : invoiceLineList) {
+            if (line.getProduct().getId().equals(targetProduct.getId())) {
+                double lineSubtotalWithVat = line.calculateTotalAmount();
+
+                if (action.getType() == PromotionEnum.ActionType.FIXED_DISCOUNT) {
+                    discount += action.getPrimaryValue();
+                } else if (action.getType() == PromotionEnum.ActionType.PERCENT_DISCOUNT) {
+                    discount += lineSubtotalWithVat * (action.getPrimaryValue() / 100);
+                }
+                // Note: PRODUCT_GIFT is handled separately, not as a discount
+            }
+        }
+
+        return discount;
+    }
+
+    /**
+     * Calculate discount for order subtotal-targeted promotion action
+     */
+    private double calculateOrderDiscount(PromotionAction action) {
+        double discount = 0.0;
+        double subtotalWithVat = calculateSubtotalWithVat();
+
+        if (action.getType() == PromotionEnum.ActionType.FIXED_DISCOUNT) {
+            discount = action.getPrimaryValue();
+        } else if (action.getType() == PromotionEnum.ActionType.PERCENT_DISCOUNT) {
+            discount = subtotalWithVat * (action.getPrimaryValue() / 100);
+        }
+
+        return discount;
     }
 
     /**

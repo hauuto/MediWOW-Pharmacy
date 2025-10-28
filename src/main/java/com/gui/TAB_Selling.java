@@ -2,6 +2,7 @@ package com.gui;
 
 import com.bus.BUS_Invoice;
 import com.bus.BUS_Product;
+import com.bus.BUS_Promotion;
 import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LineType;
@@ -39,10 +40,12 @@ public class TAB_Selling extends JFrame {
 
     private final BUS_Product busProduct;
     private final BUS_Invoice busInvoice;
+    private final BUS_Promotion busPromotion;
 
     private Invoice invoice;
     private List<String> previousPrescriptionCodes;
     private List<Product> products;
+    private final List<Promotion> promotions;
 
     // Map to store product reference for each row (key: product ID)
     private Map<String, Product> productMap;
@@ -70,6 +73,9 @@ public class TAB_Selling extends JFrame {
     // Field for VAT display
     private JTextField txtVat;
 
+    // Fields for promotion search and display
+    private JTextField txtPromotionSearch;
+
     // Prescription code regex pattern: xxxxxyyyyyyy-z
     // 5 chars (facility code) + 7 chars (random alphanumeric) + dash + 1 char (type: N/H/C)
     private static final String PRESCRIPTION_CODE_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
@@ -80,14 +86,24 @@ public class TAB_Selling extends JFrame {
     private DefaultListModel<String> searchResultsModel;
     private List<Product> currentSearchResults;
 
+    // Fields for promotion search autocomplete
+    private JWindow promotionSearchWindow;
+    private JList<String> promotionSearchResultsList;
+    private DefaultListModel<String> promotionSearchResultsModel;
+    private List<Promotion> currentPromotionSearchResults;
+
     public TAB_Selling(Staff creator) {
         busProduct = new BUS_Product();
         busInvoice = new BUS_Invoice();
+        busPromotion = new BUS_Promotion();
 
         invoice = new Invoice(InvoiceType.SALES, creator);
 
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
+        promotions = busPromotion.getAllPromotions().stream()
+                .filter(Promotion::getIsActive)
+                .toList();
         productMap = new HashMap<>();
         previousUOMMap = new HashMap<>();
         oldUOMIdMap = new HashMap<>();
@@ -295,6 +311,210 @@ public class TAB_Selling extends JFrame {
 
         // Hide search window
         searchWindow.setVisible(false);
+    }
+
+    /**
+     * Setup autocomplete functionality for promotion search
+     */
+    private void setupPromotionSearchAutocomplete(JTextField txtPromotionSearch) {
+        // Initialize search results
+        promotionSearchResultsModel = new DefaultListModel<>();
+        promotionSearchResultsList = new JList<>(promotionSearchResultsModel);
+        promotionSearchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
+        promotionSearchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        currentPromotionSearchResults = new ArrayList<>();
+
+        // Create a JWindow for dropdown
+        promotionSearchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
+        JScrollPane scrollPane = new JScrollPane(promotionSearchResultsList);
+        promotionSearchWindow.add(scrollPane);
+        promotionSearchWindow.setFocusableWindowState(false);
+
+        // Setup autocomplete with generalized method
+        setupAutocomplete(
+            txtPromotionSearch,
+            promotionSearchWindow,
+            promotionSearchResultsList,
+            promotionSearchResultsModel,
+            "Điền mã hoặc tên khuyến mãi (nếu có)...",
+            this::performPromotionSearch,
+            this::selectPromotion
+        );
+    }
+
+    /**
+     * Generalized autocomplete setup
+     */
+    private void setupAutocomplete(
+            JTextField textField,
+            JWindow window,
+            JList<String> resultsList,
+            DefaultListModel<String> resultsModel,
+            String placeholder,
+            Runnable searchAction,
+            java.util.function.Consumer<Integer> selectionAction) {
+
+        // Add document listener to search as user types
+        textField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                SwingUtilities.invokeLater(searchAction);
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                SwingUtilities.invokeLater(searchAction);
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                SwingUtilities.invokeLater(searchAction);
+            }
+        });
+
+        // Handle mouse click on list
+        resultsList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int selectedIndex = resultsList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    selectionAction.accept(selectedIndex);
+                }
+            }
+        });
+
+        // Handle keyboard navigation
+        textField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (window.isVisible()) {
+                    if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                        int selectedIndex = resultsList.getSelectedIndex();
+                        if (selectedIndex < resultsModel.getSize() - 1) {
+                            resultsList.setSelectedIndex(selectedIndex + 1);
+                            resultsList.ensureIndexIsVisible(selectedIndex + 1);
+                        } else if (resultsModel.getSize() > 0) {
+                            resultsList.setSelectedIndex(0);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                        int selectedIndex = resultsList.getSelectedIndex();
+                        if (selectedIndex > 0) {
+                            resultsList.setSelectedIndex(selectedIndex - 1);
+                            resultsList.ensureIndexIsVisible(selectedIndex - 1);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        int selectedIndex = resultsList.getSelectedIndex();
+                        if (selectedIndex != -1) {
+                            selectionAction.accept(selectedIndex);
+                            e.consume();
+                        }
+                    } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                        window.setVisible(false);
+                        e.consume();
+                    }
+                }
+            }
+        });
+
+        // Hide search window when focus is lost
+        textField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                // Delay to allow click on list
+                Timer timer = new Timer(150, evt -> window.setVisible(false));
+                timer.setRepeats(false);
+                timer.start();
+            }
+        });
+    }
+
+    /**
+     * Perform promotion search and update results
+     */
+    private void performPromotionSearch() {
+        String searchText = txtPromotionSearch.getText().trim();
+
+        // Check if it's placeholder text
+        if (searchText.isEmpty() ||
+                searchText.equals("Điền mã hoặc tên khuyến mãi (nếu có)...") ||
+                txtPromotionSearch.getForeground().equals(Color.GRAY)) {
+            promotionSearchWindow.setVisible(false);
+            return;
+        }
+
+        // Clear previous results
+        promotionSearchResultsModel.clear();
+        currentPromotionSearchResults.clear();
+
+        // Search promotions
+        String lowerSearch = searchText.toLowerCase();
+        for (Promotion promotion : promotions) {
+            boolean matches = false;
+
+            if (promotion.getId() != null && promotion.getId().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+            if (promotion.getName() != null && promotion.getName().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+
+            if (matches) {
+                currentPromotionSearchResults.add(promotion);
+                String displayText = String.format("%s - %s",
+                        promotion.getId(),
+                        promotion.getName());
+                promotionSearchResultsModel.addElement(displayText);
+            }
+        }
+
+        // Show or hide window based on results
+        if (!currentPromotionSearchResults.isEmpty()) {
+            // Position window below text field
+            Point location = txtPromotionSearch.getLocationOnScreen();
+            int width = txtPromotionSearch.getWidth();
+            // Show up to 5 items before scrollbar appears
+            int maxVisibleItems = 5;
+            int itemHeight = 25;
+            int visibleItems = Math.min(currentPromotionSearchResults.size(), maxVisibleItems);
+            int height = visibleItems * itemHeight + 4;
+
+            promotionSearchWindow.setLocation(location.x, location.y + txtPromotionSearch.getHeight());
+            promotionSearchWindow.setSize(width, height);
+            promotionSearchWindow.setVisible(true);
+
+            // Select first item by default
+            if (promotionSearchResultsModel.getSize() > 0) {
+                promotionSearchResultsList.setSelectedIndex(0);
+            }
+        } else {
+            promotionSearchWindow.setVisible(false);
+        }
+    }
+
+    /**
+     * Handle promotion selection from search results
+     */
+    private void selectPromotion(int selectedIndex) {
+        if (selectedIndex < 0 || selectedIndex >= currentPromotionSearchResults.size()) {
+            return;
+        }
+
+        Promotion selectedPromotion = currentPromotionSearchResults.get(selectedIndex);
+
+        // Apply promotion to invoice
+        invoice.setPromotion(selectedPromotion);
+
+        // Update promotion display text field (if exists)
+        // For now, just show the promotion name in search field
+        txtPromotionSearch.setText(selectedPromotion.getId() + " - " + selectedPromotion.getName());
+        txtPromotionSearch.setForeground(Color.BLACK);
+
+        // Hide search window
+        promotionSearchWindow.setVisible(false);
+
+        // TODO: Update invoice calculations with promotion applied
     }
 
     /**
@@ -1101,11 +1321,14 @@ public class TAB_Selling extends JFrame {
         Box boxPaymentVertical = Box.createVerticalBox();
         boxPaymentHorizontal.add(boxPaymentVertical);
 
-        // Adding promotion code label and text field
-        JLabel lblPromotionCode = new JLabel("Mã khuyến mãi:");
-        JTextField txtPromotionCode = new JTextField();
+        // Adding promotion search label and text field
+        JLabel lblPromotionSearch = new JLabel("Tìm kiếm khuyến mãi:");
+        txtPromotionSearch = new JTextField();
 
-        boxPaymentVertical.add(generateLabelAndTextField(lblPromotionCode, txtPromotionCode, "Điền mã khuyến mãi (nếu có)...", "Điền mã khuyến mãi", 93));
+        boxPaymentVertical.add(generateLabelAndTextField(lblPromotionSearch, txtPromotionSearch, "Điền mã hoặc tên khuyến mãi (nếu có)...", "Điền mã hoặc tên khuyến mãi", 52));
+
+        // Setup autocomplete for promotion search
+        setupPromotionSearchAutocomplete(txtPromotionSearch);
 
         boxPaymentVertical.add(Box.createVerticalStrut(10));
 
