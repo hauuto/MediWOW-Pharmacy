@@ -72,7 +72,13 @@ public class DAO_Staff implements IStaff {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            return session.createQuery("FROM Staff", Staff.class).list();
+            // Exclude admin account from staff list
+            Query<Staff> query = session.createQuery(
+                "FROM Staff WHERE username != :adminUsername",
+                Staff.class
+            );
+            query.setParameter("adminUsername", "admin");
+            return query.list();
         } catch (Exception e) {
             e.printStackTrace();
             return null;

@@ -71,18 +71,18 @@ public class GUI_Login implements ActionListener {
             return;
         }
 
-        if (username.equals("admin") && password.equals("admin")) {
-            currentStaff = new Staff();
-            currentStaff.setFullName("Developer");
-            currentStaff.setUsername("admin");
-
-            JOptionPane.showMessageDialog(pnlLogin,
-                    "Đăng nhập thành công (Chế độ Developer)!\nXin chào, Developer",
-                    "Thành công",
-                    JOptionPane.INFORMATION_MESSAGE);
-            openMainMenu(password);
-            return;
-        }
+//        if (username.equals("admin") && password.equals("admin")) {
+//            currentStaff = new Staff();
+//            currentStaff.setFullName("Developer");
+//            currentStaff.setUsername("admin");
+//
+//            JOptionPane.showMessageDialog(pnlLogin,
+//                    "Đăng nhập thành công (Chế độ Developer)!\nXin chào, Developer",
+//                    "Thành công",
+//                    JOptionPane.INFORMATION_MESSAGE);
+//            openMainMenu(password);
+//            return;
+//        }
 
         btnLogin.setEnabled(false);
         btnLogin.setText("Đang đăng nhập...");

@@ -1,4 +1,3 @@
-
 -- Generated Data for MediWOW Pharmacy System
 -- Generated on: October 28, 2025
 -- This data follows the schema and includes:
@@ -12,7 +11,14 @@
 USE MediWOW
 GO
 
+-- =====================================================
+-- 1. STAFF DATA (Admin account)
+-- =====================================================
 
+-- Admin account (username: admin, password: admin)
+-- This account will not be displayed in staff list on UI
+INSERT INTO Staff (role, username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive)
+VALUES ( 'MANAGER', 'admin', '$2a$12$vVXxXrKyAGhRge.lO0ihZ.0Nl7PghqZLqSpRwvpoDnC8qe3uZC1TK', N'Administrator', NULL, NULL, NULL, '2025-01-01', 1);
 
 -- =====================================================
 -- 2. PRODUCT DATA (2 OTC, 2 ETC, 1 Supplement)
@@ -196,4 +202,3 @@ PRINT '- 12 Lots created (2 unavailable: 1 EXPIRED, 1 FAULTY)';
 PRINT '- 2 Promotions created (1 condition each)';
 PRINT '- 5 SALES Invoices created (2 with prescription codes, 1 with promotion)';
 GO
-
