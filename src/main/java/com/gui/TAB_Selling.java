@@ -461,10 +461,26 @@ public class TAB_Selling extends JFrame {
             // Set focus back to the field
             txtPrescriptionCode.requestFocusInWindow();
             btnProcessPayment.setEnabled(false);
-        } else {
-            // Valid prescription code
-            validatePrescriptionCodeForInvoice();
+            return;
         }
+
+        // Check if prescription code has already been used
+        if (previousPrescriptionCodes != null && previousPrescriptionCodes.contains(code.toLowerCase())) {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Mã đơn thuốc '" + code + "' đã được sử dụng trước đó!\n" +
+                "Vui lòng nhập mã đơn thuốc khác.",
+                "Mã đơn thuốc đã tồn tại",
+                JOptionPane.WARNING_MESSAGE);
+
+            // Select all text and set focus
+            txtPrescriptionCode.selectAll();
+            txtPrescriptionCode.requestFocusInWindow();
+            btnProcessPayment.setEnabled(false);
+            return;
+        }
+
+        // Valid prescription code
+        validatePrescriptionCodeForInvoice();
     }
 
     /**

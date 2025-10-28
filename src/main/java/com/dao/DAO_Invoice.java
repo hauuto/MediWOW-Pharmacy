@@ -371,12 +371,17 @@ public class DAO_Invoice implements IInvoice {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            return session.createQuery(
+            List<String> prescriptionCodes = session.createQuery(
                 "SELECT DISTINCT i.prescriptionCode FROM Invoice i " +
                 "WHERE i.prescriptionCode IS NOT NULL " +
                 "ORDER BY i.prescriptionCode",
                 String.class
             ).list();
+
+            // Convert all prescription codes to lowercase
+            return prescriptionCodes.stream()
+                .map(String::toLowerCase)
+                .toList();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
