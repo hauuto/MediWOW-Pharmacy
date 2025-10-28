@@ -1,10 +1,9 @@
 package com.gui;
 
+import com.bus.BUS_Invoice;
 import com.bus.BUS_Product;
-import com.entities.Invoice;
-import com.entities.Product;
-import com.entities.Staff;
-import com.entities.UnitOfMeasure;
+import com.bus.BUS_Staff;
+import com.entities.*;
 import com.enums.InvoiceType;
 import com.utils.AppColors;
 
@@ -32,12 +31,19 @@ public class TAB_Selling extends JFrame {
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
     private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
 
+    private final BUS_Product busProduct;
+    private final BUS_Invoice busInvoice;
+    private final BUS_Staff busStaff;
+
     private Invoice invoice;
     private List<String> previousPrescriptionCodes;
     private List<Product> products;
 
     // Map to store product reference for each row (key: product ID)
     private Map<String, Product> productMap;
+
+    // Map to store previous UOM for each row (key: row index)
+    private Map<Integer, String> previousUOMMap;
 
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
@@ -56,12 +62,18 @@ public class TAB_Selling extends JFrame {
     private List<Product> currentSearchResults;
 
     public TAB_Selling(Staff creator) {
-        this.invoice = new Invoice(InvoiceType.SALES, creator);
+        busProduct = new BUS_Product();
+        busInvoice = new BUS_Invoice();
+        busStaff = new BUS_Staff();
 
-        BUS_Product busProduct = new BUS_Product();
+        Staff tempCreator = busStaff.getAllStaffs().get(0); // For testing purposes
+
+        invoice = new Invoice(InvoiceType.SALES, tempCreator);
 
         products = busProduct.getAllProducts();
+        previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         productMap = new HashMap<>();
+        previousUOMMap = new HashMap<>();
 
         $$$setupUI$$$();
         createSplitPane();
@@ -272,17 +284,27 @@ public class TAB_Selling extends JFrame {
      * Add product to invoice line table
      */
     private void addProductToInvoice(Product product) {
-        // Check if product already exists
+        // Get base unit of measure
+        UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
+
+        // Check if product already exists with the same UOM and line type
         for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
             String existingId = (String) mdlInvoiceLine.getValueAt(i, 0);
-            if (existingId.equals(product.getId())) {
+            String existingUnit = (String) mdlInvoiceLine.getValueAt(i, 2);
+
+            if (existingId.equals(product.getId()) && existingUnit.equals(product.getBaseUnitOfMeasure())) {
                 // Increase quantity
                 int currentQty = (int) mdlInvoiceLine.getValueAt(i, 3);
-                mdlInvoiceLine.setValueAt(currentQty + 1, i, 3);
+                int newQty = currentQty + 1;
+                mdlInvoiceLine.setValueAt(newQty, i, 3);
 
                 // Update total
                 double unitPrice = (double) mdlInvoiceLine.getValueAt(i, 4);
-                mdlInvoiceLine.setValueAt((currentQty + 1) * unitPrice, i, 5);
+                mdlInvoiceLine.setValueAt(newQty * unitPrice, i, 5);
+
+                // Update invoice line in the invoice
+                InvoiceLine updatedLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, newQty);
+                invoice.updateInvoiceLine(updatedLine);
                 return;
             }
         }
@@ -293,19 +315,120 @@ public class TAB_Selling extends JFrame {
             unit = product.getBaseUnitOfMeasure();
         }
 
+        // Get unit price from oldest lot
+        double unitPrice = 0.0;
+        Lot oldestLot = product.getOldestLotAvailable();
+        if (oldestLot != null) {
+            unitPrice = oldestLot.getRawPrice();
+        }
+
         Object[] row = {
             product.getId(),
             product.getName(),
             unit,
             1,
-            0.0,
-            0.0
+            unitPrice,
+            unitPrice
         };
 
         mdlInvoiceLine.addRow(row);
 
         // Store product reference in map
         productMap.put(product.getId(), product);
+
+        // Store initial UOM for this row
+        int newRow = mdlInvoiceLine.getRowCount() - 1;
+        previousUOMMap.put(newRow, unit);
+
+        // Create and add invoice line to invoice
+        InvoiceLine invoiceLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, 1);
+        invoice.addInvoiceLine(invoiceLine);
+    }
+
+    /**
+     * Find UnitOfMeasure from product by name
+     */
+    private UnitOfMeasure findUnitOfMeasure(Product product, String uomName) {
+        if (product.getUnitOfMeasureList() != null) {
+            for (UnitOfMeasure uom : product.getUnitOfMeasureList()) {
+                if (uom.getName().equals(uomName)) {
+                    return uom;
+                }
+            }
+        }
+        // If not found in list, create a base UOM
+        return new UnitOfMeasure(product.getId() + "-BASE", product, uomName, 1.0);
+    }
+
+    /**
+     * Update invoice line from table data
+     */
+    private void updateInvoiceLineFromTable(int row) {
+        if (row < 0 || row >= mdlInvoiceLine.getRowCount()) {
+            return;
+        }
+
+        // Get product information
+        String productId = (String) mdlInvoiceLine.getValueAt(row, 0);
+        Product product = productMap.get(productId);
+
+        if (product != null) {
+            String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+            int quantity = (int) mdlInvoiceLine.getValueAt(row, 3);
+
+            // Check for duplicate product with same UOM (excluding current row)
+            for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+                if (i != row) {
+                    String otherProductId = (String) mdlInvoiceLine.getValueAt(i, 0);
+                    String otherUomName = (String) mdlInvoiceLine.getValueAt(i, 2);
+
+                    if (productId.equals(otherProductId) && uomName.equals(otherUomName)) {
+                        // Duplicate found - show warning and revert
+                        SwingUtilities.invokeLater(() ->
+                            JOptionPane.showMessageDialog(pnlSelling,
+                                "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại trong hóa đơn!\n" +
+                                "Vui lòng tăng số lượng của sản phẩm hiện có hoặc chọn đơn vị khác.",
+                                "Cảnh báo trùng lặp",
+                                JOptionPane.WARNING_MESSAGE)
+                        );
+
+                        // Revert to previous UOM (before the change)
+                        String previousUOM = previousUOMMap.get(row);
+                        if (previousUOM != null) {
+                            mdlInvoiceLine.setValueAt(previousUOM, row, 2);
+                        } else {
+                            // Fallback to base UOM if no previous value stored
+                            String fallbackUOM = product.getBaseUnitOfMeasure();
+                            if (fallbackUOM != null && !fallbackUOM.isEmpty()) {
+                                mdlInvoiceLine.setValueAt(fallbackUOM, row, 2);
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+
+            // Find the UnitOfMeasure
+            UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+
+            // Calculate unit price based on UOM
+            double unitPrice = 0.0;
+            Lot oldestLot = product.getOldestLotAvailable();
+            if (oldestLot != null) {
+                unitPrice = oldestLot.getRawPrice();
+                if (uom != null) {
+                    unitPrice *= uom.getBasePriceConversionRate();
+                }
+            }
+
+            // Update unit price and total in table
+            mdlInvoiceLine.setValueAt(unitPrice, row, 4);
+            mdlInvoiceLine.setValueAt(unitPrice * quantity, row, 5);
+
+            // Update invoice line in invoice
+            InvoiceLine updatedLine = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
+            invoice.updateInvoiceLine(updatedLine);
+        }
     }
 
     /**
@@ -425,6 +548,69 @@ public class TAB_Selling extends JFrame {
         tblInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
         tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
 
+        // Add focus listener to stop editing when table loses focus
+        tblInvoiceLine.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                // Don't stop editing if focus moved to a child component (like dropdown or spinner)
+                Component oppositeComponent = e.getOppositeComponent();
+                if (oppositeComponent != null) {
+                    // Check if the opposite component is part of the cell editor
+                    Container parent = oppositeComponent.getParent();
+                    while (parent != null) {
+                        if (parent == tblInvoiceLine) {
+                            // Focus moved to a component within the table, don't stop editing
+                            return;
+                        }
+                        parent = parent.getParent();
+                    }
+                }
+
+                // Stop cell editing when table loses focus to external component
+                if (tblInvoiceLine.isEditing()) {
+                    int editingRow = tblInvoiceLine.getEditingRow();
+                    int editingColumn = tblInvoiceLine.getEditingColumn();
+
+                    // Stop the cell editor
+                    if (tblInvoiceLine.getCellEditor() != null) {
+                        tblInvoiceLine.getCellEditor().stopCellEditing();
+                    }
+
+                    // Update the invoice line for the edited row
+                    if (editingRow >= 0 && (editingColumn == 2 || editingColumn == 3)) {
+                        updateInvoiceLineFromTable(editingRow);
+                    }
+                }
+            }
+        });
+
+        // Add property change listener to handle cell editing stop
+        tblInvoiceLine.addPropertyChangeListener("tableCellEditor", evt -> {
+            // When editing stops, update the invoice line
+            if (evt.getOldValue() != null && evt.getNewValue() == null) {
+                // Editing has stopped
+                int row = tblInvoiceLine.getEditingRow();
+                if (row == -1) {
+                    row = tblInvoiceLine.getSelectedRow();
+                }
+                if (row >= 0) {
+                    updateInvoiceLineFromTable(row);
+                }
+            }
+        });
+
+        // Add table model listener to handle changes
+        mdlInvoiceLine.addTableModelListener(e -> {
+            if (e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
+                int row = e.getFirstRow();
+                int column = e.getColumn();
+
+                if (row >= 0 && (column == 2 || column == 3)) {
+                    updateInvoiceLineFromTable(row);
+                }
+            }
+        });
+
         scrInvoiceLine = new JScrollPane(tblInvoiceLine);
     }
 
@@ -434,12 +620,124 @@ public class TAB_Selling extends JFrame {
         pnlButtons.setBackground(Color.WHITE);
 
         btnRemoveAllItems = createStyledButton("Xóa tất cả");
+        btnRemoveAllItems.addActionListener(e -> removeAllItems());
         pnlButtons.add(btnRemoveAllItems);
 
         btnRemoveItem = createStyledButton("Xóa sản phẩm");
+        btnRemoveItem.addActionListener(e -> removeSelectedItems());
         pnlButtons.add(btnRemoveItem);
 
         return pnlButtons;
+    }
+
+    /**
+     * Remove selected items from the table and invoice
+     */
+    private void removeSelectedItems() {
+        int[] selectedRows = tblInvoiceLine.getSelectedRows();
+
+        if (selectedRows.length == 0) {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Vui lòng chọn sản phẩm cần xóa!",
+                "Thông báo",
+                JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Confirm deletion
+        int confirm = JOptionPane.showConfirmDialog(pnlSelling,
+            "Bạn có chắc chắn muốn xóa " + selectedRows.length + " sản phẩm đã chọn?",
+            "Xác nhận xóa",
+            JOptionPane.YES_NO_OPTION);
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        // Remove from invoice and table (iterate backwards to avoid index issues)
+        for (int i = selectedRows.length - 1; i >= 0; i--) {
+            int row = selectedRows[i];
+
+            // Get product information
+            String productId = (String) mdlInvoiceLine.getValueAt(row, 0);
+            String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+            int quantity = (int) mdlInvoiceLine.getValueAt(row, 3);
+
+            Product product = productMap.get(productId);
+            if (product != null) {
+                UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+
+                // Create invoice line to remove
+                InvoiceLine lineToRemove = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
+
+                // Remove from invoice
+                invoice.removeInvoiceLine(lineToRemove);
+            }
+
+            // Remove from table
+            mdlInvoiceLine.removeRow(row);
+
+            // Clean up previousUOMMap - shift entries after removed row
+            Map<Integer, String> updatedMap = new HashMap<>();
+            for (Map.Entry<Integer, String> entry : previousUOMMap.entrySet()) {
+                int rowIndex = entry.getKey();
+                if (rowIndex < row) {
+                    updatedMap.put(rowIndex, entry.getValue());
+                } else if (rowIndex > row) {
+                    updatedMap.put(rowIndex - 1, entry.getValue());
+                }
+                // Skip the removed row
+            }
+            previousUOMMap = updatedMap;
+        }
+    }
+
+    /**
+     * Remove all items from the table and invoice
+     */
+    private void removeAllItems() {
+        if (mdlInvoiceLine.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Không có sản phẩm nào để xóa!",
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Confirm deletion
+        int confirm = JOptionPane.showConfirmDialog(pnlSelling,
+            "Bạn có chắc chắn muốn xóa tất cả sản phẩm?",
+            "Xác nhận xóa",
+            JOptionPane.YES_NO_OPTION);
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        // Remove all invoice lines from invoice
+        for (int i = mdlInvoiceLine.getRowCount() - 1; i >= 0; i--) {
+            // Get product information
+            String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
+            String uomName = (String) mdlInvoiceLine.getValueAt(i, 2);
+            int quantity = (int) mdlInvoiceLine.getValueAt(i, 3);
+
+            Product product = productMap.get(productId);
+            if (product != null) {
+                UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+
+                // Create invoice line to remove
+                InvoiceLine lineToRemove = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
+
+                // Remove from invoice
+                invoice.removeInvoiceLine(lineToRemove);
+            }
+        }
+
+        // Clear table
+        mdlInvoiceLine.setRowCount(0);
+
+        // Clear previousUOMMap
+        previousUOMMap.clear();
     }
 
     /**
@@ -877,6 +1175,11 @@ public class TAB_Selling extends JFrame {
 
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            // Store the previous UOM value before editing
+            if (value != null) {
+                previousUOMMap.put(row, value.toString());
+            }
+
             // Get the product ID from the current row
             currentProductId = (String) table.getValueAt(row, 0);
 
