@@ -36,7 +36,7 @@ public class InvoiceLine {
     @Column(name = "quantity", nullable = false)
     private int quantity;
 
-    @Column(name = "unitPrice", nullable = false, precision = 18, scale = 2)
+    @Column(name = "unitPrice", nullable = false)
     private double unitPrice;
 
     protected InvoiceLine() {}
