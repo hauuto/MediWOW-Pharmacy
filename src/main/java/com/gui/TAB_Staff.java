@@ -293,8 +293,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
                     fillFormRow(row);
                 }
 
-
-
             }
         });
 
