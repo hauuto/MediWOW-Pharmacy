@@ -1,4 +1,3 @@
-
 -- Generated Data for MediWOW Pharmacy System
 -- Generated on: October 28, 2025
 -- This data follows the schema and includes:
@@ -13,12 +12,13 @@ USE MediWOW
 GO
 
 -- =====================================================
--- 1. STAFF DATA
+-- 1. STAFF DATA (Admin account)
 -- =====================================================
--- Insert admin staff (trigger will auto-generate ID: MAN2025-0001)
-INSERT INTO Staff (username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role)
-VALUES ('admin', 'admin', N'Quản Trị Viên', 'LIC2025001', '0901234567', 'admin@mediwow.com', '2025-01-10', 1, 'MANAGER');
-GO
+
+-- Admin account (username: admin, password: admin)
+-- This account will not be displayed in staff list on UI
+INSERT INTO Staff (role, username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive)
+VALUES ( 'MANAGER', 'admin', '$2a$12$vVXxXrKyAGhRge.lO0ihZ.0Nl7PghqZLqSpRwvpoDnC8qe3uZC1TK', N'Administrator', NULL, NULL, NULL, '2025-01-01', 1);
 
 -- =====================================================
 -- 2. PRODUCT DATA (2 OTC, 2 ETC, 1 Supplement)
@@ -130,13 +130,27 @@ VALUES ('PRMA2025-003', 'PROM2025-002', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, '
 INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
 VALUES ('PRMA2025-004', 'PROM2025-002', 2, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 5, NULL, NULL);
 
+-- Promotion 3: Buy product get product gift (Buy 5 Amoxicillin boxes, get 1 Omega 3 bottle free)
+INSERT INTO Promotion (id, name, description, creationDate, effectiveDate, endDate, isActive)
+VALUES ('PROM2025-003', N'Khuyến mãi Amoxicillin - Tặng Omega 3', N'Mua từ 5 hộp Amoxicillin, tặng 1 lọ Omega 3', '2025-01-22', '2025-01-22', '2025-12-31', 1);
+
+-- Conditions for Promotion 3
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
+VALUES ('PRMC2025-005', 'PROM2025-003', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 5, NULL, 'PRO2025-0003');
+
+-- Actions for Promotion 3
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
+VALUES ('PRMA2025-005', 'PROM2025-003', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, 'PRO2025-0005');
+
+
+
 -- =====================================================
 -- 6. INVOICE DATA (5 invoices, 2 with prescription codes)
 -- =====================================================
 
 -- Invoice 1: Sales with Promotion 1 and Prescription Code
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0001', 'MW001a3b5c7d-C', NULL, 'PROM2025-001', 'CASH', N'Bán thuốc theo đơn, áp dụng khuyến mãi');
+VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0002', 'MW001a3b5c7d-C', NULL, 'PROM2025-001', 'CASH', N'Bán thuốc theo đơn, áp dụng khuyến mãi');
 
 -- Invoice Lines for Invoice 1
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -147,7 +161,7 @@ VALUES ('INV2025-0001', 'PRO2025-0003', 20, 'UOM2025-0006', 250, 'SALE');
 
 -- Invoice 2: Sales without Promotion
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0002', 'SALES', '2025-01-23 10:15:00', 'MAN2025-0001', NULL, NULL, NULL, 'BANK_TRANSFER', N'Khách hàng thanh toán chuyển khoản');
+VALUES ('INV2025-0002', 'SALES', '2025-01-23 10:15:00', 'MAN2025-0002', NULL, NULL, NULL, 'BANK_TRANSFER', N'Khách hàng thanh toán chuyển khoản');
 
 -- Invoice Lines for Invoice 2
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -158,7 +172,7 @@ VALUES ('INV2025-0002', 'PRO2025-0004', 14, 'UOM2025-0010', 5600, 'SALE');
 
 -- Invoice 3: Sales without Promotion but with Prescription Code
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0003', 'SALES', '2025-01-24 14:20:00', 'MAN2025-0001', 'MW0019k2m4p6-C', NULL, NULL, 'CASH', N'Đơn thuốc bổ sung');
+VALUES ('INV2025-0003', 'SALES', '2025-01-24 14:20:00', 'MAN2025-0002', 'MW0019k2m4p6-C', NULL, NULL, 'CASH', N'Đơn thuốc bổ sung');
 
 -- Invoice Lines for Invoice 3
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -169,7 +183,7 @@ VALUES ('INV2025-0003', 'PRO2025-0001', 50, 'UOM2025-0001', 150, 'SALE');
 
 -- Invoice 4: Sales without Promotion
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0004', 'SALES', '2025-01-25 11:45:00', 'MAN2025-0001', NULL, NULL, NULL, 'CASH', N'Mua thuốc thông thường');
+VALUES ('INV2025-0004', 'SALES', '2025-01-25 11:45:00', 'MAN2025-0002', NULL, NULL, NULL, 'CASH', N'Mua thuốc thông thường');
 
 -- Invoice Lines for Invoice 4
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -183,7 +197,7 @@ VALUES ('INV2025-0004', 'PRO2025-0005', 30, 'UOM2025-0011', 500, 'SALE');
 
 -- Invoice 5: Sales without Promotion
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0001', NULL, NULL, NULL, 'CASH', N'Khách hàng mua lẻ');
+VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0002', NULL, NULL, NULL, 'CASH', N'Khách hàng mua lẻ');
 
 -- Invoice Lines for Invoice 5
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -199,7 +213,6 @@ PRINT '- 1 Staff (admin) created';
 PRINT '- 5 Products created (2 OTC [1 LIQUID], 2 ETC [1 LIQUID], 1 Supplement)';
 PRINT '- 12 UnitOfMeasures created (with reciprocal baseUnitConversionRate)';
 PRINT '- 12 Lots created (2 unavailable: 1 EXPIRED, 1 FAULTY)';
-PRINT '- 2 Promotions created (1 condition each)';
+PRINT '- 3 Promotions created (1 condition each, various actions)';
 PRINT '- 5 SALES Invoices created (2 with prescription codes, 1 with promotion)';
 GO
-
