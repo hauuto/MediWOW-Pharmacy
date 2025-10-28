@@ -62,6 +62,9 @@ public class TAB_Selling extends JFrame {
     private JTextField txtPrescriptionCode;
     private JButton btnProcessPayment;
 
+    // Field for VAT display
+    private JTextField txtVat;
+
     // Prescription code regex pattern: xxxxxyyyyyyy-z
     // 5 chars (facility code) + 7 chars (random alphanumeric) + dash + 1 char (type: N/H/C)
     private static final String PRESCRIPTION_CODE_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
@@ -341,6 +344,9 @@ public class TAB_Selling extends JFrame {
                 InvoiceLine updatedLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, newQty);
                 invoice.updateInvoiceLine(product.getId(), baseUOM.getId(), updatedLine);
 
+                // Update VAT display
+                updateVatDisplay();
+
                 // Check prescription code requirement after adding
                 validatePrescriptionCodeForInvoice();
                 return;
@@ -382,6 +388,9 @@ public class TAB_Selling extends JFrame {
         // Create and add invoice line to invoice
         InvoiceLine invoiceLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, 1);
         invoice.addInvoiceLine(invoiceLine);
+
+        // Update VAT display
+        updateVatDisplay();
 
         // Check prescription code requirement after adding
         validatePrescriptionCodeForInvoice();
@@ -611,6 +620,9 @@ public class TAB_Selling extends JFrame {
             // Update the stored old UOM ID for next time
             oldUOMIdMap.put(row, uom.getId());
             previousUOMMap.put(row, uomName);
+
+            // Update VAT display
+            updateVatDisplay();
         }
     }
 
@@ -892,6 +904,9 @@ public class TAB_Selling extends JFrame {
             oldUOMIdMap = updatedOldUOMIdMap;
         }
 
+        // Update VAT display
+        updateVatDisplay();
+
         // Check prescription code requirement after removal
         validatePrescriptionCodeForInvoice();
     }
@@ -939,6 +954,9 @@ public class TAB_Selling extends JFrame {
         // Clear all maps
         previousUOMMap.clear();
         oldUOMIdMap.clear();
+
+        // Update VAT display
+        updateVatDisplay();
 
         // Check prescription code requirement after removal
         validatePrescriptionCodeForInvoice();
@@ -1101,7 +1119,7 @@ public class TAB_Selling extends JFrame {
 
         // Adding Vat label and text field
         JLabel lblVat = new JLabel("Vat:");
-        JTextField txtVat = new JTextField();
+        txtVat = new JTextField();
         txtVat.setEditable(false);
         txtVat.setFocusable(false);
 
@@ -1130,12 +1148,7 @@ public class TAB_Selling extends JFrame {
         boxPaymentVertical.add(Box.createVerticalStrut(10));
 
         // Create formatted text field for Vietnamese currency
-        DecimalFormatSymbols dfs = new DecimalFormatSymbols();
-        dfs.setGroupingSeparator('.');
-        dfs.setDecimalSeparator(',');
-        DecimalFormat currencyFormat = new DecimalFormat("#,000 'Đ'", dfs);
-        currencyFormat.setGroupingUsed(true);
-        currencyFormat.setGroupingSize(3);
+        DecimalFormat currencyFormat = createCurrencyFormat();
 
         NumberFormatter formatter = new NumberFormatter(currencyFormat);
         formatter.setValueClass(Long.class);
@@ -1536,12 +1549,7 @@ public class TAB_Selling extends JFrame {
             setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
             setFont(new Font("Arial", Font.PLAIN, 16));
 
-            DecimalFormatSymbols dfs = new DecimalFormatSymbols();
-            dfs.setGroupingSeparator('.');
-            dfs.setDecimalSeparator(',');
-            currencyFormat = new DecimalFormat("#,##0 'Đ'", dfs);
-            currencyFormat.setGroupingUsed(true);
-            currencyFormat.setGroupingSize(3);
+            currencyFormat = createCurrencyFormat();
         }
 
         @Override
@@ -1555,6 +1563,20 @@ public class TAB_Selling extends JFrame {
 
             return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
         }
+    }
+
+    /**
+     * Create a DecimalFormat for Vietnamese currency formatting
+     * @return DecimalFormat configured with Vietnamese currency settings
+     */
+    private DecimalFormat createCurrencyFormat() {
+        DecimalFormatSymbols dfs = new DecimalFormatSymbols();
+        dfs.setGroupingSeparator('.');
+        dfs.setDecimalSeparator(',');
+        DecimalFormat currencyFormat = new DecimalFormat("#,##0 'Đ'", dfs);
+        currencyFormat.setGroupingUsed(true);
+        currencyFormat.setGroupingSize(3);
+        return currencyFormat;
     }
 
     /**
@@ -1580,6 +1602,20 @@ public class TAB_Selling extends JFrame {
             return Double.parseDouble(cleaned);
         } catch (NumberFormatException e) {
             return 0.0;
+        }
+    }
+
+    /**
+     * Update the VAT display field with the calculated VAT amount from invoice
+     */
+    private void updateVatDisplay() {
+        if (txtVat != null && invoice != null) {
+            double vatAmount = invoice.calculateVatAmount();
+
+            // Format VAT amount as currency
+            DecimalFormat currencyFormat = createCurrencyFormat();
+
+            txtVat.setText(currencyFormat.format(vatAmount));
         }
     }
 
