@@ -23,6 +23,8 @@ import java.util.*;               // Date, List, ArrayList, BitSet, ...
 import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
+import com.bus.BUS_Product;
+import com.entities.Product;
 
 public class TAB_Product {
 
@@ -51,6 +53,8 @@ public class TAB_Product {
     private JTextField txtSearch;
     private JComboBox<String> cbCategory, cbForm, cbStatus;
     private JButton btnExportExcel;
+    private JButton btnSearch;
+    private final BUS_Product productBUS = new BUS_Product();
 
     // ==== Danh sách trái ====
     private JTable tblProducts;
@@ -113,7 +117,7 @@ public class TAB_Product {
 
         txtSearch = new JTextField(18);
         txtSearch.setPreferredSize(new Dimension(220, 30));
-        JButton btnSearch = new JButton("Tìm kiếm");
+        btnSearch = new JButton("Tìm kiếm");
 
         cbCategory = new JComboBox<>(new String[]{"Tất cả","Thuốc kê đơn","Thuốc không kê đơn","Sản phẩm chức năng"});
         cbForm     = new JComboBox<>(new String[]{"Tất cả","Viên nén","Viên nang","Thuốc bột","Kẹo ngậm","Si rô","Thuốc nhỏ giọt","Súc miệng"});
@@ -132,6 +136,8 @@ public class TAB_Product {
         top.add(btnExportExcel);
 
         btnExportExcel.addActionListener(e -> exportProductsToCSV());
+        btnSearch.addActionListener(e -> onSearch());
+
         return top;
     }
 
@@ -1018,24 +1024,39 @@ public class TAB_Product {
     }
     private boolean validateLotRows(int fromRowIncl) {
         for (int r = fromRowIncl; r < lotModel.getRowCount(); r++) {
+            // NEW: bắt buộc nhập Mã lô
             String code = valStr(lotModel.getValueAt(r, LOT_COL_ID));
             if (code.isEmpty()) {
                 selectAndStartEdit(tblLot, r, LOT_COL_ID);
                 warn("Vui lòng nhập Mã lô (dòng " + (r + 1) + ").");
                 return false;
             }
+
             Integer q = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY));
-            if (q == null) { selectAndStartEdit(tblLot, r, LOT_COL_QTY);  warn("Số lượng phải là số nguyên ≥ 0 (dòng " + (r+1) + ")."); return false; }
+            if (q == null) {
+                selectAndStartEdit(tblLot, r, LOT_COL_QTY);
+                warn("Số lượng phải là số nguyên ≥ 0 (dòng " + (r + 1) + ").");
+                return false;
+            }
+
             Double p = parseNonNegativeDouble(lotModel.getValueAt(r, LOT_COL_PRICE));
-            if (p == null) { selectAndStartEdit(tblLot, r, LOT_COL_PRICE); warn("Giá phải là số ≥ 0 (dòng " + (r+1) + ")."); return false; }
+            if (p == null) {
+                selectAndStartEdit(tblLot, r, LOT_COL_PRICE);
+                warn("Giá phải là số ≥ 0 (dòng " + (r + 1) + ").");
+                return false;
+            }
+
             String exp = valStr(lotModel.getValueAt(r, LOT_COL_HSD));
             if (exp.isEmpty() || !isValidDateDMY(exp)) {
                 selectAndStartEdit(tblLot, r, LOT_COL_HSD);
-                warn("HSD không hợp lệ (dòng " + (r+1) + ").\nVui lòng nhập dd/MM/yy hoặc dd/MM/yyyy.");
+                warn("HSD không hợp lệ (dòng " + (r + 1) + ").\nVui lòng nhập dd/MM/yy hoặc dd/MM/yyyy.");
                 return false;
             }
+
             if (isBlank(lotModel.getValueAt(r, LOT_COL_STAT))) {
-                selectAndStartEdit(tblLot, r, LOT_COL_STAT); warn("Vui lòng nhập Tình trạng (dòng " + (r+1) + ")."); return false;
+                selectAndStartEdit(tblLot, r, LOT_COL_STAT);
+                warn("Vui lòng nhập Tình trạng (dòng " + (r + 1) + ").");
+                return false;
             }
         }
         return true;
@@ -1106,4 +1127,91 @@ public class TAB_Product {
         for (String p : ps) try { SimpleDateFormat f = new SimpleDateFormat(p); f.setLenient(false); f.parse(s); return true; } catch (ParseException ignore) {}
         return false;
     }
+
+    // NEW: xử lý bấm Tìm kiếm
+    private void onSearch() {
+        try {
+            stopAllTableEditing(); // đảm bảo commit editor nếu có
+
+            String keyword = (txtSearch.getText() == null) ? "" : txtSearch.getText().trim();
+
+            // Map filter từ combobox (VN -> code DB)
+            String catLabel  = (String) cbCategory.getSelectedItem();
+            String formLabel = (String) cbForm.getSelectedItem();
+
+            String categoryCode = mapCategoryVNToCode(catLabel); // null nếu "Tất cả"
+            String formCode     = mapFormVNToCode(formLabel);     // null nếu "Tất cả"
+
+            // Trạng thái (cbStatus) tạm thời không áp dụng (isActive) theo yêu cầu
+
+            var products = productBUS.searchProducts(keyword, categoryCode, formCode);
+
+            bindProductsToTable(products);
+
+            if (products.isEmpty()) {
+                JOptionPane.showMessageDialog(pProduct, "Không tìm thấy sản phẩm phù hợp.", "Kết quả tìm kiếm", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(pProduct, "Lỗi khi tìm kiếm: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // NEW: đổ danh sách vào bảng trái (giữ nguyên 6 cột như UI)
+    private void bindProductsToTable(java.util.List<Product> list) {
+        productModel.setRowCount(0);
+        for (Product p : list) {
+            productModel.addRow(new Object[]{
+                    safe(p.getId()),
+                    safe(p.getName()),
+                    mapCategoryCodeToVN(p.getCategory().toString()),   // hiển thị tiếng Việt
+                    safe(p.getActiveIngredient()),
+                    safe(p.getManufacturer()),
+                    "—" // tạm thời không dùng isActive -> hiển thị placeholder
+            });
+        }
+        // Sau khi bind, bỏ select & clear form chi tiết để tránh hiểu nhầm
+        currentSelectedRow = -1;
+        tblProducts.clearSelection();
+        clearProductDetails();
+        setEditMode(false);
+    }
+
+    private String safe(String s) { return (s == null) ? "" : s; }
+
+    // NEW: Category VN -> Code
+    private String mapCategoryVNToCode(String label) {
+        if (label == null || label.equalsIgnoreCase("Tất cả")) return null;
+        switch (label.trim().toLowerCase()) {
+            case "thuốc không kê đơn": return "OTC";
+            case "thuốc kê đơn":       return "ETC";
+            case "sản phẩm chức năng": return "SUPPLEMENT";
+            default: return null; // không rõ -> không filter
+        }
+    }
+
+    // NEW: Form VN -> Code (gom nhóm theo dữ liệu đang có)
+    private String mapFormVNToCode(String label) {
+        if (label == null || label.equalsIgnoreCase("Tất cả")) return null;
+        String l = label.trim().toLowerCase();
+        // Gom tất cả dạng viên/viên nang/bột/kẹo ngậm vào SOLID
+        if (l.contains("viên") || l.contains("bột") || l.contains("kẹo"))
+            return "SOLID";
+        // Gom si rô/nhỏ giọt/súc miệng vào LIQUID_DOSAGE
+        if (l.contains("si rô") || l.contains("siro") || l.contains("nhỏ giọt") || l.contains("súc miệng"))
+            return "LIQUID_DOSAGE";
+        return null;
+    }
+
+    // NEW: hiển thị Category code -> nhãn VN trên bảng
+    private String mapCategoryCodeToVN(String code) {
+        if (code == null) return "";
+        switch (code) {
+            case "OTC":        return "Thuốc không kê đơn";
+            case "ETC":        return "Thuốc kê đơn";
+            case "SUPPLEMENT": return "Sản phẩm chức năng";
+            default: return code;
+        }
+    }
+
 }
