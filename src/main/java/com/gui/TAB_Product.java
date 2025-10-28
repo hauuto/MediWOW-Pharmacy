@@ -156,7 +156,11 @@ public class TAB_Product {
 
         tblProducts.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblProducts.getSelectionModel().addListSelectionListener(e -> {
+            // NEW: luôn refresh trạng thái nút Chỉnh sửa theo selection hiện tại
+            enableEditIfRowSelected();
+
             if (e.getValueIsAdjusting() || suppressSelectionEvent) return;
+
             int row = tblProducts.getSelectedRow();
             if (row < 0) return;
 
@@ -181,11 +185,11 @@ public class TAB_Product {
             isBindingFromTable = true;
             bindProductFromTableRow(row);
             isBindingFromTable = false;
+
             setEditMode(false);
+            // đảm bảo lại sau khi actionBar được rebuild
             enableEditIfRowSelected();
         });
-        // === PATCH: cho phép bấm Chỉnh sửa khi đã chọn 1 dòng
-        if (btnEdit != null) btnEdit.setEnabled(true);
 
         JScrollPane scroll = new JScrollPane(tblProducts);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(220, 230, 240)));
@@ -533,6 +537,9 @@ public class TAB_Product {
         if (!edit) actionBar.add(btnEdit);
         else { actionBar.add(btnSave); actionBar.add(btnCancel); }
         actionBar.revalidate(); actionBar.repaint();
+
+        // NEW: sau khi hoán đổi nút, cập nhật enable/disable theo selection hiện tại
+        SwingUtilities.invokeLater(this::enableEditIfRowSelected);
     }
 
     private void chooseImage() {
