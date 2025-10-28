@@ -45,6 +45,9 @@ public class TAB_Selling extends JFrame {
     // Map to store previous UOM for each row (key: row index)
     private Map<Integer, String> previousUOMMap;
 
+    // Map to store old UOM ID for tracking changes (key: row index)
+    private Map<Integer, String> oldUOMIdMap;
+
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
     private JScrollPane scrInvoiceLine;
@@ -82,6 +85,7 @@ public class TAB_Selling extends JFrame {
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         productMap = new HashMap<>();
         previousUOMMap = new HashMap<>();
+        oldUOMIdMap = new HashMap<>();
 
         $$$setupUI$$$();
         createSplitPane();
@@ -321,13 +325,21 @@ public class TAB_Selling extends JFrame {
                 int newQty = currentQty + 1;
                 mdlInvoiceLine.setValueAt(newQty, i, 3);
 
-                // Update total
-                double unitPrice = (double) mdlInvoiceLine.getValueAt(i, 4);
+                // Update total - get unit price and handle both double and formatted string
+                Object unitPriceObj = mdlInvoiceLine.getValueAt(i, 4);
+                double unitPrice;
+                if (unitPriceObj instanceof Double) {
+                    unitPrice = (Double) unitPriceObj;
+                } else if (unitPriceObj instanceof String) {
+                    unitPrice = parseCurrencyValue((String) unitPriceObj);
+                } else {
+                    unitPrice = 0.0;
+                }
                 mdlInvoiceLine.setValueAt(newQty * unitPrice, i, 5);
 
                 // Update invoice line in the invoice
                 InvoiceLine updatedLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, newQty);
-                invoice.updateInvoiceLine(updatedLine);
+                invoice.updateInvoiceLine(product.getId(), baseUOM.getId(), updatedLine);
 
                 // Check prescription code requirement after adding
                 validatePrescriptionCodeForInvoice();
@@ -365,6 +377,7 @@ public class TAB_Selling extends JFrame {
         // Store initial UOM for this row
         int newRow = mdlInvoiceLine.getRowCount() - 1;
         previousUOMMap.put(newRow, unit);
+        oldUOMIdMap.put(newRow, baseUOM.getId());
 
         // Create and add invoice line to invoice
         InvoiceLine invoiceLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, 1);
@@ -418,6 +431,9 @@ public class TAB_Selling extends JFrame {
             txtPrescriptionCode.getForeground().equals(Color.GRAY);
 
         if (isEmpty) {
+            // Clear prescription code in invoice
+            invoice.setPrescriptionCode(null);
+
             // Check if ETC products exist in invoice
             boolean hasETCProduct = false;
             for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
@@ -461,6 +477,8 @@ public class TAB_Selling extends JFrame {
             // Set focus back to the field
             txtPrescriptionCode.requestFocusInWindow();
             btnProcessPayment.setEnabled(false);
+            // Clear prescription code in invoice
+            invoice.setPrescriptionCode(null);
             return;
         }
 
@@ -476,10 +494,13 @@ public class TAB_Selling extends JFrame {
             txtPrescriptionCode.selectAll();
             txtPrescriptionCode.requestFocusInWindow();
             btnProcessPayment.setEnabled(false);
+            // Clear prescription code in invoice
+            invoice.setPrescriptionCode(null);
             return;
         }
 
-        // Valid prescription code
+        // Valid prescription code - update invoice
+        invoice.setPrescriptionCode(code);
         validatePrescriptionCodeForInvoice();
     }
 
@@ -578,9 +599,18 @@ public class TAB_Selling extends JFrame {
             mdlInvoiceLine.setValueAt(unitPrice, row, 4);
             mdlInvoiceLine.setValueAt(unitPrice * quantity, row, 5);
 
-            // Update invoice line in invoice
+            // Update invoice line in invoice using old UOM ID
+            String oldUomId = oldUOMIdMap.get(row);
+            if (oldUomId == null) {
+                oldUomId = uom.getId(); // First time update
+            }
+
             InvoiceLine updatedLine = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
-            invoice.updateInvoiceLine(updatedLine);
+            invoice.updateInvoiceLine(productId, oldUomId, updatedLine);
+
+            // Update the stored old UOM ID for next time
+            oldUOMIdMap.put(row, uom.getId());
+            previousUOMMap.put(row, uomName);
         }
     }
 
@@ -701,6 +731,16 @@ public class TAB_Selling extends JFrame {
         tblInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
         tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
 
+        // Set right-aligned renderer for columns 3-5 (Quantity, Unit Price, Total)
+        javax.swing.table.DefaultTableCellRenderer rightRenderer = new javax.swing.table.DefaultTableCellRenderer();
+        rightRenderer.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        rightRenderer.setFont(new Font("Arial", Font.PLAIN, 16));
+        tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer()); // Keep spinner renderer for column 3
+
+        // Set currency renderer for columns 4-5 (Unit Price, Total)
+        tblInvoiceLine.getColumnModel().getColumn(4).setCellRenderer(new CurrencyRenderer());
+        tblInvoiceLine.getColumnModel().getColumn(5).setCellRenderer(new CurrencyRenderer());
+
         // Add focus listener to stop editing when table loses focus
         tblInvoiceLine.addFocusListener(new FocusAdapter() {
             @Override
@@ -814,34 +854,42 @@ public class TAB_Selling extends JFrame {
             // Get product information
             String productId = (String) mdlInvoiceLine.getValueAt(row, 0);
             String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
-            int quantity = (int) mdlInvoiceLine.getValueAt(row, 3);
 
             Product product = productMap.get(productId);
             if (product != null) {
                 UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
 
-                // Create invoice line to remove
-                InvoiceLine lineToRemove = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
-
-                // Remove from invoice
-                invoice.removeInvoiceLine(lineToRemove);
+                // Remove from invoice using productId and uomId
+                invoice.removeInvoiceLine(productId, uom.getId());
             }
 
             // Remove from table
             mdlInvoiceLine.removeRow(row);
 
-            // Clean up previousUOMMap - shift entries after removed row
-            Map<Integer, String> updatedMap = new HashMap<>();
+            // Clean up maps - shift entries after removed row
+            Map<Integer, String> updatedPreviousUOMMap = new HashMap<>();
+            Map<Integer, String> updatedOldUOMIdMap = new HashMap<>();
+
             for (Map.Entry<Integer, String> entry : previousUOMMap.entrySet()) {
                 int rowIndex = entry.getKey();
                 if (rowIndex < row) {
-                    updatedMap.put(rowIndex, entry.getValue());
+                    updatedPreviousUOMMap.put(rowIndex, entry.getValue());
                 } else if (rowIndex > row) {
-                    updatedMap.put(rowIndex - 1, entry.getValue());
+                    updatedPreviousUOMMap.put(rowIndex - 1, entry.getValue());
                 }
-                // Skip the removed row
             }
-            previousUOMMap = updatedMap;
+
+            for (Map.Entry<Integer, String> entry : oldUOMIdMap.entrySet()) {
+                int rowIndex = entry.getKey();
+                if (rowIndex < row) {
+                    updatedOldUOMIdMap.put(rowIndex, entry.getValue());
+                } else if (rowIndex > row) {
+                    updatedOldUOMIdMap.put(rowIndex - 1, entry.getValue());
+                }
+            }
+
+            previousUOMMap = updatedPreviousUOMMap;
+            oldUOMIdMap = updatedOldUOMIdMap;
         }
 
         // Check prescription code requirement after removal
@@ -875,25 +923,22 @@ public class TAB_Selling extends JFrame {
             // Get product information
             String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
             String uomName = (String) mdlInvoiceLine.getValueAt(i, 2);
-            int quantity = (int) mdlInvoiceLine.getValueAt(i, 3);
 
             Product product = productMap.get(productId);
             if (product != null) {
                 UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
 
-                // Create invoice line to remove
-                InvoiceLine lineToRemove = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
-
-                // Remove from invoice
-                invoice.removeInvoiceLine(lineToRemove);
+                // Remove from invoice using productId and uomId
+                invoice.removeInvoiceLine(productId, uom.getId());
             }
         }
 
         // Clear table
         mdlInvoiceLine.setRowCount(0);
 
-        // Clear previousUOMMap
+        // Clear all maps
         previousUOMMap.clear();
+        oldUOMIdMap.clear();
 
         // Check prescription code requirement after removal
         validatePrescriptionCodeForInvoice();
@@ -1176,6 +1221,27 @@ public class TAB_Selling extends JFrame {
 
         btnProcessPayment = createStyledButton("Thanh toán");
         btnProcessPayment.setEnabled(true); // Initially enabled
+
+        // Add action listener to print invoice lines
+        btnProcessPayment.addActionListener(e -> {
+            System.out.println("========== INVOICE LINES ==========");
+            System.out.println("Total invoice lines: " + invoice.getInvoiceLineList().size());
+            System.out.println();
+
+            int lineNumber = 1;
+            for (InvoiceLine line : invoice.getInvoiceLineList()) {
+                System.out.println("Line " + lineNumber + ":");
+                System.out.println("  Product Name: " + line.getProduct().getName());
+                System.out.println("  Quantity: " + line.getQuantity());
+                System.out.println("  UOM Name: " + line.getUnitOfMeasure().getName());
+                System.out.println("  Unit Price: " + line.getUnitPrice());
+                System.out.println("  Prescription Code: " + invoice.getPrescriptionCode());
+                System.out.println();
+                lineNumber++;
+            }
+            System.out.println("===================================");
+        });
+
         boxPaymentButton.add(btnProcessPayment);
 
         return boxInvoiceHorizontal;
@@ -1457,6 +1523,63 @@ public class TAB_Selling extends JFrame {
             }
 
             return spinner;
+        }
+    }
+
+    /**
+     * Custom cell renderer for currency columns (Unit Price and Total)
+     */
+    private class CurrencyRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        private final DecimalFormat currencyFormat;
+
+        public CurrencyRenderer() {
+            setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+            setFont(new Font("Arial", Font.PLAIN, 16));
+
+            DecimalFormatSymbols dfs = new DecimalFormatSymbols();
+            dfs.setGroupingSeparator('.');
+            dfs.setDecimalSeparator(',');
+            currencyFormat = new DecimalFormat("#,##0 'Đ'", dfs);
+            currencyFormat.setGroupingUsed(true);
+            currencyFormat.setGroupingSize(3);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            // Format the value as currency
+            if (value instanceof Number) {
+                double amount = ((Number) value).doubleValue();
+                value = currencyFormat.format(amount);
+            }
+            // If already a String, keep as is
+
+            return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+        }
+    }
+
+    /**
+     * Parse currency formatted string back to double value
+     * @param formattedValue The formatted currency string (e.g., "10.000 Đ")
+     * @return The numeric value as double
+     */
+    private double parseCurrencyValue(String formattedValue) {
+        if (formattedValue == null || formattedValue.trim().isEmpty()) {
+            return 0.0;
+        }
+
+        // Remove currency symbol and spaces
+        String cleaned = formattedValue.replace("Đ", "").trim();
+
+        // Replace grouping separator (.) with empty string
+        cleaned = cleaned.replace(".", "");
+
+        // Replace decimal separator (,) with .
+        cleaned = cleaned.replace(",", ".");
+
+        try {
+            return Double.parseDouble(cleaned);
+        } catch (NumberFormatException e) {
+            return 0.0;
         }
     }
 

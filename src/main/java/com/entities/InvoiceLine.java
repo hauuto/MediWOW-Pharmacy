@@ -78,6 +78,10 @@ public class InvoiceLine {
         return unitOfMeasure;
     }
 
+    public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
+    }
+
     public LineType getLineType() {
         return lineType;
     }
