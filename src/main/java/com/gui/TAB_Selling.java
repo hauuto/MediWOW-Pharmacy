@@ -5,21 +5,28 @@ import com.bus.BUS_Product;
 import com.bus.BUS_Staff;
 import com.entities.*;
 import com.enums.InvoiceType;
+import com.enums.LineType;
+import com.enums.ProductCategory;
 import com.utils.AppColors;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.TableModelEvent;
+import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.plaf.basic.BasicComboPopup;
+import javax.swing.plaf.basic.ComboPopup;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -139,19 +146,19 @@ public class TAB_Selling extends JFrame {
         searchWindow.setFocusableWindowState(false);
 
         // Add document listener to search as user types
-        txtSearchInput.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+        txtSearchInput.getDocument().addDocumentListener(new DocumentListener() {
             @Override
-            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+            public void insertUpdate(DocumentEvent e) {
                 SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
             }
 
             @Override
-            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+            public void removeUpdate(DocumentEvent e) {
                 SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
             }
 
             @Override
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+            public void changedUpdate(DocumentEvent e) {
                 SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
             }
         });
@@ -168,11 +175,11 @@ public class TAB_Selling extends JFrame {
         });
 
         // Handle keyboard navigation
-        txtSearchInput.addKeyListener(new java.awt.event.KeyAdapter() {
+        txtSearchInput.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyPressed(java.awt.event.KeyEvent e) {
+            public void keyPressed(KeyEvent e) {
                 if (searchWindow.isVisible()) {
-                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_DOWN) {
+                    if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                         int selectedIndex = searchResultsList.getSelectedIndex();
                         if (selectedIndex < searchResultsModel.getSize() - 1) {
                             searchResultsList.setSelectedIndex(selectedIndex + 1);
@@ -181,20 +188,20 @@ public class TAB_Selling extends JFrame {
                             searchResultsList.setSelectedIndex(0);
                         }
                         e.consume();
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_UP) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_UP) {
                         int selectedIndex = searchResultsList.getSelectedIndex();
                         if (selectedIndex > 0) {
                             searchResultsList.setSelectedIndex(selectedIndex - 1);
                             searchResultsList.ensureIndexIsVisible(selectedIndex - 1);
                         }
                         e.consume();
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                         int selectedIndex = searchResultsList.getSelectedIndex();
                         if (selectedIndex != -1) {
                             selectProduct(selectedIndex, txtSearchInput);
                             e.consume();
                         }
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                         searchWindow.setVisible(false);
                         e.consume();
                     }
@@ -222,8 +229,8 @@ public class TAB_Selling extends JFrame {
 
         // Check if it's placeholder text
         if (searchText.isEmpty() ||
-            searchText.equals("Nhập mã/tên/tên rút gọn của thuốc...") ||
-            txtSearchInput.getForeground().equals(Color.GRAY)) {
+                searchText.equals("Nhập mã/tên/tên rút gọn của thuốc...") ||
+                txtSearchInput.getForeground().equals(Color.GRAY)) {
             searchWindow.setVisible(false);
             return;
         }
@@ -250,9 +257,9 @@ public class TAB_Selling extends JFrame {
             if (matches) {
                 currentSearchResults.add(product);
                 String displayText = String.format("%s - %s - %s",
-                    product.getId(),
-                    product.getName(),
-                    product.getShortName() != null ? product.getShortName() : "N/A");
+                        product.getId(),
+                        product.getName(),
+                        product.getShortName() != null ? product.getShortName() : "N/A");
                 searchResultsModel.addElement(displayText);
             }
         }
@@ -300,13 +307,13 @@ public class TAB_Selling extends JFrame {
      */
     private void addProductToInvoice(Product product) {
         // Check if product is ETC and prescription code is required
-        if (product.getCategory() == com.enums.ProductCategory.ETC) {
+        if (product.getCategory() == ProductCategory.ETC) {
             if (!isValidPrescriptionCode()) {
                 JOptionPane.showMessageDialog(pnlSelling,
-                    "Sản phẩm '" + product.getName() + "' là thuốc ETC (thuốc kê đơn).\n" +
-                    "Vui lòng nhập mã đơn thuốc hợp lệ trước khi thêm sản phẩm này.",
-                    "Yêu cầu mã đơn thuốc",
-                    JOptionPane.WARNING_MESSAGE);
+                        "Sản phẩm '" + product.getName() + "' là thuốc ETC (thuốc kê đơn).\n" +
+                                "Vui lòng nhập mã đơn thuốc hợp lệ trước khi thêm sản phẩm này.",
+                        "Yêu cầu mã đơn thuốc",
+                        JOptionPane.WARNING_MESSAGE);
 
                 // Set focus to prescription code field
                 txtPrescriptionCode.requestFocusInWindow();
@@ -341,7 +348,7 @@ public class TAB_Selling extends JFrame {
                 mdlInvoiceLine.setValueAt(newQty * unitPrice, i, 5);
 
                 // Update invoice line in the invoice
-                InvoiceLine updatedLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, newQty);
+                InvoiceLine updatedLine = new InvoiceLine(product, invoice, baseUOM, LineType.SALE, newQty);
                 invoice.updateInvoiceLine(product.getId(), baseUOM.getId(), updatedLine);
 
                 // Update VAT display
@@ -367,12 +374,12 @@ public class TAB_Selling extends JFrame {
         }
 
         Object[] row = {
-            product.getId(),
-            product.getName(),
-            unit,
-            1,
-            unitPrice,
-            unitPrice
+                product.getId(),
+                product.getName(),
+                unit,
+                1,
+                unitPrice,
+                unitPrice
         };
 
         mdlInvoiceLine.addRow(row);
@@ -386,7 +393,7 @@ public class TAB_Selling extends JFrame {
         oldUOMIdMap.put(newRow, baseUOM.getId());
 
         // Create and add invoice line to invoice
-        InvoiceLine invoiceLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, 1);
+        InvoiceLine invoiceLine = new InvoiceLine(product, invoice, baseUOM, LineType.SALE, 1);
         invoice.addInvoiceLine(invoiceLine);
 
         // Update VAT display
@@ -419,8 +426,8 @@ public class TAB_Selling extends JFrame {
 
         // Check if it's placeholder text or empty
         if (code.isEmpty() ||
-            code.equals("Điền mã đơn kê thuốc (nếu có)...") ||
-            txtPrescriptionCode.getForeground().equals(Color.GRAY)) {
+                code.equals("Điền mã đơn kê thuốc (nếu có)...") ||
+                txtPrescriptionCode.getForeground().equals(Color.GRAY)) {
             return false;
         }
 
@@ -436,8 +443,8 @@ public class TAB_Selling extends JFrame {
 
         // Check if empty or placeholder
         boolean isEmpty = code.isEmpty() ||
-            code.equals("Điền mã đơn kê thuốc (nếu có)...") ||
-            txtPrescriptionCode.getForeground().equals(Color.GRAY);
+                code.equals("Điền mã đơn kê thuốc (nếu có)...") ||
+                txtPrescriptionCode.getForeground().equals(Color.GRAY);
 
         if (isEmpty) {
             // Clear prescription code in invoice
@@ -449,7 +456,7 @@ public class TAB_Selling extends JFrame {
                 String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
                 Product product = productMap.get(productId);
 
-                if (product != null && product.getCategory() == com.enums.ProductCategory.ETC) {
+                if (product != null && product.getCategory() == ProductCategory.ETC) {
                     hasETCProduct = true;
                     break;
                 }
@@ -458,10 +465,10 @@ public class TAB_Selling extends JFrame {
             // If ETC products exist, show warning
             if (hasETCProduct) {
                 JOptionPane.showMessageDialog(pnlSelling,
-                    "Hóa đơn có chứa thuốc ETC (thuốc kê đơn).\n" +
-                    "Vui lòng nhập mã đơn thuốc hợp lệ để tiếp tục.",
-                    "Yêu cầu mã đơn thuốc",
-                    JOptionPane.WARNING_MESSAGE);
+                        "Hóa đơn có chứa thuốc ETC (thuốc kê đơn).\n" +
+                                "Vui lòng nhập mã đơn thuốc hợp lệ để tiếp tục.",
+                        "Yêu cầu mã đơn thuốc",
+                        JOptionPane.WARNING_MESSAGE);
 
                 // Set focus back to the field
                 txtPrescriptionCode.requestFocusInWindow();
@@ -474,14 +481,14 @@ public class TAB_Selling extends JFrame {
         // Validate format
         if (!code.matches(PRESCRIPTION_CODE_PATTERN)) {
             JOptionPane.showMessageDialog(pnlSelling,
-                "Mã đơn thuốc không hợp lệ!\n\n" +
-                "Định dạng đúng: xxxxxyyyyyyy-z\n" +
-                "- 5 ký tự đầu: Mã cơ sở khám bệnh (chữ/số)\n" +
-                "- 7 ký tự tiếp: Mã đơn thuốc (chữ thường/số)\n" +
-                "- 1 ký tự cuối sau dấu gạch ngang: Loại đơn (N/H/C)\n\n" +
-                "Ví dụ: MW001a3b5c7d-C",
-                "Lỗi định dạng mã đơn thuốc",
-                JOptionPane.WARNING_MESSAGE);
+                    "Mã đơn thuốc không hợp lệ!\n\n" +
+                            "Định dạng đúng: xxxxxyyyyyyy-z\n" +
+                            "- 5 ký tự đầu: Mã cơ sở khám bệnh (chữ/số)\n" +
+                            "- 7 ký tự tiếp: Mã đơn thuốc (chữ thường/số)\n" +
+                            "- 1 ký tự cuối sau dấu gạch ngang: Loại đơn (N/H/C)\n\n" +
+                            "Ví dụ: MW001a3b5c7d-C",
+                    "Lỗi định dạng mã đơn thuốc",
+                    JOptionPane.WARNING_MESSAGE);
 
             // Set focus back to the field
             txtPrescriptionCode.requestFocusInWindow();
@@ -494,10 +501,10 @@ public class TAB_Selling extends JFrame {
         // Check if prescription code has already been used
         if (previousPrescriptionCodes != null && previousPrescriptionCodes.contains(code.toLowerCase())) {
             JOptionPane.showMessageDialog(pnlSelling,
-                "Mã đơn thuốc '" + code + "' đã được sử dụng trước đó!\n" +
-                "Vui lòng nhập mã đơn thuốc khác.",
-                "Mã đơn thuốc đã tồn tại",
-                JOptionPane.WARNING_MESSAGE);
+                    "Mã đơn thuốc '" + code + "' đã được sử dụng trước đó!\n" +
+                            "Vui lòng nhập mã đơn thuốc khác.",
+                    "Mã đơn thuốc đã tồn tại",
+                    JOptionPane.WARNING_MESSAGE);
 
             // Select all text and set focus
             txtPrescriptionCode.selectAll();
@@ -524,7 +531,7 @@ public class TAB_Selling extends JFrame {
             String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
             Product product = productMap.get(productId);
 
-            if (product != null && product.getCategory() == com.enums.ProductCategory.ETC) {
+            if (product != null && product.getCategory() == ProductCategory.ETC) {
                 hasETCProduct = true;
                 break;
             }
@@ -568,11 +575,11 @@ public class TAB_Selling extends JFrame {
                     if (productId.equals(otherProductId) && uomName.equals(otherUomName)) {
                         // Duplicate found - show warning and revert
                         SwingUtilities.invokeLater(() ->
-                            JOptionPane.showMessageDialog(pnlSelling,
-                                "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại trong hóa đơn!\n" +
-                                "Vui lòng tăng số lượng của sản phẩm hiện có hoặc chọn đơn vị khác.",
-                                "Cảnh báo trùng lặp",
-                                JOptionPane.WARNING_MESSAGE)
+                                JOptionPane.showMessageDialog(pnlSelling,
+                                        "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại trong hóa đơn!\n" +
+                                                "Vui lòng tăng số lượng của sản phẩm hiện có hoặc chọn đơn vị khác.",
+                                        "Cảnh báo trùng lặp",
+                                        JOptionPane.WARNING_MESSAGE)
                         );
 
                         // Revert to previous UOM (before the change)
@@ -614,7 +621,7 @@ public class TAB_Selling extends JFrame {
                 oldUomId = uom.getId(); // First time update
             }
 
-            InvoiceLine updatedLine = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
+            InvoiceLine updatedLine = new InvoiceLine(product, invoice, uom, LineType.SALE, quantity);
             invoice.updateInvoiceLine(productId, oldUomId, updatedLine);
 
             // Update the stored old UOM ID for next time
@@ -744,8 +751,8 @@ public class TAB_Selling extends JFrame {
         tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
 
         // Set right-aligned renderer for columns 3-5 (Quantity, Unit Price, Total)
-        javax.swing.table.DefaultTableCellRenderer rightRenderer = new javax.swing.table.DefaultTableCellRenderer();
-        rightRenderer.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
+        rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
         rightRenderer.setFont(new Font("Arial", Font.PLAIN, 16));
         tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer()); // Keep spinner renderer for column 3
 
@@ -806,7 +813,7 @@ public class TAB_Selling extends JFrame {
 
         // Add table model listener to handle changes
         mdlInvoiceLine.addTableModelListener(e -> {
-            if (e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
+            if (e.getType() == TableModelEvent.UPDATE) {
                 int row = e.getFirstRow();
                 int column = e.getColumn();
 
@@ -843,17 +850,17 @@ public class TAB_Selling extends JFrame {
 
         if (selectedRows.length == 0) {
             JOptionPane.showMessageDialog(pnlSelling,
-                "Vui lòng chọn sản phẩm cần xóa!",
-                "Thông báo",
-                JOptionPane.WARNING_MESSAGE);
+                    "Vui lòng chọn sản phẩm cần xóa!",
+                    "Thông báo",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         // Confirm deletion
         int confirm = JOptionPane.showConfirmDialog(pnlSelling,
-            "Bạn có chắc chắn muốn xóa " + selectedRows.length + " sản phẩm đã chọn?",
-            "Xác nhận xóa",
-            JOptionPane.YES_NO_OPTION);
+                "Bạn có chắc chắn muốn xóa " + selectedRows.length + " sản phẩm đã chọn?",
+                "Xác nhận xóa",
+                JOptionPane.YES_NO_OPTION);
 
         if (confirm != JOptionPane.YES_OPTION) {
             return;
@@ -917,17 +924,17 @@ public class TAB_Selling extends JFrame {
     private void removeAllItems() {
         if (mdlInvoiceLine.getRowCount() == 0) {
             JOptionPane.showMessageDialog(pnlSelling,
-                "Không có sản phẩm nào để xóa!",
-                "Thông báo",
-                JOptionPane.INFORMATION_MESSAGE);
+                    "Không có sản phẩm nào để xóa!",
+                    "Thông báo",
+                    JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         // Confirm deletion
         int confirm = JOptionPane.showConfirmDialog(pnlSelling,
-            "Bạn có chắc chắn muốn xóa tất cả sản phẩm?",
-            "Xác nhận xóa",
-            JOptionPane.YES_NO_OPTION);
+                "Bạn có chắc chắn muốn xóa tất cả sản phẩm?",
+                "Xác nhận xóa",
+                JOptionPane.YES_NO_OPTION);
 
         if (confirm != JOptionPane.YES_OPTION) {
             return;
@@ -1349,10 +1356,10 @@ public class TAB_Selling extends JFrame {
             comboBox.setFont(new Font("Arial", Font.PLAIN, 16));
 
             // Override the UI to control popup positioning
-            comboBox.setUI(new javax.swing.plaf.basic.BasicComboBoxUI() {
+            comboBox.setUI(new BasicComboBoxUI() {
                 @Override
-                protected javax.swing.plaf.basic.ComboPopup createPopup() {
-                    return new javax.swing.plaf.basic.BasicComboPopup(comboBox) {
+                protected ComboPopup createPopup() {
+                    return new BasicComboPopup(comboBox) {
                         @Override
                         public void show() {
                             // Get the combo box location on screen
@@ -1360,8 +1367,8 @@ public class TAB_Selling extends JFrame {
 
                             // Calculate popup dimensions
                             Dimension popupSize = new Dimension(
-                                comboBox.getWidth(),
-                                getPopupHeightForRowCount(comboBox.getMaximumRowCount())
+                                    comboBox.getWidth(),
+                                    getPopupHeightForRowCount(comboBox.getMaximumRowCount())
                             );
 
                             // Position directly below the combo box
@@ -1484,7 +1491,7 @@ public class TAB_Selling extends JFrame {
         public boolean stopCellEditing() {
             try {
                 spinner.commitEdit();
-            } catch (java.text.ParseException e) {
+            } catch (ParseException e) {
                 // If commit fails, use the current value
             }
             return super.stopCellEditing();
@@ -1542,11 +1549,11 @@ public class TAB_Selling extends JFrame {
     /**
      * Custom cell renderer for currency columns (Unit Price and Total)
      */
-    private class CurrencyRenderer extends javax.swing.table.DefaultTableCellRenderer {
+    private class CurrencyRenderer extends DefaultTableCellRenderer {
         private final DecimalFormat currencyFormat;
 
         public CurrencyRenderer() {
-            setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+            setHorizontalAlignment(SwingConstants.RIGHT);
             setFont(new Font("Arial", Font.PLAIN, 16));
 
             currencyFormat = createCurrencyFormat();
@@ -1581,6 +1588,7 @@ public class TAB_Selling extends JFrame {
 
     /**
      * Parse currency formatted string back to double value
+     *
      * @param formattedValue The formatted currency string (e.g., "10.000 Đ")
      * @return The numeric value as double
      */
