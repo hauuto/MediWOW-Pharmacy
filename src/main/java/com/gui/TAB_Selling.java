@@ -55,6 +55,14 @@ public class TAB_Selling extends JFrame {
     // Field to hold the customer payment text field for cash button updates
     private JFormattedTextField txtCustomerPayment;
 
+    // Fields for prescription code validation
+    private JTextField txtPrescriptionCode;
+    private JButton btnProcessPayment;
+
+    // Prescription code regex pattern: xxxxxyyyyyyy-z
+    // 5 chars (facility code) + 7 chars (random alphanumeric) + dash + 1 char (type: N/H/C)
+    private static final String PRESCRIPTION_CODE_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
+
     // Fields for search autocomplete
     private JWindow searchWindow;
     private JList<String> searchResultsList;
@@ -284,6 +292,21 @@ public class TAB_Selling extends JFrame {
      * Add product to invoice line table
      */
     private void addProductToInvoice(Product product) {
+        // Check if product is ETC and prescription code is required
+        if (product.getCategory() == com.enums.ProductCategory.ETC) {
+            if (!isValidPrescriptionCode()) {
+                JOptionPane.showMessageDialog(pnlSelling,
+                    "Sản phẩm '" + product.getName() + "' là thuốc ETC (thuốc kê đơn).\n" +
+                    "Vui lòng nhập mã đơn thuốc hợp lệ trước khi thêm sản phẩm này.",
+                    "Yêu cầu mã đơn thuốc",
+                    JOptionPane.WARNING_MESSAGE);
+
+                // Set focus to prescription code field
+                txtPrescriptionCode.requestFocusInWindow();
+                return;
+            }
+        }
+
         // Get base unit of measure
         UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
 
@@ -305,6 +328,9 @@ public class TAB_Selling extends JFrame {
                 // Update invoice line in the invoice
                 InvoiceLine updatedLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, newQty);
                 invoice.updateInvoiceLine(updatedLine);
+
+                // Check prescription code requirement after adding
+                validatePrescriptionCodeForInvoice();
                 return;
             }
         }
@@ -343,6 +369,9 @@ public class TAB_Selling extends JFrame {
         // Create and add invoice line to invoice
         InvoiceLine invoiceLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, 1);
         invoice.addInvoiceLine(invoiceLine);
+
+        // Check prescription code requirement after adding
+        validatePrescriptionCodeForInvoice();
     }
 
     /**
@@ -358,6 +387,114 @@ public class TAB_Selling extends JFrame {
         }
         // If not found in list, create a base UOM
         return new UnitOfMeasure(product.getId() + "-BASE", product, uomName, 1.0);
+    }
+
+    /**
+     * Check if prescription code is valid according to the pattern
+     */
+    private boolean isValidPrescriptionCode() {
+        String code = txtPrescriptionCode.getText().trim();
+
+        // Check if it's placeholder text or empty
+        if (code.isEmpty() ||
+            code.equals("Điền mã đơn kê thuốc (nếu có)...") ||
+            txtPrescriptionCode.getForeground().equals(Color.GRAY)) {
+            return false;
+        }
+
+        // Check against regex pattern
+        return code.matches(PRESCRIPTION_CODE_PATTERN);
+    }
+
+    /**
+     * Validate prescription code format when field loses focus
+     */
+    private void validatePrescriptionCode() {
+        String code = txtPrescriptionCode.getText().trim();
+
+        // Check if empty or placeholder
+        boolean isEmpty = code.isEmpty() ||
+            code.equals("Điền mã đơn kê thuốc (nếu có)...") ||
+            txtPrescriptionCode.getForeground().equals(Color.GRAY);
+
+        if (isEmpty) {
+            // Check if ETC products exist in invoice
+            boolean hasETCProduct = false;
+            for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+                String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
+                Product product = productMap.get(productId);
+
+                if (product != null && product.getCategory() == com.enums.ProductCategory.ETC) {
+                    hasETCProduct = true;
+                    break;
+                }
+            }
+
+            // If ETC products exist, show warning
+            if (hasETCProduct) {
+                JOptionPane.showMessageDialog(pnlSelling,
+                    "Hóa đơn có chứa thuốc ETC (thuốc kê đơn).\n" +
+                    "Vui lòng nhập mã đơn thuốc hợp lệ để tiếp tục.",
+                    "Yêu cầu mã đơn thuốc",
+                    JOptionPane.WARNING_MESSAGE);
+
+                // Set focus back to the field
+                txtPrescriptionCode.requestFocusInWindow();
+            }
+
+            validatePrescriptionCodeForInvoice();
+            return;
+        }
+
+        // Validate format
+        if (!code.matches(PRESCRIPTION_CODE_PATTERN)) {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Mã đơn thuốc không hợp lệ!\n\n" +
+                "Định dạng đúng: xxxxxyyyyyyy-z\n" +
+                "- 5 ký tự đầu: Mã cơ sở khám bệnh (chữ/số)\n" +
+                "- 7 ký tự tiếp: Mã đơn thuốc (chữ thường/số)\n" +
+                "- 1 ký tự cuối sau dấu gạch ngang: Loại đơn (N/H/C)\n\n" +
+                "Ví dụ: MW001a3b5c7d-C",
+                "Lỗi định dạng mã đơn thuốc",
+                JOptionPane.WARNING_MESSAGE);
+
+            // Set focus back to the field
+            txtPrescriptionCode.requestFocusInWindow();
+            btnProcessPayment.setEnabled(false);
+        } else {
+            // Valid prescription code
+            validatePrescriptionCodeForInvoice();
+        }
+    }
+
+    /**
+     * Check if prescription code is required based on invoice contents
+     */
+    private void validatePrescriptionCodeForInvoice() {
+        boolean hasETCProduct = false;
+
+        // Check if any product in the invoice is ETC
+        for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+            String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
+            Product product = productMap.get(productId);
+
+            if (product != null && product.getCategory() == com.enums.ProductCategory.ETC) {
+                hasETCProduct = true;
+                break;
+            }
+        }
+
+        // If ETC products exist, prescription code is required
+        if (hasETCProduct) {
+            if (!isValidPrescriptionCode()) {
+                btnProcessPayment.setEnabled(false);
+            } else {
+                btnProcessPayment.setEnabled(true);
+            }
+        } else {
+            // No ETC products, payment button can be enabled
+            btnProcessPayment.setEnabled(true);
+        }
     }
 
     /**
@@ -690,6 +827,9 @@ public class TAB_Selling extends JFrame {
             }
             previousUOMMap = updatedMap;
         }
+
+        // Check prescription code requirement after removal
+        validatePrescriptionCodeForInvoice();
     }
 
     /**
@@ -738,6 +878,9 @@ public class TAB_Selling extends JFrame {
 
         // Clear previousUOMMap
         previousUOMMap.clear();
+
+        // Check prescription code requirement after removal
+        validatePrescriptionCodeForInvoice();
     }
 
     /**
@@ -848,7 +991,15 @@ public class TAB_Selling extends JFrame {
 
         // Adding prescription code label and text field
         JLabel lblPrescriptionCode = new JLabel("Mã đơn kê thuốc:");
-        JTextField txtPrescriptionCode = new JTextField();
+        txtPrescriptionCode = new JTextField();
+
+        // Add focus listener for prescription code validation
+        txtPrescriptionCode.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                validatePrescriptionCode();
+            }
+        });
 
         boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblPrescriptionCode, txtPrescriptionCode, "Điền mã đơn kê thuốc (nếu có)...", "Điền mã đơn kê thuốc", 69));
 
@@ -1007,7 +1158,8 @@ public class TAB_Selling extends JFrame {
 
         boxPaymentButton.add(Box.createHorizontalGlue());
 
-        JButton btnProcessPayment = createStyledButton("Thanh toán");
+        btnProcessPayment = createStyledButton("Thanh toán");
+        btnProcessPayment.setEnabled(true); // Initially enabled
         boxPaymentButton.add(btnProcessPayment);
 
         return boxInvoiceHorizontal;
