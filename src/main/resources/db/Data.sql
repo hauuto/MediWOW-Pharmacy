@@ -12,13 +12,7 @@
 USE MediWOW
 GO
 
--- =====================================================
--- 1. STAFF DATA
--- =====================================================
--- Insert admin staff (trigger will auto-generate ID: MAN2025-0001)
-INSERT INTO Staff (username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role)
-VALUES ('admin', 'admin', N'Quản Trị Viên', 'LIC2025001', '0901234567', 'admin@mediwow.com', '2025-01-10', 1, 'MANAGER');
-GO
+
 
 -- =====================================================
 -- 2. PRODUCT DATA (2 OTC, 2 ETC, 1 Supplement)
