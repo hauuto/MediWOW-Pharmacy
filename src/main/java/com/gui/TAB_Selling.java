@@ -2,7 +2,6 @@ package com.gui;
 
 import com.bus.BUS_Invoice;
 import com.bus.BUS_Product;
-import com.bus.BUS_Staff;
 import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LineType;
@@ -40,7 +39,6 @@ public class TAB_Selling extends JFrame {
 
     private final BUS_Product busProduct;
     private final BUS_Invoice busInvoice;
-    private final BUS_Staff busStaff;
 
     private Invoice invoice;
     private List<String> previousPrescriptionCodes;
@@ -85,11 +83,8 @@ public class TAB_Selling extends JFrame {
     public TAB_Selling(Staff creator) {
         busProduct = new BUS_Product();
         busInvoice = new BUS_Invoice();
-        busStaff = new BUS_Staff();
 
-        Staff tempCreator = busStaff.getAllStaffs().get(0); // For testing purposes
-
-        invoice = new Invoice(InvoiceType.SALES, tempCreator);
+        invoice = new Invoice(InvoiceType.SALES, creator);
 
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
@@ -1245,6 +1240,8 @@ public class TAB_Selling extends JFrame {
         // Add action listener to print invoice lines
         btnProcessPayment.addActionListener(e -> {
             System.out.println("========== INVOICE LINES ==========");
+            System.out.println("Creator: " + invoice.getCreator().getFullName());
+            System.out.println("  Prescription Code: " + invoice.getPrescriptionCode());
             System.out.println("Total invoice lines: " + invoice.getInvoiceLineList().size());
             System.out.println();
 
@@ -1255,7 +1252,6 @@ public class TAB_Selling extends JFrame {
                 System.out.println("  Quantity: " + line.getQuantity());
                 System.out.println("  UOM Name: " + line.getUnitOfMeasure().getName());
                 System.out.println("  Unit Price: " + line.getUnitPrice());
-                System.out.println("  Prescription Code: " + invoice.getPrescriptionCode());
                 System.out.println();
                 lineNumber++;
             }

@@ -136,7 +136,7 @@ VALUES ('PRMA2025-004', 'PROM2025-002', 2, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL',
 
 -- Invoice 1: Sales with Promotion 1 and Prescription Code
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0001', 'MW001a3b5c7d-C', NULL, 'PROM2025-001', 'CASH', N'Bán thuốc theo đơn, áp dụng khuyến mãi');
+VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0002', 'MW001a3b5c7d-C', NULL, 'PROM2025-001', 'CASH', N'Bán thuốc theo đơn, áp dụng khuyến mãi');
 
 -- Invoice Lines for Invoice 1
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -147,7 +147,7 @@ VALUES ('INV2025-0001', 'PRO2025-0003', 20, 'UOM2025-0006', 250, 'SALE');
 
 -- Invoice 2: Sales without Promotion
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0002', 'SALES', '2025-01-23 10:15:00', 'MAN2025-0001', NULL, NULL, NULL, 'BANK_TRANSFER', N'Khách hàng thanh toán chuyển khoản');
+VALUES ('INV2025-0002', 'SALES', '2025-01-23 10:15:00', 'MAN2025-0002', NULL, NULL, NULL, 'BANK_TRANSFER', N'Khách hàng thanh toán chuyển khoản');
 
 -- Invoice Lines for Invoice 2
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -158,7 +158,7 @@ VALUES ('INV2025-0002', 'PRO2025-0004', 14, 'UOM2025-0010', 5600, 'SALE');
 
 -- Invoice 3: Sales without Promotion but with Prescription Code
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0003', 'SALES', '2025-01-24 14:20:00', 'MAN2025-0001', 'MW0019k2m4p6-C', NULL, NULL, 'CASH', N'Đơn thuốc bổ sung');
+VALUES ('INV2025-0003', 'SALES', '2025-01-24 14:20:00', 'MAN2025-0002', 'MW0019k2m4p6-C', NULL, NULL, 'CASH', N'Đơn thuốc bổ sung');
 
 -- Invoice Lines for Invoice 3
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -169,7 +169,7 @@ VALUES ('INV2025-0003', 'PRO2025-0001', 50, 'UOM2025-0001', 150, 'SALE');
 
 -- Invoice 4: Sales without Promotion
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0004', 'SALES', '2025-01-25 11:45:00', 'MAN2025-0001', NULL, NULL, NULL, 'CASH', N'Mua thuốc thông thường');
+VALUES ('INV2025-0004', 'SALES', '2025-01-25 11:45:00', 'MAN2025-0002', NULL, NULL, NULL, 'CASH', N'Mua thuốc thông thường');
 
 -- Invoice Lines for Invoice 4
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
@@ -183,11 +183,24 @@ VALUES ('INV2025-0004', 'PRO2025-0005', 30, 'UOM2025-0011', 500, 'SALE');
 
 -- Invoice 5: Sales without Promotion
 INSERT INTO Invoice (id, type, creationDate, creator, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
-VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0001', NULL, NULL, NULL, 'CASH', N'Khách hàng mua lẻ');
+VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0002', NULL, NULL, NULL, 'CASH', N'Khách hàng mua lẻ');
 
 -- Invoice Lines for Invoice 5
 INSERT INTO InvoiceLine (invoice, product, quantity, unitOfMeasure, unitPrice, lineType)
 VALUES ('INV2025-0005', 'PRO2025-0001', 20, 'UOM2025-0001', 150, 'SALE');
+
+GO
+
+-- =====================================================
+-- DELETE ALL INVOICE AND INVOICE LINE DATA
+-- =====================================================
+-- Delete all invoice lines first (due to foreign key constraint)
+DELETE FROM InvoiceLine;
+PRINT 'All InvoiceLine records deleted';
+
+-- Delete all invoices
+DELETE FROM Invoice;
+PRINT 'All Invoice records deleted';
 
 GO
 
