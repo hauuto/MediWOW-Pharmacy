@@ -130,6 +130,20 @@ VALUES ('PRMA2025-003', 'PROM2025-002', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, '
 INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
 VALUES ('PRMA2025-004', 'PROM2025-002', 2, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 5, NULL, NULL);
 
+-- Promotion 3: Buy product get product gift (Buy 5 Amoxicillin boxes, get 1 Omega 3 bottle free)
+INSERT INTO Promotion (id, name, description, creationDate, effectiveDate, endDate, isActive)
+VALUES ('PROM2025-003', N'Khuyến mãi Amoxicillin - Tặng Omega 3', N'Mua từ 5 hộp Amoxicillin, tặng 1 lọ Omega 3', '2025-01-22', '2025-01-22', '2025-12-31', 1);
+
+-- Conditions for Promotion 3
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
+VALUES ('PRMC2025-005', 'PROM2025-003', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 5, NULL, 'PRO2025-0003');
+
+-- Actions for Promotion 3
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
+VALUES ('PRMA2025-005', 'PROM2025-003', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, 'PRO2025-0005');
+
+
+
 -- =====================================================
 -- 6. INVOICE DATA (5 invoices, 2 with prescription codes)
 -- =====================================================
@@ -192,19 +206,6 @@ VALUES ('INV2025-0005', 'PRO2025-0001', 20, 'UOM2025-0001', 150, 'SALE');
 GO
 
 -- =====================================================
--- DELETE ALL INVOICE AND INVOICE LINE DATA
--- =====================================================
--- Delete all invoice lines first (due to foreign key constraint)
-DELETE FROM InvoiceLine;
-PRINT 'All InvoiceLine records deleted';
-
--- Delete all invoices
-DELETE FROM Invoice;
-PRINT 'All Invoice records deleted';
-
-GO
-
--- =====================================================
 -- DATA GENERATION COMPLETE
 -- =====================================================
 PRINT 'Data generation completed successfully!';
@@ -212,6 +213,6 @@ PRINT '- 1 Staff (admin) created';
 PRINT '- 5 Products created (2 OTC [1 LIQUID], 2 ETC [1 LIQUID], 1 Supplement)';
 PRINT '- 12 UnitOfMeasures created (with reciprocal baseUnitConversionRate)';
 PRINT '- 12 Lots created (2 unavailable: 1 EXPIRED, 1 FAULTY)';
-PRINT '- 2 Promotions created (1 condition each)';
+PRINT '- 3 Promotions created (1 condition each, various actions)';
 PRINT '- 5 SALES Invoices created (2 with prescription codes, 1 with promotion)';
 GO
