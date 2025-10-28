@@ -187,8 +187,6 @@ public class TAB_Promotion extends JPanel {
 
         JButton btnAdd = new JButton("Thêm mới");
         styleButton(btnAdd, new Color(40, 167, 69), Color.WHITE);
-        JButton btnDelete = new JButton("Xóa");
-        styleButton(btnDelete, new Color(220, 53, 69), Color.WHITE);
         JButton btnClear = new JButton("Xóa trắng");
         styleButton(btnClear, AppColors.PRIMARY, Color.WHITE);
 
@@ -197,7 +195,6 @@ public class TAB_Promotion extends JPanel {
         btnClear.addActionListener(e -> handleClearMainPanel());
 
         buttonPanel.add(btnAdd);
-        buttonPanel.add(btnDelete);
         buttonPanel.add(btnClear);
 
         mainPanel.add(verticalSplit, BorderLayout.CENTER);
