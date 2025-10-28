@@ -7,6 +7,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -73,22 +74,42 @@ public class DAO_Promotion implements IPromotion {
 
     @Override
     public boolean addPromotion(Promotion p) {
+        Session session = null;
         Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
+        try {
+            session = sessionFactory.openSession();
             transaction = session.beginTransaction();
 
             // Quan trọng: đảm bảo quan hệ 2 chiều
-            p.getConditions().forEach(c -> c.setPromotion(p));
-            p.getActions().forEach(a -> a.setPromotion(p));
+            if (p.getConditions() != null) {
+                p.getConditions().forEach(c -> c.setPromotion(p));
+            }
+            if (p.getActions() != null) {
+                p.getActions().forEach(a -> a.setPromotion(p));
+            }
 
             session.persist(p);
             transaction.commit();
+
+            System.out.println("✅ Đã lưu promotion thành công: " + p.getId());
             return true;
 
         } catch (Exception e) {
-            if (transaction != null) transaction.rollback();
+            if (transaction != null && transaction.isActive()) {
+                try {
+                    transaction.rollback();
+                    System.err.println("⚠️ Đã rollback transaction");
+                } catch (Exception rollbackEx) {
+                    System.err.println("❌ Lỗi khi rollback: " + rollbackEx.getMessage());
+                }
+            }
+            System.err.println("❌ Lỗi khi thêm promotion: " + e.getMessage());
             e.printStackTrace();
             return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
         }
     }
 
@@ -98,43 +119,43 @@ public class DAO_Promotion implements IPromotion {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            // Fetch promotions with conditions first
+
+            // Fetch promotions với JOIN FETCH để load cả conditions và actions
             List<Promotion> promotions = session.createQuery(
                 "SELECT DISTINCT p FROM Promotion p " +
-                "LEFT JOIN FETCH p.conditions",
+                "LEFT JOIN FETCH p.conditions " +
+                "LEFT JOIN FETCH p.actions",
                 Promotion.class
-            ).list();
+            ).getResultList();
 
-            // Then fetch actions for all promotions
-            if (!promotions.isEmpty()) {
-                session.createQuery(
-                    "SELECT DISTINCT p FROM Promotion p " +
-                    "LEFT JOIN FETCH p.actions " +
-                    "WHERE p IN :promotions",
-                    Promotion.class
-                ).setParameter("promotions", promotions).list();
+            // Force initialize tất cả lazy collections trước khi đóng session
+            for (Promotion p : promotions) {
+                // Initialize conditions và product của condition
+                if (p.getConditions() != null) {
+                    p.getConditions().size(); // Force initialize
+                    for (PromotionCondition cond : p.getConditions()) {
+                        if (cond.getProduct() != null) {
+                            cond.getProduct().getId(); // Force load product
+                        }
+                    }
+                }
 
-                // Fetch products referenced in conditions
-                session.createQuery(
-                    "SELECT DISTINCT pc FROM PromotionCondition pc " +
-                    "LEFT JOIN FETCH pc.product " +
-                    "WHERE pc.promotion IN :promotions",
-                    PromotionCondition.class
-                ).setParameter("promotions", promotions).list();
-
-                // Fetch products referenced in actions
-                session.createQuery(
-                    "SELECT DISTINCT pa FROM PromotionAction pa " +
-                    "LEFT JOIN FETCH pa.product " +
-                    "WHERE pa.promotion IN :promotions",
-                    PromotionAction.class
-                ).setParameter("promotions", promotions).list();
+                // Initialize actions và product của action
+                if (p.getActions() != null) {
+                    p.getActions().size(); // Force initialize
+                    for (PromotionAction act : p.getActions()) {
+                        if (act.getProduct() != null) {
+                            act.getProduct().getId(); // Force load product
+                        }
+                    }
+                }
             }
 
             return promotions;
         } catch (Exception e) {
+            System.err.println("❌ Lỗi khi load promotions: " + e.getMessage());
             e.printStackTrace();
-            return null;
+            return new ArrayList<>();
         } finally {
             if (session != null && session.isOpen()) {
                 session.close();

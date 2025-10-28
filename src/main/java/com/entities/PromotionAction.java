@@ -58,6 +58,8 @@ public class PromotionAction {
 
     public String getId() { return id; }
 
+    public void setId(String id) { this.id = id; }
+
     public ActionType getType() { return type; }
     public void setType(ActionType type) { this.type = type; }
 
