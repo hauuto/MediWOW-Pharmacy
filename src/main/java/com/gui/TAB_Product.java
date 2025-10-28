@@ -6,30 +6,38 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.filechooser.FileSystemView;
 import javax.swing.AbstractCellEditor;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JTextField;
+
 import java.awt.*;
 import java.awt.event.ItemEvent;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
-import javax.swing.filechooser.FileSystemView;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.FileInputStream;
-import java.nio.charset.StandardCharsets;
+import java.util.*;               // Date, List, ArrayList, BitSet, ...
 import java.util.List;
-
+import java.util.Set;
+import java.util.HashSet;
 
 public class TAB_Product {
+
+    // ==== UI CONSTANTS ====
+    private static final Font  FONT_TITLE_16B = new Font("Segoe UI", Font.BOLD, 16);
+    private static final Font  FONT_TITLE_14B = new Font("Segoe UI", Font.BOLD, 14);
+    private static final Font  FONT_LABEL_12B = new Font("Segoe UI", Font.BOLD, 12);
+    private static final Font  FONT_BTN_13B   = new Font("Segoe UI", Font.BOLD, 13);
+    private static final Color COL_BG_MAIN    = new Color(245, 250, 250);
+    private static final Color COL_BG_BODY    = new Color(240, 250, 250);
+    private static final Color COL_BORDER     = new Color(200, 230, 240);
+    private static final Color COL_HEADER_BG  = AppColors.PRIMARY;
+    private static final Color COL_HEADER_FG  = Color.WHITE;
+    private static final Color COL_GRID       = new Color(220, 220, 220);
+    private static final Color COL_SEL_BG     = new Color(230, 245, 255);
 
     // ==== HẰNG SỐ CỘT (tránh magic-number) ====
     private static final int UOM_COL_ID   = 0, UOM_COL_NAME = 1, UOM_COL_RATE   = 2;
@@ -90,7 +98,7 @@ public class TAB_Product {
     // ===================== UI =====================
     private void buildUI() {
         pProduct = new JPanel(new BorderLayout());
-        pProduct.setBackground(new Color(245, 250, 250));
+        pProduct.setBackground(COL_BG_MAIN);
         pProduct.setBorder(new EmptyBorder(10, 10, 10, 10));
         pProduct.add(buildToolbar(), BorderLayout.NORTH);
         pProduct.add(buildCenter(), BorderLayout.CENTER);
@@ -98,10 +106,10 @@ public class TAB_Product {
 
     private JComponent buildToolbar() {
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
-        top.setBackground(new Color(245, 250, 250));
+        top.setBackground(COL_BG_MAIN);
         top.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(new Color(200, 230, 240)),
-                "QUẢN LÝ SẢN PHẨM", 0, 0, new Font("Segoe UI", Font.BOLD, 16), AppColors.PRIMARY));
+                BorderFactory.createLineBorder(COL_BORDER),
+                "QUẢN LÝ SẢN PHẨM", 0, 0, FONT_TITLE_16B, AppColors.PRIMARY));
 
         txtSearch = new JTextField(18);
         txtSearch.setPreferredSize(new Dimension(220, 30));
@@ -127,12 +135,11 @@ public class TAB_Product {
         return top;
     }
 
-
     private JComponent buildCenter() {
         JSplitPane sp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         sp.setResizeWeight(0.6);
         sp.setDividerSize(6);
-        sp.setBackground(new Color(245, 250, 250));
+        sp.setBackground(COL_BG_MAIN);
         sp.setLeftComponent(buildLeftList());
         sp.setRightComponent(buildRightDetail());
         return sp;
@@ -140,11 +147,12 @@ public class TAB_Product {
 
     private JComponent buildLeftList() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(245, 250, 250));
+        panel.setBackground(COL_BG_MAIN);
         panel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(new Color(200, 230, 240)),
-                "Danh sách sản phẩm", 0, 0, new Font("Segoe UI", Font.BOLD, 14), AppColors.PRIMARY));
+                BorderFactory.createLineBorder(COL_BORDER),
+                "Danh sách sản phẩm", 0, 0, FONT_TITLE_14B, AppColors.PRIMARY));
 
+        // 6 cột: Mã, Tên, Loại, Hoạt chất, Nhà sản xuất, Trạng thái
         productModel = new DefaultTableModel(
                 new String[]{"Mã","Tên","Loại","Hoạt chất","Nhà sản xuất","Trạng thái"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -154,7 +162,7 @@ public class TAB_Product {
 
         tblProducts.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblProducts.getSelectionModel().addListSelectionListener(e -> {
-            // NEW: luôn refresh trạng thái nút Chỉnh sửa theo selection hiện tại
+            // luôn refresh trạng thái nút Chỉnh sửa theo selection hiện tại
             enableEditIfRowSelected();
 
             if (e.getValueIsAdjusting() || suppressSelectionEvent) return;
@@ -193,23 +201,20 @@ public class TAB_Product {
         scroll.setBorder(BorderFactory.createLineBorder(new Color(220, 230, 240)));
         panel.add(scroll, BorderLayout.CENTER);
 
-        // leftFooter
+        // Footer trái
         JPanel leftFooter = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
         leftFooter.setOpaque(false);
 
-        // btnImportExcel
         btnImportExcel = new JButton("Nhập Excel");
         styleButton(btnImportExcel, new Color(0,123,255), Color.WHITE);
         btnImportExcel.setPreferredSize(new Dimension(150, 36));
         btnImportExcel.addActionListener(e -> importProductsFromExcel());
 
-        // btnAddProduct
         btnAddProduct = new JButton("Thêm sản phẩm mới");
         styleButton(btnAddProduct, new Color(40, 167, 69), Color.WHITE);
         btnAddProduct.setPreferredSize(new Dimension(190, 36));
         btnAddProduct.addActionListener(e -> addNewProductRowAndEdit());
 
-        // Thứ tự hiển thị: [Nhập Excel] [Thêm sản phẩm mới]
         leftFooter.add(btnImportExcel);
         leftFooter.add(btnAddProduct);
         panel.add(leftFooter, BorderLayout.SOUTH);
@@ -219,10 +224,10 @@ public class TAB_Product {
 
     private JComponent buildRightDetail() {
         JPanel right = new JPanel(new BorderLayout(0, 10));
-        right.setBackground(new Color(240, 250, 250));
+        right.setBackground(COL_BG_BODY);
         right.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(new Color(200, 230, 240)),
-                "Chi tiết sản phẩm", 0, 0, new Font("Segoe UI", Font.BOLD, 14), AppColors.PRIMARY));
+                BorderFactory.createLineBorder(COL_BORDER),
+                "Chi tiết sản phẩm", 0, 0, FONT_TITLE_14B, AppColors.PRIMARY));
 
         JPanel body = new JPanel();
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
@@ -265,19 +270,19 @@ public class TAB_Product {
         left.add(lbImage, BorderLayout.CENTER);
         left.add(btnChangeImage, BorderLayout.SOUTH);
 
-        JPanel right = new JPanel(new GridLayout(6, 1, 10, 8)); // 6 hàng
+        JPanel right = new JPanel(new GridLayout(6, 1, 10, 8)); // 6 hàng: + Tên viết tắt
         right.setOpaque(false);
 
         txtId = new JTextField();
         txtName = new JTextField();
-        txtShortName = new JTextField();     // NEW
+        txtShortName = new JTextField(); // NEW: tuỳ chọn
         txtBarcode = new JTextField();
         cbCategoryDetail = new JComboBox<>(new String[]{"Thuốc kê đơn","Thuốc không kê đơn","Sản phẩm chức năng"});
         cbStatusDetail   = new JComboBox<>(new String[]{"Đang kinh doanh","Ngừng kinh doanh"});
 
         right.add(labeled("Mã:", txtId));
         right.add(labeled("Tên:", txtName));
-        right.add(labeled("Tên viết tắt:", txtShortName)); // NEW
+        right.add(labeled("Tên viết tắt (tuỳ chọn):", txtShortName));
         right.add(labeled("Mã vạch:", txtBarcode));
         right.add(labeled("Loại:", cbCategoryDetail));
         right.add(labeled("Trạng thái:", cbStatusDetail));
@@ -317,14 +322,13 @@ public class TAB_Product {
         txtDescription.setBorder(BorderFactory.createLineBorder(new Color(210, 230, 240)));
         JScrollPane descScroll = new JScrollPane(txtDescription);
         descScroll.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(new Color(200, 230, 240)),
-                "Mô tả", 0, 0, new Font("Segoe UI", Font.BOLD, 12), AppColors.PRIMARY));
+                BorderFactory.createLineBorder(COL_BORDER),
+                "Mô tả", 0, 0, FONT_LABEL_12B, AppColors.PRIMARY));
 
         wrap.add(grid, BorderLayout.NORTH);
         wrap.add(descScroll, BorderLayout.CENTER);
         return wrap;
     }
-
 
     private JComponent createTableSectionUom() {
         JPanel section = new JPanel(new BorderLayout(5, 5));
@@ -371,7 +375,7 @@ public class TAB_Product {
         section.setPreferredSize(new Dimension(500, 200));
 
         lotModel = new ToggleEditableTableModel(new String[]{"Mã lô", "Số lượng", "Giá (ĐV gốc)", "HSD", "Tình trạng"}, 0);
-        lotModel.setReadOnlyColumns(); //???
+        lotModel.setReadOnlyColumns(); // Cho phép edit Mã lô
         tblLot = new JTable(lotModel);
         styleTable(tblLot);
         capVisibleRows(tblLot, 5);
@@ -383,7 +387,7 @@ public class TAB_Product {
 
         // Spinner cho "Số lượng"
         tblLot.getColumnModel().getColumn(LOT_COL_QTY).setCellEditor(new IntSpinnerEditor(0, Integer.MAX_VALUE, 1));
-        // DatePicker editor cho "HSD" (chỉ mở khi bấm 📅; cảnh báo dời sang nút Lưu)
+        // DatePicker editor cho "HSD"
         tblLot.getColumnModel().getColumn(LOT_COL_HSD).setCellEditor(new DatePickerCellEditor());
 
         JScrollPane scroll = new JScrollPane(tblLot);
@@ -405,7 +409,7 @@ public class TAB_Product {
         return section;
     }
 
-    // === PATCH: thêm dòng UOM mặc định (rate = 1) và focus vào "Tên ĐV"
+    // === helpers thêm dòng & focus ===
     private void addUomRowAndFocus() {
         uomModel.addRow(new Object[]{null, "", 1});
         int r = uomModel.getRowCount() - 1;
@@ -415,8 +419,6 @@ public class TAB_Product {
             if (ed != null) ed.requestFocusInWindow();
         }
     }
-
-    // === PATCH: thêm dòng Lô mặc định (qty=0, price=0, HSD trống, TT = "Được bán")
     private void addLotRowAndFocus() {
         lotModel.addRow(new Object[]{null, 0, 0.0, "", LOT_STATUS_OPTIONS[0]});
         int r = lotModel.getRowCount() - 1;
@@ -424,10 +426,9 @@ public class TAB_Product {
         tblLot.requestFocusInWindow();
     }
 
-
     private JPanel buildActionBar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        bar.setBackground(new Color(245, 250, 250));
+        bar.setBackground(COL_BG_MAIN);
         btnEdit = new JButton("Chỉnh sửa");
         btnSave = new JButton("Lưu");
         btnCancel = new JButton("Hủy");
@@ -436,27 +437,17 @@ public class TAB_Product {
         styleButton(btnSave,   new Color(40, 167, 69), Color.WHITE);
         styleButton(btnCancel, new Color(220, 53, 69), Color.WHITE);
 
-        // === PATCH: Yêu cầu chọn dòng trước khi vào chế độ chỉnh sửa + tránh selection listener reset
         btnEdit.addActionListener(e -> {
             int sel = (tblProducts != null) ? tblProducts.getSelectedRow() : -1;
-            if (sel < 0) {
-                warn("Vui lòng chọn 1 dòng trong Danh sách sản phẩm trước khi Chỉnh sửa.");
-                return;
-            }
-            // Chặn tạm sự kiện chọn dòng nếu có bắn lại ngay khi chuyển chế độ
+            if (sel < 0) { warn("Vui lòng chọn 1 dòng trong Danh sách sản phẩm trước khi Chỉnh sửa."); return; }
             suppressSelectionEvent = true;
-            try {
-                setEditMode(true);
-            } finally {
-                // nhả cờ sau khi UI đã vào chế độ chỉnh sửa
-                SwingUtilities.invokeLater(() -> suppressSelectionEvent = false);
-            }
+            try { setEditMode(true); }
+            finally { SwingUtilities.invokeLater(() -> suppressSelectionEvent = false); }
         });
         btnEdit.setEnabled(false);
 
         btnSave.addActionListener(e -> {
-            stopAllTableEditing();          // commit editor (spinner/date)
-            // === PATCH: xác nhận trước khi lưu
+            stopAllTableEditing(); // commit editor (spinner/date)
             if (!confirm("Bạn có chắc muốn lưu thay đổi?")) return;
             if (!validateBeforeSave()) return;
 
@@ -471,9 +462,8 @@ public class TAB_Product {
         });
         btnCancel.addActionListener(e -> onCancel());
 
-        bar.add(btnEdit); // btnSave/btnCancel tự show khi vào edit mode
+        bar.add(btnEdit);
         SwingUtilities.invokeLater(this::enableEditIfRowSelected);
-
         return bar;
     }
 
@@ -482,7 +472,7 @@ public class TAB_Product {
         JPanel p = new JPanel(new BorderLayout());
         p.setOpaque(false);
         JLabel l = new JLabel(text);
-        l.setPreferredSize(new Dimension(110, 25));
+        l.setPreferredSize(new Dimension(160, 25));
         p.add(l, BorderLayout.WEST); p.add(c, BorderLayout.CENTER);
         return p;
     }
@@ -490,21 +480,21 @@ public class TAB_Product {
     private void styleButton(JButton b, Color bg, Color fg) {
         b.setBackground(bg); b.setForeground(fg);
         b.setFocusPainted(false);
-        b.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        b.setFont(FONT_BTN_13B);
         b.setPreferredSize(new Dimension(120, 36));
     }
 
     private void styleTable(JTable t) {
         t.setRowHeight(26);
         t.setShowGrid(true);
-        t.setGridColor(new Color(220, 220, 220));
-        t.setSelectionBackground(new Color(230, 245, 255));
+        t.setGridColor(COL_GRID);
+        t.setSelectionBackground(COL_SEL_BG);
         t.setSelectionForeground(Color.BLACK);
         t.setBackground(Color.WHITE);
         t.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        t.getTableHeader().setBackground(AppColors.PRIMARY);
-        t.getTableHeader().setForeground(Color.WHITE);
-        t.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        t.getTableHeader().setBackground(COL_HEADER_BG);
+        t.getTableHeader().setForeground(COL_HEADER_FG);
+        t.getTableHeader().setFont(FONT_BTN_13B);
     }
 
     private void setComponentsEditable(boolean editable) {
@@ -512,6 +502,7 @@ public class TAB_Product {
 
         txtId.setEditable(false);                 // KHÓA MÃ SẢN PHẨM (luôn)
         txtName.setEditable(editable);
+        if (txtShortName != null) txtShortName.setEditable(editable);
         txtBarcode.setEditable(editable);
         cbCategoryDetail.setEnabled(editable);
         cbStatusDetail.setEnabled(editable);
@@ -532,13 +523,13 @@ public class TAB_Product {
 
     private void setEditMode(boolean edit) {
         isEditMode = edit;
-        setComponentsEditable(edit);     // bật/tắt tổng quát
+        setComponentsEditable(edit);
         actionBar.removeAll();
         if (!edit) actionBar.add(btnEdit);
         else { actionBar.add(btnSave); actionBar.add(btnCancel); }
         actionBar.revalidate(); actionBar.repaint();
 
-        // NEW: áp chính sách chi tiết cho từng chế độ
+        // áp chính sách chi tiết cho từng chế độ
         SwingUtilities.invokeLater(() -> {
             applyEditabilityForMode();
             enableEditIfRowSelected();
@@ -574,8 +565,8 @@ public class TAB_Product {
             txtBaseUom.setEditable(true);
             txtDescription.setEditable(true);
 
-            uomModel.setEditable(true); uomModel.lockRowsBefore(0); uomModel.setAlwaysEditableColumns(); // UOM: tuỳ nghiệp vụ, vẫn khoá cột "Mã ĐV" nếu bạn muốn
-            lotModel.setEditable(true); lotModel.lockRowsBefore(0); lotModel.setAlwaysEditableColumns(); // Lot: mã Lô edit được
+            uomModel.setEditable(true); uomModel.lockRowsBefore(0); uomModel.setAlwaysEditableColumns();
+            lotModel.setEditable(true); lotModel.lockRowsBefore(0); lotModel.setAlwaysEditableColumns(); // Lot: mã lô edit được
             if (uomFooterBar != null) uomFooterBar.setVisible(true);
             if (lotFooterBar != null) lotFooterBar.setVisible(true);
         } else {
@@ -605,13 +596,12 @@ public class TAB_Product {
 
             lotModel.setEditable(true);
             lotModel.lockRowsBefore(lotModel.getRowCount());
-            lotModel.setAlwaysEditableColumns(LOT_COL_STAT); // "Tình trạng" luôn edit được (cả dòng cũ)
+            lotModel.setAlwaysEditableColumns(LOT_COL_STAT); // "Tình trạng" luôn edit (cả dòng cũ)
 
             if (uomFooterBar != null) uomFooterBar.setVisible(true);
             if (lotFooterBar != null) lotFooterBar.setVisible(true);
         }
     }
-
 
     private void chooseImage() {
         JFileChooser chooser = new JFileChooser(getProjectImagesDir());
@@ -657,7 +647,7 @@ public class TAB_Product {
         int row = table.getSelectedRow();
         if (row < 0 || row >= model.getRowCount()) return;
 
-        // NEW: chặn xóa dòng cũ ngay từ đầu nếu đang Edit sản phẩm hiện có
+        // Chặn xóa dòng cũ ngay từ đầu nếu đang Edit sản phẩm hiện có
         if (model instanceof ToggleEditableTableModel tm) {
             int start = tm.getEditableRowStart();
             if (isEditMode && !isAddingNew && row < start) {
@@ -673,7 +663,6 @@ public class TAB_Product {
         if (next >= 0) table.changeSelection(next, 0, false, false);
     }
 
-
     private void addNewProductRowAndEdit() {
         if (isEditMode && !confirm("Bạn đang chỉnh sửa. Hủy thay đổi hiện tại để thêm sản phẩm mới?")) return;
 
@@ -688,7 +677,7 @@ public class TAB_Product {
 
         clearProductDetails();        // reset form
 
-        // === PATCH: seed dòng rỗng mặc định cho UOM & Lô
+        // seed bảng con: KHÔNG auto-add UOM; Lô có thể thêm 1 dòng mặc định
         seedChildTablesForNewProduct();
 
         // Cho phép edit tất cả dòng vì đây là sản phẩm mới
@@ -699,18 +688,17 @@ public class TAB_Product {
         if (txtName != null) txtName.requestFocusInWindow();
     }
 
-    // === PATCH: seed dòng rỗng khi thêm SP mới
     private void seedChildTablesForNewProduct() {
         // làm trống hai bảng
         uomModel.setRowCount(0);
         lotModel.setRowCount(0);
-
-        // Giữ nguyên: tạo 1 dòng Lô mặc định để nhập nhanh (nếu muốn)
-        addLotRowAndFocus();
+        // Không auto-add UOM nữa
+        addLotRowAndFocus(); // vẫn có thể giữ Lô mặc định nếu muốn
     }
 
     private void clearProductDetails() {
-        txtId.setText(""); txtName.setText(""); txtBarcode.setText("");
+        txtId.setText(""); txtName.setText(""); if (txtShortName != null) txtShortName.setText("");
+        txtBarcode.setText("");
         cbCategoryDetail.setSelectedIndex(0); cbStatusDetail.setSelectedIndex(0); cbFormDetail.setSelectedIndex(0);
         txtActiveIngredient.setText(""); txtManufacturer.setText(""); txtStrength.setText("");
         txtBaseUom.setText("viên");                 // ĐVT gốc mặc định
@@ -719,33 +707,43 @@ public class TAB_Product {
         applyDefaultVatByCategory();                // VAT theo Loại
     }
 
+    // ===================== Export/Import =====================
     private void exportProductsToCSV() {
         try {
-            JFileChooser chooser = new JFileChooser();
-            chooser.setSelectedFile(new File("products_export.csv"));
+            File downloads = getDownloadsDir();
+            JFileChooser chooser = new JFileChooser(downloads);
+            chooser.setSelectedFile(new File(downloads, "products_export.csv"));
             if (chooser.showSaveDialog(pProduct) != JFileChooser.APPROVE_OPTION) return;
-            File file = chooser.getSelectedFile();
 
-            try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+            File file = chooser.getSelectedFile();
+            StringBuilder sb = new StringBuilder(1024);
+
+            // Header
+            for (int c = 0; c < productModel.getColumnCount(); c++) {
+                sb.append(escapeCsv(productModel.getColumnName(c)));
+                if (c < productModel.getColumnCount() - 1) sb.append(',');
+            }
+            sb.append('\n');
+
+            // Rows
+            for (int r = 0; r < productModel.getRowCount(); r++) {
                 for (int c = 0; c < productModel.getColumnCount(); c++) {
-                    pw.print(escapeCsv(productModel.getColumnName(c)));
-                    if (c < productModel.getColumnCount() - 1) pw.print(",");
+                    Object val = productModel.getValueAt(r, c);
+                    sb.append(escapeCsv(val == null ? "" : String.valueOf(val)));
+                    if (c < productModel.getColumnCount() - 1) sb.append(',');
                 }
-                pw.print("\n");
-                for (int r = 0; r < productModel.getRowCount(); r++) {
-                    for (int c = 0; c < productModel.getColumnCount(); c++) {
-                        Object val = productModel.getValueAt(r, c);
-                        pw.print(escapeCsv(val == null ? "" : String.valueOf(val)));
-                        if (c < productModel.getColumnCount() - 1) pw.print(",");
-                    }
-                    pw.print("\n");
-                }
+                sb.append('\n');
+            }
+
+            try (Writer w = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
+                w.write(sb.toString());
             }
             JOptionPane.showMessageDialog(pProduct, "Đã xuất: " + file.getAbsolutePath(), "Xuất Excel (CSV)", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(pProduct, "Xuất thất bại: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
+
     private String escapeCsv(String s) {
         boolean needQuotes = s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r");
         String escaped = s.replace("\"", "\"\"");
@@ -753,11 +751,11 @@ public class TAB_Product {
     }
 
     private File getDownloadsDir() {
-        // Cách 1: ~/Downloads (thông dụng trên Win/Mac/Linux)
+        // Cách 1: ~/Downloads (thông dụng)
         File d = new File(System.getProperty("user.home"), "Downloads");
         if (d.exists() && d.isDirectory()) return d;
 
-        // Cách 2: thư mục “Documents” mặc định của hệ thống, rồi thử “Downloads”
+        // Cách 2: Documents/Downloads
         File sys = FileSystemView.getFileSystemView().getDefaultDirectory();
         if (sys != null && sys.exists()) {
             File dl = new File(sys, "Downloads");
@@ -766,47 +764,6 @@ public class TAB_Product {
         }
         // Cuối cùng: home
         return new File(System.getProperty("user.home"));
-    }
-
-    private void exportProductsToExcel() {
-        try {
-            File downloads = getDownloadsDir();
-            JFileChooser chooser = new JFileChooser(downloads);
-            chooser.setSelectedFile(new File(downloads, "products_export.csv"));
-
-            int result = chooser.showSaveDialog(pProduct);
-            if (result != JFileChooser.APPROVE_OPTION) return;
-
-            File file = chooser.getSelectedFile();
-            try (PrintWriter pw = new PrintWriter(
-                    new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
-
-                // Header
-                for (int c = 0; c < productModel.getColumnCount(); c++) {
-                    pw.print(escapeCsv(productModel.getColumnName(c)));
-                    if (c < productModel.getColumnCount() - 1) pw.print(",");
-                }
-                pw.print("\n");
-
-                // Rows
-                for (int r = 0; r < productModel.getRowCount(); r++) {
-                    for (int c = 0; c < productModel.getColumnCount(); c++) {
-                        Object val = productModel.getValueAt(r, c);
-                        pw.print(escapeCsv(val == null ? "" : String.valueOf(val)));
-                        if (c < productModel.getColumnCount() - 1) pw.print(",");
-                    }
-                    pw.print("\n");
-                }
-            }
-
-            JOptionPane.showMessageDialog(pProduct,
-                    "Đã xuất: " + file.getAbsolutePath() + "\n(Excel mở được CSV)",
-                    "Xuất Excel (CSV)", JOptionPane.INFORMATION_MESSAGE);
-
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(pProduct,
-                    "Xuất thất bại: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
     }
 
     private void importProductsFromExcel() {
@@ -824,8 +781,7 @@ public class TAB_Product {
 
             if (name.endsWith(".xlsx")) {
                 JOptionPane.showMessageDialog(pProduct,
-                        "Hiện tại phiên bản này chỉ hỗ trợ nhập CSV.\n" +
-                                "Vui lòng lưu/xuất file Excel thành .CSV rồi nhập lại.",
+                        "Hiện tại phiên bản này chỉ hỗ trợ nhập CSV.\nVui lòng lưu/xuất Excel thành .CSV rồi nhập lại.",
                         "Chưa hỗ trợ .xlsx", JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
@@ -906,43 +862,38 @@ public class TAB_Product {
         return new File(userDir); // fallback: thư mục project
     }
 
-    // === PATCH: ToggleEditableTableModel có thêm cơ chế khóa theo hàng
-    private static class ToggleEditableTableModel extends DefaultTableModel {
+    // ==== Model tối ưu (BitSet) ====
+    private static final class ToggleEditableTableModel extends DefaultTableModel {
         private boolean editable = false;
-        private int[] readOnlyColumns = new int[0];
-        private int editableRowStart = 0;       // chỉ r >= mốc này mới được edit (cho dòng mới)
-        private final Set<Integer> alwaysEditableCols = new HashSet<>(); // cột luôn được edit
+        private final BitSet readOnlyCols       = new BitSet();
+        private final BitSet alwaysEditableCols = new BitSet();
+        private int editableRowStart = 0;
 
-        public ToggleEditableTableModel(String[] cols, int rows) { super(cols, rows); }
+        ToggleEditableTableModel(String[] cols, int rows) { super(cols, rows); }
 
-        public void setEditable(boolean e) {
-            this.editable = e;
+        void setEditable(boolean e) {
+            if (this.editable != e) { this.editable = e; fireTableDataChanged(); }
+        }
+        void setReadOnlyColumns(int... cols) {
+            readOnlyCols.clear();
+            if (cols != null) for (int c : cols) if (c >= 0) readOnlyCols.set(c);
             fireTableDataChanged();
         }
-        public void setReadOnlyColumns(int... cols) {
-            this.readOnlyColumns = (cols == null) ? new int[0] : cols.clone();
-            fireTableDataChanged();
-        }
-        public void lockRowsBefore(int rowStart) {
-            this.editableRowStart = Math.max(0, rowStart);
-            fireTableDataChanged();
-        }
-        public int getEditableRowStart() { return editableRowStart; }
-
-        public void setAlwaysEditableColumns(int... cols) {
+        void setAlwaysEditableColumns(int... cols) {
             alwaysEditableCols.clear();
-            if (cols != null) for (int c : cols) alwaysEditableCols.add(c);
+            if (cols != null) for (int c : cols) if (c >= 0) alwaysEditableCols.set(c);
             fireTableDataChanged();
         }
-
-        private boolean isReadOnlyCol(int c) {
-            for (int rc : readOnlyColumns) if (rc == c) return true;
-            return false;
+        void lockRowsBefore(int rowStart) {
+            editableRowStart = Math.max(0, rowStart);
+            fireTableDataChanged();
         }
+        int  getEditableRowStart() { return editableRowStart; }
+
         @Override public boolean isCellEditable(int r, int c) {
-            if (!editable || isReadOnlyCol(c)) return false;
-            // Cho edit nếu là dòng mới (r >= mốc) hoặc thuộc cột "luôn edit"
-            return (r >= editableRowStart) || alwaysEditableCols.contains(c);
+            if (!editable) return false;
+            if (readOnlyCols.get(c)) return false;
+            return r >= editableRowStart || alwaysEditableCols.get(c);
         }
     }
 
@@ -956,7 +907,9 @@ public class TAB_Product {
     private static class IntSpinnerEditor extends AbstractCellEditor implements TableCellEditor {
         private final JSpinner spinner = new JSpinner();
         private final int min, max, step;
-        IntSpinnerEditor(int min, int max, int step) { this.min = min; this.max = max; this.step = step; spinner.setModel(new SpinnerNumberModel(min, min, max, step));
+        IntSpinnerEditor(int min, int max, int step) {
+            this.min = min; this.max = max; this.step = step;
+            spinner.setModel(new SpinnerNumberModel(min, min, max, step));
             JComponent ed = spinner.getEditor();
             if (ed instanceof JSpinner.DefaultEditor de) de.getTextField().setHorizontalAlignment(JTextField.RIGHT);
         }
@@ -1022,13 +975,11 @@ public class TAB_Product {
         lotModel.setRowCount(0);
     }
 
-
     private String valStr(Object v) { return v == null ? "" : String.valueOf(v).trim(); }
     private void selectComboItem(JComboBox<String> cb, String value) {
         if (cb == null || value == null) return;
         for (int i = 0; i < cb.getItemCount(); i++) if (String.valueOf(cb.getItemAt(i)).equalsIgnoreCase(value)) { cb.setSelectedIndex(i); return; }
     }
-    private double parseVat(String s) { try { s = s.replace("%", "").trim(); return s.isEmpty() ? 0.0 : Double.parseDouble(s); } catch (Exception ex) { return 0.0; } }
 
     private void applyDefaultVatByCategory() {
         String cat = String.valueOf(cbCategoryDetail.getSelectedItem());
@@ -1038,7 +989,8 @@ public class TAB_Product {
 
     private void onCancel() {
         if (!confirm("Hủy bỏ mọi thay đổi?")) return;
-        if (isAddingNew && newProductRowIndex >= 0 && newProductRowIndex < productModel.getRowCount()) productModel.removeRow(newProductRowIndex);
+        if (isAddingNew && newProductRowIndex >= 0 && newProductRowIndex < productModel.getRowCount())
+            productModel.removeRow(newProductRowIndex);
         isAddingNew = false; newProductRowIndex = -1;
 
         if (currentSelectedRow >= 0 && currentSelectedRow < productModel.getRowCount()) {
@@ -1054,58 +1006,26 @@ public class TAB_Product {
     }
 
     // ===================== VALIDATION =====================
-    private boolean validateBeforeSave() {
-        if (isAddingNew) {
-            if (txtName.getText().trim().isEmpty())        { warnAndFocus("Vui lòng nhập Tên sản phẩm.", txtName); return false; }
-            if (txtBarcode.getText().trim().isEmpty())     { warnAndFocus("Vui lòng nhập Mã vạch.", txtBarcode); return false; }
-            if (cbCategoryDetail.getSelectedItem() == null){ warnAndFocus("Vui lòng chọn Loại sản phẩm.", cbCategoryDetail); return false; }
-            if (cbFormDetail.getSelectedItem() == null)    { warnAndFocus("Vui lòng chọn Dạng bào chế.", cbFormDetail); return false; }
-            if (cbStatusDetail.getSelectedItem() == null)  { warnAndFocus("Vui lòng chọn Trạng thái.", cbStatusDetail); return false; }
-            if (txtBaseUom.getText().trim().isEmpty())     { warnAndFocus("Vui lòng nhập ĐVT gốc.", txtBaseUom); return false; }
-            if (lotModel.getRowCount() < 1)                { warnAndFocus("Bảng Lô & hạn sử dụng phải có ít nhất 1 dòng.", btnLotAdd); return false; }
-
-            // kiểm từng dòng UOM
-            for (int r = 0; r < uomModel.getRowCount(); r++) {
-                Object name = uomModel.getValueAt(r, UOM_COL_NAME);
-                Object conv = uomModel.getValueAt(r, UOM_COL_RATE);
-                if (isBlank(name)) { selectAndStartEdit(tblUom, r, UOM_COL_NAME); warn("Vui lòng nhập Tên ĐV ở dòng " + (r+1) + "."); return false; }
-                Integer rate = parsePositiveInt(conv);
-                if (rate == null)  { selectAndStartEdit(tblUom, r, UOM_COL_RATE); warn("Tỉ lệ quy đổi phải là số nguyên > 0 (dòng " + (r+1) + ")."); return false; }
-            }
-            // kiểm từng dòng Lot
-            for (int r = 0; r < lotModel.getRowCount(); r++) {
-                Integer q = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY));
-                if (q == null) { selectAndStartEdit(tblLot, r, LOT_COL_QTY); warn("Số lượng phải là số nguyên ≥ 0 (dòng " + (r+1) + ")."); return false; }
-                Double p = parseNonNegativeDouble(lotModel.getValueAt(r, LOT_COL_PRICE));
-                if (p == null) { selectAndStartEdit(tblLot, r, LOT_COL_PRICE); warn("Giá phải là số ≥ 0 (dòng " + (r+1) + ")."); return false; }
-                String exp = valStr(lotModel.getValueAt(r, LOT_COL_HSD));
-                if (exp.isEmpty() || !isValidDateDMY(exp)) {
-                    selectAndStartEdit(tblLot, r, LOT_COL_HSD);
-                    warn("HSD không hợp lệ (dòng " + (r+1) + ").\nVui lòng nhập dd/MM/yy hoặc dd/MM/yyyy.");
-                    return false;
-                }
-                if (isBlank(lotModel.getValueAt(r, LOT_COL_STAT))) {
-                    selectAndStartEdit(tblLot, r, LOT_COL_STAT); warn("Vui lòng nhập Tình trạng (dòng " + (r+1) + ")."); return false;
-                }
-            }
-            return true;
-        }
-
-        // === Chỉnh sửa SP hiện có ===
-        // Chỉ kiểm tra các dòng mới được thêm (>= editableRowStart)
-        int uStart = uomModel.getEditableRowStart();
-        for (int r = uStart; r < uomModel.getRowCount(); r++) {
+    private boolean validateUomRows(int fromRowIncl) {
+        for (int r = fromRowIncl; r < uomModel.getRowCount(); r++) {
             Object name = uomModel.getValueAt(r, UOM_COL_NAME);
             Object conv = uomModel.getValueAt(r, UOM_COL_RATE);
             if (isBlank(name)) { selectAndStartEdit(tblUom, r, UOM_COL_NAME); warn("Vui lòng nhập Tên ĐV ở dòng " + (r+1) + "."); return false; }
             Integer rate = parsePositiveInt(conv);
             if (rate == null)  { selectAndStartEdit(tblUom, r, UOM_COL_RATE); warn("Tỉ lệ quy đổi phải là số nguyên > 0 (dòng " + (r+1) + ")."); return false; }
         }
-
-        int lStart = lotModel.getEditableRowStart();
-        for (int r = lStart; r < lotModel.getRowCount(); r++) {
+        return true;
+    }
+    private boolean validateLotRows(int fromRowIncl) {
+        for (int r = fromRowIncl; r < lotModel.getRowCount(); r++) {
+            String code = valStr(lotModel.getValueAt(r, LOT_COL_ID));
+            if (code.isEmpty()) {
+                selectAndStartEdit(tblLot, r, LOT_COL_ID);
+                warn("Vui lòng nhập Mã lô (dòng " + (r + 1) + ").");
+                return false;
+            }
             Integer q = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY));
-            if (q == null) { selectAndStartEdit(tblLot, r, LOT_COL_QTY); warn("Số lượng phải là số nguyên ≥ 0 (dòng " + (r+1) + ")."); return false; }
+            if (q == null) { selectAndStartEdit(tblLot, r, LOT_COL_QTY);  warn("Số lượng phải là số nguyên ≥ 0 (dòng " + (r+1) + ")."); return false; }
             Double p = parseNonNegativeDouble(lotModel.getValueAt(r, LOT_COL_PRICE));
             if (p == null) { selectAndStartEdit(tblLot, r, LOT_COL_PRICE); warn("Giá phải là số ≥ 0 (dòng " + (r+1) + ")."); return false; }
             String exp = valStr(lotModel.getValueAt(r, LOT_COL_HSD));
@@ -1118,10 +1038,35 @@ public class TAB_Product {
                 selectAndStartEdit(tblLot, r, LOT_COL_STAT); warn("Vui lòng nhập Tình trạng (dòng " + (r+1) + ")."); return false;
             }
         }
-        // Không cần kiểm các field chi tiết khác vì không cho sửa.
         return true;
     }
 
+    private boolean validateBeforeSave() {
+        if (isAddingNew) {
+            if (txtName.getText().trim().isEmpty())        { warnAndFocus("Vui lòng nhập Tên sản phẩm.", txtName); return false; }
+            if (txtBarcode.getText().trim().isEmpty())     { warnAndFocus("Vui lòng nhập Mã vạch.", txtBarcode); return false; }
+            if (cbCategoryDetail.getSelectedItem() == null){ warnAndFocus("Vui lòng chọn Loại sản phẩm.", cbCategoryDetail); return false; }
+            if (cbFormDetail.getSelectedItem() == null)    { warnAndFocus("Vui lòng chọn Dạng bào chế.", cbFormDetail); return false; }
+            if (cbStatusDetail.getSelectedItem() == null)  { warnAndFocus("Vui lòng chọn Trạng thái.", cbStatusDetail); return false; }
+            if (txtBaseUom.getText().trim().isEmpty())     { warnAndFocus("Vui lòng nhập ĐVT gốc.", txtBaseUom); return false; }
+
+            // UOM: cho phép trống; nếu có dòng thì validate từng dòng
+            if (!validateUomRows(0)) return false;
+
+            // Lô: yêu cầu ≥ 1 dòng khi thêm mới
+            if (lotModel.getRowCount() < 1)                { warnAndFocus("Bảng Lô & hạn sử dụng phải có ít nhất 1 dòng.", btnLotAdd); return false; }
+            if (!validateLotRows(0)) return false;
+
+            return true;
+        }
+
+        // === Chỉnh sửa SP hiện có ===
+        // Chỉ kiểm tra các dòng mới được thêm (>= editableRowStart)
+        if (!validateUomRows(uomModel.getEditableRowStart())) return false;
+        if (!validateLotRows(lotModel.getEditableRowStart())) return false;
+
+        return true;
+    }
 
     private boolean isBlank(Object v) { return v == null || String.valueOf(v).trim().isEmpty(); }
     private void warn(String msg) { JOptionPane.showMessageDialog(pProduct, msg, "Thiếu thông tin", JOptionPane.WARNING_MESSAGE); }
