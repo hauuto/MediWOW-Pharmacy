@@ -29,7 +29,7 @@ public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
 
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
-    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
+    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 530;
 
     private final BUS_Product busProduct;
     private final BUS_Invoice busInvoice;
@@ -749,7 +749,7 @@ public class TAB_Selling extends JFrame {
     private JButton createStyledButton(String text) {
         JButton button = new JButton(text);
         button.setToolTipText(text);
-        button.setMargin(new Insets(10, 20, 10, 20));
+        button.setMargin(new Insets(10, 10, 10, 10));
         button.setBorderPainted(false);
         button.setFont(new Font("Arial", Font.BOLD, 16));
         button.setForeground(new Color(11, 110, 217));
@@ -763,7 +763,7 @@ public class TAB_Selling extends JFrame {
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                button.setBackground(AppColors.BACKGROUND);
+                button.setBackground(AppColors.WHITE);
 
                 if (text.equalsIgnoreCase("Thanh toán"))
                     button.setBackground(Color.WHITE);
@@ -823,11 +823,11 @@ public class TAB_Selling extends JFrame {
 
         boxInvoiceTitle.add(Box.createHorizontalGlue());
 
-        boxInvoiceVertical.add(Box.createVerticalStrut(20));
+        boxInvoiceVertical.add(Box.createVerticalStrut(57));
 
         boxInvoiceVertical.add(boxInvoiceTitle);
 
-        boxInvoiceVertical.add(Box.createVerticalStrut(20));
+        boxInvoiceVertical.add(Box.createVerticalStrut(15));
 
 
         // PRESCRIPTION DETAILS SECTION
@@ -841,7 +841,7 @@ public class TAB_Selling extends JFrame {
 
         boxInvoiceVertical.add(boxPrescriptionDetailsHorizontal);
 
-        boxInvoiceVertical.add(Box.createVerticalStrut(20));
+        boxInvoiceVertical.add(Box.createVerticalStrut(40));
 
         Box boxPrescriptionDetailsVertical = Box.createVerticalBox();
         boxPrescriptionDetailsHorizontal.add(boxPrescriptionDetailsVertical);
@@ -853,28 +853,6 @@ public class TAB_Selling extends JFrame {
         boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblPrescriptionCode, txtPrescriptionCode, "Điền mã đơn kê thuốc (nếu có)...", "Điền mã đơn kê thuốc", 69));
 
         boxPrescriptionDetailsVertical.add(Box.createVerticalStrut(10));
-
-        // Adding customer name label and text field
-        JLabel lblCustomerName = new JLabel("Tên khách hàng:");
-        JTextField txtCustomerName = new JTextField();
-
-        boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblCustomerName, txtCustomerName, "Điền tên khách hàng (nếu có)...", "Điền tên khách hàng", 76));
-
-        boxPrescriptionDetailsVertical.add(Box.createVerticalStrut(10));
-
-        // Adding customer phone number label and text field
-        JLabel lblCustomerPhoneNumber = new JLabel("Số điện thoại khách hàng:");
-        JTextField txtCustomerPhoneNumber = new JTextField();
-
-        boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblCustomerPhoneNumber, txtCustomerPhoneNumber, "Điền số điện thoại khách hàng (nếu có)...", "Điền số điện thoại khách hàng", 10));
-
-        boxPrescriptionDetailsVertical.add(Box.createVerticalStrut(10));
-
-        // Adding customer address label and text field
-        JLabel lblCustomerAddress = new JLabel("Địa chỉ khách hàng:");
-        JTextField txtCustomerAddress = new JTextField();
-
-        boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblCustomerAddress, txtCustomerAddress, "Điền địa chỉ khách hàng (nếu có)...", "Điền địa chỉ khách hàng", 53));
 
 
         // PAYMENT DETAILS SECTION
