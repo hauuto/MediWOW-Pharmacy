@@ -105,4 +105,8 @@ public class Lot {
     public String toString() {
         return super.toString();
     }
+
+    public void setProduct(Product p) {
+        this.product = p;
+    }
 }

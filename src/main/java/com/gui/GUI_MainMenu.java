@@ -78,7 +78,7 @@ public class GUI_MainMenu implements ActionListener {
 
 
         TAB_Dashboard dashboard = new TAB_Dashboard();
-        TAB_Selling sales = new TAB_Selling();
+        TAB_Selling sales = new TAB_Selling(currentStaff);
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();

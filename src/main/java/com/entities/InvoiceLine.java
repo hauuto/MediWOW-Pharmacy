@@ -1,18 +1,45 @@
 package com.entities;
 
 import com.enums.LineType;
+import jakarta.persistence.*;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
  * @author Bùi Quốc Trụ
  */
+@Entity
+@Table(name = "InvoiceLine")
+@IdClass(InvoiceLine.InvoiceLineId.class)
 public class InvoiceLine {
-    private final Product product;
-    private final Invoice invoice;
+    @Id
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice", nullable = false)
+    private Invoice invoice;
+
+    @Id
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product", nullable = false)
+    private Product product;
+
+    @Id
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unitOfMeasure", nullable = false)
+    private UnitOfMeasure unitOfMeasure;
+
+    @Id
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lineType", nullable = false, length = 50)
+    private LineType lineType;
+
+    @Column(name = "quantity", nullable = false)
     private int quantity;
-    private final UnitOfMeasure unitOfMeasure;
-    private final LineType lineType;
+
+    @Column(name = "unitPrice", nullable = false)
+    private double unitPrice;
+
+    protected InvoiceLine() {}
 
     public InvoiceLine(Product product, Invoice invoice, UnitOfMeasure unitOfMeasure, LineType lineType, int quantity) {
         this.product = product;
@@ -20,6 +47,15 @@ public class InvoiceLine {
         this.unitOfMeasure = unitOfMeasure;
         this.lineType = lineType;
         this.quantity = quantity;
+
+        // Calculate unit price based on the product's oldest lot
+        Lot oldestLot = product.getOldestLotAvailable();
+        if (oldestLot != null) {
+            this.unitPrice = oldestLot.getRawPrice();
+            if (unitOfMeasure != null) {
+                this.unitPrice *= unitOfMeasure.getBasePriceConversionRate();
+            }
+        }
     }
 
     public Product getProduct() {
@@ -42,8 +78,20 @@ public class InvoiceLine {
         return unitOfMeasure;
     }
 
+    public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
+    }
+
     public LineType getLineType() {
         return lineType;
+    }
+
+    public double getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(double unitPrice) {
+        this.unitPrice = unitPrice;
     }
 
     /**
@@ -55,17 +103,7 @@ public class InvoiceLine {
      * @return The subtotal amount for this invoice line.
      */
     public double calculateSubtotal() {
-        Lot oldestLot = product.getOldestLotAvailable();
-
-        if (oldestLot == null)
-            return 0.0;
-
-        double baseUomSubtotal = oldestLot.getRawPrice() * quantity;
-
-        if (unitOfMeasure != null) // If the unit of measure is specified (not using base UOM), convert the subtotal
-            return baseUomSubtotal * unitOfMeasure.getBasePriceConversionRate();
-
-        return baseUomSubtotal;
+        return unitPrice * quantity;
     }
 
     /**
@@ -113,5 +151,40 @@ public class InvoiceLine {
     @Override
     public String toString() {
         return super.toString();
+    }
+
+    /**
+     * Composite key class for InvoiceLine
+     */
+    public static class InvoiceLineId implements Serializable {
+        private String invoice;
+        private String product;
+        private String unitOfMeasure;
+        private LineType lineType;
+
+        public InvoiceLineId() {}
+
+        public InvoiceLineId(String invoice, String product, String unitOfMeasure, LineType lineType) {
+            this.invoice = invoice;
+            this.product = product;
+            this.unitOfMeasure = unitOfMeasure;
+            this.lineType = lineType;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            InvoiceLineId that = (InvoiceLineId) o;
+            return Objects.equals(invoice, that.invoice) &&
+                   Objects.equals(product, that.product) &&
+                   Objects.equals(unitOfMeasure, that.unitOfMeasure) &&
+                   lineType == that.lineType;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(invoice, product, unitOfMeasure, lineType);
+        }
     }
 }
