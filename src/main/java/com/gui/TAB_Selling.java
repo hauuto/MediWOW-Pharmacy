@@ -1,10 +1,9 @@
 package com.gui;
 
+import com.bus.BUS_Invoice;
 import com.bus.BUS_Product;
-import com.entities.Invoice;
-import com.entities.Product;
-import com.entities.Staff;
-import com.entities.UnitOfMeasure;
+import com.bus.BUS_Staff;
+import com.entities.*;
 import com.enums.InvoiceType;
 import com.utils.AppColors;
 
@@ -30,7 +29,11 @@ public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
 
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
-    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 600;
+    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 530;
+
+    private final BUS_Product busProduct;
+    private final BUS_Invoice busInvoice;
+    private final BUS_Staff busStaff;
 
     private Invoice invoice;
     private List<String> previousPrescriptionCodes;
@@ -38,6 +41,9 @@ public class TAB_Selling extends JFrame {
 
     // Map to store product reference for each row (key: product ID)
     private Map<String, Product> productMap;
+
+    // Map to store previous UOM for each row (key: row index)
+    private Map<Integer, String> previousUOMMap;
 
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
@@ -49,6 +55,14 @@ public class TAB_Selling extends JFrame {
     // Field to hold the customer payment text field for cash button updates
     private JFormattedTextField txtCustomerPayment;
 
+    // Fields for prescription code validation
+    private JTextField txtPrescriptionCode;
+    private JButton btnProcessPayment;
+
+    // Prescription code regex pattern: xxxxxyyyyyyy-z
+    // 5 chars (facility code) + 7 chars (random alphanumeric) + dash + 1 char (type: N/H/C)
+    private static final String PRESCRIPTION_CODE_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
+
     // Fields for search autocomplete
     private JWindow searchWindow;
     private JList<String> searchResultsList;
@@ -56,12 +70,18 @@ public class TAB_Selling extends JFrame {
     private List<Product> currentSearchResults;
 
     public TAB_Selling(Staff creator) {
-        this.invoice = new Invoice(InvoiceType.SALES, creator);
+        busProduct = new BUS_Product();
+        busInvoice = new BUS_Invoice();
+        busStaff = new BUS_Staff();
 
-        BUS_Product busProduct = new BUS_Product();
+        Staff tempCreator = busStaff.getAllStaffs().get(0); // For testing purposes
+
+        invoice = new Invoice(InvoiceType.SALES, tempCreator);
 
         products = busProduct.getAllProducts();
+        previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         productMap = new HashMap<>();
+        previousUOMMap = new HashMap<>();
 
         $$$setupUI$$$();
         createSplitPane();
@@ -272,17 +292,45 @@ public class TAB_Selling extends JFrame {
      * Add product to invoice line table
      */
     private void addProductToInvoice(Product product) {
-        // Check if product already exists
+        // Check if product is ETC and prescription code is required
+        if (product.getCategory() == com.enums.ProductCategory.ETC) {
+            if (!isValidPrescriptionCode()) {
+                JOptionPane.showMessageDialog(pnlSelling,
+                    "Sản phẩm '" + product.getName() + "' là thuốc ETC (thuốc kê đơn).\n" +
+                    "Vui lòng nhập mã đơn thuốc hợp lệ trước khi thêm sản phẩm này.",
+                    "Yêu cầu mã đơn thuốc",
+                    JOptionPane.WARNING_MESSAGE);
+
+                // Set focus to prescription code field
+                txtPrescriptionCode.requestFocusInWindow();
+                return;
+            }
+        }
+
+        // Get base unit of measure
+        UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
+
+        // Check if product already exists with the same UOM and line type
         for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
             String existingId = (String) mdlInvoiceLine.getValueAt(i, 0);
-            if (existingId.equals(product.getId())) {
+            String existingUnit = (String) mdlInvoiceLine.getValueAt(i, 2);
+
+            if (existingId.equals(product.getId()) && existingUnit.equals(product.getBaseUnitOfMeasure())) {
                 // Increase quantity
                 int currentQty = (int) mdlInvoiceLine.getValueAt(i, 3);
-                mdlInvoiceLine.setValueAt(currentQty + 1, i, 3);
+                int newQty = currentQty + 1;
+                mdlInvoiceLine.setValueAt(newQty, i, 3);
 
                 // Update total
                 double unitPrice = (double) mdlInvoiceLine.getValueAt(i, 4);
-                mdlInvoiceLine.setValueAt((currentQty + 1) * unitPrice, i, 5);
+                mdlInvoiceLine.setValueAt(newQty * unitPrice, i, 5);
+
+                // Update invoice line in the invoice
+                InvoiceLine updatedLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, newQty);
+                invoice.updateInvoiceLine(updatedLine);
+
+                // Check prescription code requirement after adding
+                validatePrescriptionCodeForInvoice();
                 return;
             }
         }
@@ -293,19 +341,247 @@ public class TAB_Selling extends JFrame {
             unit = product.getBaseUnitOfMeasure();
         }
 
+        // Get unit price from oldest lot
+        double unitPrice = 0.0;
+        Lot oldestLot = product.getOldestLotAvailable();
+        if (oldestLot != null) {
+            unitPrice = oldestLot.getRawPrice();
+        }
+
         Object[] row = {
             product.getId(),
             product.getName(),
             unit,
             1,
-            0.0,
-            0.0
+            unitPrice,
+            unitPrice
         };
 
         mdlInvoiceLine.addRow(row);
 
         // Store product reference in map
         productMap.put(product.getId(), product);
+
+        // Store initial UOM for this row
+        int newRow = mdlInvoiceLine.getRowCount() - 1;
+        previousUOMMap.put(newRow, unit);
+
+        // Create and add invoice line to invoice
+        InvoiceLine invoiceLine = new InvoiceLine(product, invoice, baseUOM, com.enums.LineType.SALE, 1);
+        invoice.addInvoiceLine(invoiceLine);
+
+        // Check prescription code requirement after adding
+        validatePrescriptionCodeForInvoice();
+    }
+
+    /**
+     * Find UnitOfMeasure from product by name
+     */
+    private UnitOfMeasure findUnitOfMeasure(Product product, String uomName) {
+        if (product.getUnitOfMeasureList() != null) {
+            for (UnitOfMeasure uom : product.getUnitOfMeasureList()) {
+                if (uom.getName().equals(uomName)) {
+                    return uom;
+                }
+            }
+        }
+        // If not found in list, create a base UOM
+        return new UnitOfMeasure(product.getId() + "-BASE", product, uomName, 1.0);
+    }
+
+    /**
+     * Check if prescription code is valid according to the pattern
+     */
+    private boolean isValidPrescriptionCode() {
+        String code = txtPrescriptionCode.getText().trim();
+
+        // Check if it's placeholder text or empty
+        if (code.isEmpty() ||
+            code.equals("Điền mã đơn kê thuốc (nếu có)...") ||
+            txtPrescriptionCode.getForeground().equals(Color.GRAY)) {
+            return false;
+        }
+
+        // Check against regex pattern
+        return code.matches(PRESCRIPTION_CODE_PATTERN);
+    }
+
+    /**
+     * Validate prescription code format when field loses focus
+     */
+    private void validatePrescriptionCode() {
+        String code = txtPrescriptionCode.getText().trim();
+
+        // Check if empty or placeholder
+        boolean isEmpty = code.isEmpty() ||
+            code.equals("Điền mã đơn kê thuốc (nếu có)...") ||
+            txtPrescriptionCode.getForeground().equals(Color.GRAY);
+
+        if (isEmpty) {
+            // Check if ETC products exist in invoice
+            boolean hasETCProduct = false;
+            for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+                String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
+                Product product = productMap.get(productId);
+
+                if (product != null && product.getCategory() == com.enums.ProductCategory.ETC) {
+                    hasETCProduct = true;
+                    break;
+                }
+            }
+
+            // If ETC products exist, show warning
+            if (hasETCProduct) {
+                JOptionPane.showMessageDialog(pnlSelling,
+                    "Hóa đơn có chứa thuốc ETC (thuốc kê đơn).\n" +
+                    "Vui lòng nhập mã đơn thuốc hợp lệ để tiếp tục.",
+                    "Yêu cầu mã đơn thuốc",
+                    JOptionPane.WARNING_MESSAGE);
+
+                // Set focus back to the field
+                txtPrescriptionCode.requestFocusInWindow();
+            }
+
+            validatePrescriptionCodeForInvoice();
+            return;
+        }
+
+        // Validate format
+        if (!code.matches(PRESCRIPTION_CODE_PATTERN)) {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Mã đơn thuốc không hợp lệ!\n\n" +
+                "Định dạng đúng: xxxxxyyyyyyy-z\n" +
+                "- 5 ký tự đầu: Mã cơ sở khám bệnh (chữ/số)\n" +
+                "- 7 ký tự tiếp: Mã đơn thuốc (chữ thường/số)\n" +
+                "- 1 ký tự cuối sau dấu gạch ngang: Loại đơn (N/H/C)\n\n" +
+                "Ví dụ: MW001a3b5c7d-C",
+                "Lỗi định dạng mã đơn thuốc",
+                JOptionPane.WARNING_MESSAGE);
+
+            // Set focus back to the field
+            txtPrescriptionCode.requestFocusInWindow();
+            btnProcessPayment.setEnabled(false);
+            return;
+        }
+
+        // Check if prescription code has already been used
+        if (previousPrescriptionCodes != null && previousPrescriptionCodes.contains(code.toLowerCase())) {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Mã đơn thuốc '" + code + "' đã được sử dụng trước đó!\n" +
+                "Vui lòng nhập mã đơn thuốc khác.",
+                "Mã đơn thuốc đã tồn tại",
+                JOptionPane.WARNING_MESSAGE);
+
+            // Select all text and set focus
+            txtPrescriptionCode.selectAll();
+            txtPrescriptionCode.requestFocusInWindow();
+            btnProcessPayment.setEnabled(false);
+            return;
+        }
+
+        // Valid prescription code
+        validatePrescriptionCodeForInvoice();
+    }
+
+    /**
+     * Check if prescription code is required based on invoice contents
+     */
+    private void validatePrescriptionCodeForInvoice() {
+        boolean hasETCProduct = false;
+
+        // Check if any product in the invoice is ETC
+        for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+            String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
+            Product product = productMap.get(productId);
+
+            if (product != null && product.getCategory() == com.enums.ProductCategory.ETC) {
+                hasETCProduct = true;
+                break;
+            }
+        }
+
+        // If ETC products exist, prescription code is required
+        if (hasETCProduct) {
+            if (!isValidPrescriptionCode()) {
+                btnProcessPayment.setEnabled(false);
+            } else {
+                btnProcessPayment.setEnabled(true);
+            }
+        } else {
+            // No ETC products, payment button can be enabled
+            btnProcessPayment.setEnabled(true);
+        }
+    }
+
+    /**
+     * Update invoice line from table data
+     */
+    private void updateInvoiceLineFromTable(int row) {
+        if (row < 0 || row >= mdlInvoiceLine.getRowCount()) {
+            return;
+        }
+
+        // Get product information
+        String productId = (String) mdlInvoiceLine.getValueAt(row, 0);
+        Product product = productMap.get(productId);
+
+        if (product != null) {
+            String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+            int quantity = (int) mdlInvoiceLine.getValueAt(row, 3);
+
+            // Check for duplicate product with same UOM (excluding current row)
+            for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+                if (i != row) {
+                    String otherProductId = (String) mdlInvoiceLine.getValueAt(i, 0);
+                    String otherUomName = (String) mdlInvoiceLine.getValueAt(i, 2);
+
+                    if (productId.equals(otherProductId) && uomName.equals(otherUomName)) {
+                        // Duplicate found - show warning and revert
+                        SwingUtilities.invokeLater(() ->
+                            JOptionPane.showMessageDialog(pnlSelling,
+                                "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại trong hóa đơn!\n" +
+                                "Vui lòng tăng số lượng của sản phẩm hiện có hoặc chọn đơn vị khác.",
+                                "Cảnh báo trùng lặp",
+                                JOptionPane.WARNING_MESSAGE)
+                        );
+
+                        // Revert to previous UOM (before the change)
+                        String previousUOM = previousUOMMap.get(row);
+                        if (previousUOM != null) {
+                            mdlInvoiceLine.setValueAt(previousUOM, row, 2);
+                        } else {
+                            // Fallback to base UOM if no previous value stored
+                            String fallbackUOM = product.getBaseUnitOfMeasure();
+                            if (fallbackUOM != null && !fallbackUOM.isEmpty()) {
+                                mdlInvoiceLine.setValueAt(fallbackUOM, row, 2);
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+
+            // Find the UnitOfMeasure
+            UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+
+            // Calculate unit price based on UOM
+            double unitPrice = 0.0;
+            Lot oldestLot = product.getOldestLotAvailable();
+            if (oldestLot != null) {
+                unitPrice = oldestLot.getRawPrice();
+                if (uom != null) {
+                    unitPrice *= uom.getBasePriceConversionRate();
+                }
+            }
+
+            // Update unit price and total in table
+            mdlInvoiceLine.setValueAt(unitPrice, row, 4);
+            mdlInvoiceLine.setValueAt(unitPrice * quantity, row, 5);
+
+            // Update invoice line in invoice
+            InvoiceLine updatedLine = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
+            invoice.updateInvoiceLine(updatedLine);
+        }
     }
 
     /**
@@ -425,6 +701,69 @@ public class TAB_Selling extends JFrame {
         tblInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
         tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
 
+        // Add focus listener to stop editing when table loses focus
+        tblInvoiceLine.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                // Don't stop editing if focus moved to a child component (like dropdown or spinner)
+                Component oppositeComponent = e.getOppositeComponent();
+                if (oppositeComponent != null) {
+                    // Check if the opposite component is part of the cell editor
+                    Container parent = oppositeComponent.getParent();
+                    while (parent != null) {
+                        if (parent == tblInvoiceLine) {
+                            // Focus moved to a component within the table, don't stop editing
+                            return;
+                        }
+                        parent = parent.getParent();
+                    }
+                }
+
+                // Stop cell editing when table loses focus to external component
+                if (tblInvoiceLine.isEditing()) {
+                    int editingRow = tblInvoiceLine.getEditingRow();
+                    int editingColumn = tblInvoiceLine.getEditingColumn();
+
+                    // Stop the cell editor
+                    if (tblInvoiceLine.getCellEditor() != null) {
+                        tblInvoiceLine.getCellEditor().stopCellEditing();
+                    }
+
+                    // Update the invoice line for the edited row
+                    if (editingRow >= 0 && (editingColumn == 2 || editingColumn == 3)) {
+                        updateInvoiceLineFromTable(editingRow);
+                    }
+                }
+            }
+        });
+
+        // Add property change listener to handle cell editing stop
+        tblInvoiceLine.addPropertyChangeListener("tableCellEditor", evt -> {
+            // When editing stops, update the invoice line
+            if (evt.getOldValue() != null && evt.getNewValue() == null) {
+                // Editing has stopped
+                int row = tblInvoiceLine.getEditingRow();
+                if (row == -1) {
+                    row = tblInvoiceLine.getSelectedRow();
+                }
+                if (row >= 0) {
+                    updateInvoiceLineFromTable(row);
+                }
+            }
+        });
+
+        // Add table model listener to handle changes
+        mdlInvoiceLine.addTableModelListener(e -> {
+            if (e.getType() == javax.swing.event.TableModelEvent.UPDATE) {
+                int row = e.getFirstRow();
+                int column = e.getColumn();
+
+                if (row >= 0 && (column == 2 || column == 3)) {
+                    updateInvoiceLineFromTable(row);
+                }
+            }
+        });
+
         scrInvoiceLine = new JScrollPane(tblInvoiceLine);
     }
 
@@ -434,12 +773,130 @@ public class TAB_Selling extends JFrame {
         pnlButtons.setBackground(Color.WHITE);
 
         btnRemoveAllItems = createStyledButton("Xóa tất cả");
+        btnRemoveAllItems.addActionListener(e -> removeAllItems());
         pnlButtons.add(btnRemoveAllItems);
 
         btnRemoveItem = createStyledButton("Xóa sản phẩm");
+        btnRemoveItem.addActionListener(e -> removeSelectedItems());
         pnlButtons.add(btnRemoveItem);
 
         return pnlButtons;
+    }
+
+    /**
+     * Remove selected items from the table and invoice
+     */
+    private void removeSelectedItems() {
+        int[] selectedRows = tblInvoiceLine.getSelectedRows();
+
+        if (selectedRows.length == 0) {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Vui lòng chọn sản phẩm cần xóa!",
+                "Thông báo",
+                JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Confirm deletion
+        int confirm = JOptionPane.showConfirmDialog(pnlSelling,
+            "Bạn có chắc chắn muốn xóa " + selectedRows.length + " sản phẩm đã chọn?",
+            "Xác nhận xóa",
+            JOptionPane.YES_NO_OPTION);
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        // Remove from invoice and table (iterate backwards to avoid index issues)
+        for (int i = selectedRows.length - 1; i >= 0; i--) {
+            int row = selectedRows[i];
+
+            // Get product information
+            String productId = (String) mdlInvoiceLine.getValueAt(row, 0);
+            String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+            int quantity = (int) mdlInvoiceLine.getValueAt(row, 3);
+
+            Product product = productMap.get(productId);
+            if (product != null) {
+                UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+
+                // Create invoice line to remove
+                InvoiceLine lineToRemove = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
+
+                // Remove from invoice
+                invoice.removeInvoiceLine(lineToRemove);
+            }
+
+            // Remove from table
+            mdlInvoiceLine.removeRow(row);
+
+            // Clean up previousUOMMap - shift entries after removed row
+            Map<Integer, String> updatedMap = new HashMap<>();
+            for (Map.Entry<Integer, String> entry : previousUOMMap.entrySet()) {
+                int rowIndex = entry.getKey();
+                if (rowIndex < row) {
+                    updatedMap.put(rowIndex, entry.getValue());
+                } else if (rowIndex > row) {
+                    updatedMap.put(rowIndex - 1, entry.getValue());
+                }
+                // Skip the removed row
+            }
+            previousUOMMap = updatedMap;
+        }
+
+        // Check prescription code requirement after removal
+        validatePrescriptionCodeForInvoice();
+    }
+
+    /**
+     * Remove all items from the table and invoice
+     */
+    private void removeAllItems() {
+        if (mdlInvoiceLine.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Không có sản phẩm nào để xóa!",
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Confirm deletion
+        int confirm = JOptionPane.showConfirmDialog(pnlSelling,
+            "Bạn có chắc chắn muốn xóa tất cả sản phẩm?",
+            "Xác nhận xóa",
+            JOptionPane.YES_NO_OPTION);
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        // Remove all invoice lines from invoice
+        for (int i = mdlInvoiceLine.getRowCount() - 1; i >= 0; i--) {
+            // Get product information
+            String productId = (String) mdlInvoiceLine.getValueAt(i, 0);
+            String uomName = (String) mdlInvoiceLine.getValueAt(i, 2);
+            int quantity = (int) mdlInvoiceLine.getValueAt(i, 3);
+
+            Product product = productMap.get(productId);
+            if (product != null) {
+                UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+
+                // Create invoice line to remove
+                InvoiceLine lineToRemove = new InvoiceLine(product, invoice, uom, com.enums.LineType.SALE, quantity);
+
+                // Remove from invoice
+                invoice.removeInvoiceLine(lineToRemove);
+            }
+        }
+
+        // Clear table
+        mdlInvoiceLine.setRowCount(0);
+
+        // Clear previousUOMMap
+        previousUOMMap.clear();
+
+        // Check prescription code requirement after removal
+        validatePrescriptionCodeForInvoice();
     }
 
     /**
@@ -451,7 +908,7 @@ public class TAB_Selling extends JFrame {
     private JButton createStyledButton(String text) {
         JButton button = new JButton(text);
         button.setToolTipText(text);
-        button.setMargin(new Insets(10, 20, 10, 20));
+        button.setMargin(new Insets(10, 10, 10, 10));
         button.setBorderPainted(false);
         button.setFont(new Font("Arial", Font.BOLD, 16));
         button.setForeground(new Color(11, 110, 217));
@@ -465,7 +922,7 @@ public class TAB_Selling extends JFrame {
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                button.setBackground(AppColors.BACKGROUND);
+                button.setBackground(AppColors.WHITE);
 
                 if (text.equalsIgnoreCase("Thanh toán"))
                     button.setBackground(Color.WHITE);
@@ -525,11 +982,11 @@ public class TAB_Selling extends JFrame {
 
         boxInvoiceTitle.add(Box.createHorizontalGlue());
 
-        boxInvoiceVertical.add(Box.createVerticalStrut(20));
+        boxInvoiceVertical.add(Box.createVerticalStrut(57));
 
         boxInvoiceVertical.add(boxInvoiceTitle);
 
-        boxInvoiceVertical.add(Box.createVerticalStrut(20));
+        boxInvoiceVertical.add(Box.createVerticalStrut(15));
 
 
         // PRESCRIPTION DETAILS SECTION
@@ -543,40 +1000,26 @@ public class TAB_Selling extends JFrame {
 
         boxInvoiceVertical.add(boxPrescriptionDetailsHorizontal);
 
-        boxInvoiceVertical.add(Box.createVerticalStrut(20));
+        boxInvoiceVertical.add(Box.createVerticalStrut(40));
 
         Box boxPrescriptionDetailsVertical = Box.createVerticalBox();
         boxPrescriptionDetailsHorizontal.add(boxPrescriptionDetailsVertical);
 
         // Adding prescription code label and text field
         JLabel lblPrescriptionCode = new JLabel("Mã đơn kê thuốc:");
-        JTextField txtPrescriptionCode = new JTextField();
+        txtPrescriptionCode = new JTextField();
+
+        // Add focus listener for prescription code validation
+        txtPrescriptionCode.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                validatePrescriptionCode();
+            }
+        });
 
         boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblPrescriptionCode, txtPrescriptionCode, "Điền mã đơn kê thuốc (nếu có)...", "Điền mã đơn kê thuốc", 69));
 
         boxPrescriptionDetailsVertical.add(Box.createVerticalStrut(10));
-
-        // Adding customer name label and text field
-        JLabel lblCustomerName = new JLabel("Tên khách hàng:");
-        JTextField txtCustomerName = new JTextField();
-
-        boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblCustomerName, txtCustomerName, "Điền tên khách hàng (nếu có)...", "Điền tên khách hàng", 76));
-
-        boxPrescriptionDetailsVertical.add(Box.createVerticalStrut(10));
-
-        // Adding customer phone number label and text field
-        JLabel lblCustomerPhoneNumber = new JLabel("Số điện thoại khách hàng:");
-        JTextField txtCustomerPhoneNumber = new JTextField();
-
-        boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblCustomerPhoneNumber, txtCustomerPhoneNumber, "Điền số điện thoại khách hàng (nếu có)...", "Điền số điện thoại khách hàng", 10));
-
-        boxPrescriptionDetailsVertical.add(Box.createVerticalStrut(10));
-
-        // Adding customer address label and text field
-        JLabel lblCustomerAddress = new JLabel("Địa chỉ khách hàng:");
-        JTextField txtCustomerAddress = new JTextField();
-
-        boxPrescriptionDetailsVertical.add(generateLabelAndTextField(lblCustomerAddress, txtCustomerAddress, "Điền địa chỉ khách hàng (nếu có)...", "Điền địa chỉ khách hàng", 53));
 
 
         // PAYMENT DETAILS SECTION
@@ -731,7 +1174,8 @@ public class TAB_Selling extends JFrame {
 
         boxPaymentButton.add(Box.createHorizontalGlue());
 
-        JButton btnProcessPayment = createStyledButton("Thanh toán");
+        btnProcessPayment = createStyledButton("Thanh toán");
+        btnProcessPayment.setEnabled(true); // Initially enabled
         boxPaymentButton.add(btnProcessPayment);
 
         return boxInvoiceHorizontal;
@@ -877,6 +1321,11 @@ public class TAB_Selling extends JFrame {
 
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            // Store the previous UOM value before editing
+            if (value != null) {
+                previousUOMMap.put(row, value.toString());
+            }
+
             // Get the product ID from the current row
             currentProductId = (String) table.getValueAt(row, 0);
 
