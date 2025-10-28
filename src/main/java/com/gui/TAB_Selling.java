@@ -6,6 +6,7 @@ import com.bus.BUS_Promotion;
 import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LineType;
+import com.enums.PaymentMethod;
 import com.enums.ProductCategory;
 import com.utils.AppColors;
 
@@ -75,6 +76,11 @@ public class TAB_Selling extends JFrame {
 
     // Fields for promotion search and display
     private JTextField txtPromotionSearch;
+    private JTextField txtPromotionDetails;
+    private JTextField txtTotal;
+
+    // Field for cash options panel
+    private JPanel pnlCashOptions;
 
     // Prescription code regex pattern: xxxxxyyyyyyy-z
     // 5 chars (facility code) + 7 chars (random alphanumeric) + dash + 1 char (type: N/H/C)
@@ -98,6 +104,7 @@ public class TAB_Selling extends JFrame {
         busPromotion = new BUS_Promotion();
 
         invoice = new Invoice(InvoiceType.SALES, creator);
+        invoice.setPaymentMethod(PaymentMethod.CASH); // default payment method
 
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
@@ -569,6 +576,9 @@ public class TAB_Selling extends JFrame {
                 // Update VAT display
                 updateVatDisplay();
 
+                // Update total display
+                updateTotalDisplay();
+
                 // Check prescription code requirement after adding
                 validatePrescriptionCodeForInvoice();
                 return;
@@ -613,6 +623,9 @@ public class TAB_Selling extends JFrame {
 
         // Update VAT display
         updateVatDisplay();
+
+        // Update total display
+        updateTotalDisplay();
 
         // Check prescription code requirement after adding
         validatePrescriptionCodeForInvoice();
@@ -845,6 +858,9 @@ public class TAB_Selling extends JFrame {
 
             // Update VAT display
             updateVatDisplay();
+
+            // Update total display
+            updateTotalDisplay();
         }
     }
 
@@ -1129,6 +1145,9 @@ public class TAB_Selling extends JFrame {
         // Update VAT display
         updateVatDisplay();
 
+        // Update total display
+        updateTotalDisplay();
+
         // Check prescription code requirement after removal
         validatePrescriptionCodeForInvoice();
     }
@@ -1179,6 +1198,9 @@ public class TAB_Selling extends JFrame {
 
         // Update VAT display
         updateVatDisplay();
+
+        // Update total display
+        updateTotalDisplay();
 
         // Check prescription code requirement after removal
         validatePrescriptionCodeForInvoice();
@@ -1364,7 +1386,7 @@ public class TAB_Selling extends JFrame {
 
         // Adding total label and text field
         JLabel lblTotal = new JLabel("Tổng tiền:");
-        JTextField txtTotal = new JTextField();
+        txtTotal = new JTextField();
         txtTotal.setEditable(false);
         txtTotal.setFocusable(false);
 
@@ -1432,7 +1454,7 @@ public class TAB_Selling extends JFrame {
 
         boxCashOptions.add(Box.createHorizontalStrut(203));
 
-        JPanel pnlCashOptions = createCashOptionsPanel();
+        pnlCashOptions = createCashOptionsPanel();
         boxCashOptions.add(pnlCashOptions);
 
         // Add action listeners to show/hide cash options based on payment method
@@ -1440,12 +1462,22 @@ public class TAB_Selling extends JFrame {
             boxCashOptions.setVisible(true);
             boxPaymentVertical.revalidate();
             boxPaymentVertical.repaint();
+
+            // Update payment method in invoice
+            if (invoice != null) {
+                invoice.setPaymentMethod(PaymentMethod.CASH);
+            }
         });
 
         rdoBankOrDigitalWallet.addActionListener(e -> {
             boxCashOptions.setVisible(false);
             boxPaymentVertical.revalidate();
             boxPaymentVertical.repaint();
+
+            // Update payment method in invoice
+            if (invoice != null) {
+                invoice.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
+            }
         });
 
         boxInvoiceVertical.add(Box.createVerticalStrut(20));
@@ -1478,6 +1510,9 @@ public class TAB_Selling extends JFrame {
                 System.out.println();
                 lineNumber++;
             }
+
+            System.out.println("Payment method: " + invoice.getPaymentMethod());
+            System.out.println("Total: " + invoice.calculateTotal());
             System.out.println("===================================");
         });
 
@@ -1495,27 +1530,63 @@ public class TAB_Selling extends JFrame {
         pnlCashOptions.setBackground(Color.WHITE);
         pnlCashOptions.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        for (int amount = 100_000; amount <= 600_000; amount += 100_000) {
-            JButton btn = createCashButton(amount);
-            pnlCashOptions.add(btn);
-        }
+        // Initial buttons - will be updated dynamically
+        updateCashButtons();
 
         return pnlCashOptions;
     }
 
     /**
+     * Update cash buttons based on current total
+     */
+    private void updateCashButtons() {
+        if (pnlCashOptions == null || txtTotal == null || invoice == null) {
+            return;
+        }
+
+        // Clear existing buttons
+        pnlCashOptions.removeAll();
+
+        // Get current total
+        double total = invoice.calculateTotal();
+
+        // Round up to nearest 1,000
+        long minAmount = ((long) Math.ceil(total / 1000)) * 1000;
+
+        // Generate 6 buttons with custom increments: +0, +10k, +20k, +50k, +100k, +200k
+        long[] increments = {0, 10000, 20000, 50000, 100000, 200000};
+        for (long increment : increments) {
+            long amount = minAmount + increment;
+            JButton btn = createCashButton(amount);
+            pnlCashOptions.add(btn);
+        }
+
+        pnlCashOptions.revalidate();
+        pnlCashOptions.repaint();
+    }
+
+    /**
      * Creates a single cash amount button with styling
      */
-    private JButton createCashButton(int amount) {
+    private JButton createCashButton(long amount) {
         // Format amount with dots as thousands separator (e.g., 100.000)
         String text = String.format("%,d", amount).replace(',', '.');
 
         JButton btn = createStyledButton(text);
 
-        // Set the amount in the payment field when clicked
+        // Add the amount to the payment field when clicked (not replace)
         btn.addActionListener(e -> {
             if (txtCustomerPayment != null) {
-                txtCustomerPayment.setValue(Long.valueOf(amount));
+                // Get current value
+                Object currentValue = txtCustomerPayment.getValue();
+                long currentAmount = 0;
+                if (currentValue instanceof Number) {
+                    currentAmount = ((Number) currentValue).longValue();
+                }
+
+                // Add new amount to current
+                long newAmount = currentAmount + amount;
+                txtCustomerPayment.setValue(newAmount);
                 txtCustomerPayment.setForeground(Color.BLACK);
                 txtCustomerPayment.requestFocusInWindow();
             }
@@ -1843,6 +1914,22 @@ public class TAB_Selling extends JFrame {
             DecimalFormat currencyFormat = createCurrencyFormat();
 
             txtVat.setText(currencyFormat.format(vatAmount));
+        }
+    }
+
+    /**
+     * Update the total display field with calculated total from invoice
+     */
+    private void updateTotalDisplay() {
+        if (txtTotal != null && invoice != null) {
+            double total = invoice.calculateTotal();
+
+            // Format total as Vietnamese currency
+            DecimalFormat currencyFormat = createCurrencyFormat();
+            txtTotal.setText(currencyFormat.format(total));
+
+            // Update cash buttons based on new total
+            updateCashButtons();
         }
     }
 

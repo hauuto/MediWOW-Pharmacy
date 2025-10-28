@@ -452,7 +452,7 @@ public class Invoice {
      * @return The total amount.
      */
     public double calculateTotal() {
-        return calculateSubtotalWithVat() - calculatePromotion();
+        return Math.ceil(calculateSubtotalWithVat() - calculatePromotion());
     }
 
     @Override
