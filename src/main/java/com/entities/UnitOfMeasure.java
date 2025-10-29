@@ -1,6 +1,7 @@
 package com.entities;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.util.Objects;
 
@@ -11,7 +12,8 @@ import java.util.Objects;
 @Table(name = "UnitOfMeasure")
 public class UnitOfMeasure {
     @Id
-    @Column(name = "id")
+    @UuidGenerator
+    @Column(name = "id", updatable = false, nullable = false, length = 50)
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -24,7 +26,7 @@ public class UnitOfMeasure {
     @Column(name = "baseUnitConversionRate")
     private double baseUnitConversionRate;
 
-    @Transient
+    @Column(name = "basePriceConversionRate")
     private double basePriceConversionRate;
 
     protected UnitOfMeasure() {}
@@ -34,10 +36,20 @@ public class UnitOfMeasure {
         this.product = product;
         this.name = name;
         this.baseUnitConversionRate = baseUnitConversionRate;
-        basePriceConversionRate = 1 / baseUnitConversionRate;
+        this.basePriceConversionRate = 1 / baseUnitConversionRate;
+    }
+
+    // Constructor without ID - let Hibernate generate it
+    public UnitOfMeasure(Product product, String name, double baseUnitConversionRate) {
+        this.product = product;
+        this.name = name;
+        this.baseUnitConversionRate = baseUnitConversionRate;
+        this.basePriceConversionRate = 1 / baseUnitConversionRate;
     }
 
     @PostLoad
+    @PreUpdate
+    @PrePersist
     private void calculateDerivedFields() {
         if (baseUnitConversionRate != 0) {
             basePriceConversionRate = 1 / baseUnitConversionRate;
