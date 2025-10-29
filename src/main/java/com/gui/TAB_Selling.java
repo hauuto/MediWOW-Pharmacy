@@ -9,6 +9,7 @@ import com.enums.LineType;
 import com.enums.PaymentMethod;
 import com.enums.ProductCategory;
 import com.utils.AppColors;
+import com.utils.InvoicePDFGenerator;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -25,13 +26,13 @@ import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
@@ -303,7 +304,7 @@ public class TAB_Selling extends JFrame {
             @Override
             public void focusLost(FocusEvent e) {
                 // Delay to allow click on list
-                Timer timer = new Timer(150, evt -> searchWindow.setVisible(false));
+                javax.swing.Timer timer = new javax.swing.Timer(150, evt -> searchWindow.setVisible(false));
                 timer.setRepeats(false);
                 timer.start();
             }
@@ -501,7 +502,7 @@ public class TAB_Selling extends JFrame {
             @Override
             public void focusLost(FocusEvent e) {
                 // Delay to allow click on list
-                Timer timer = new Timer(150, evt -> window.setVisible(false));
+                javax.swing.Timer timer = new javax.swing.Timer(150, evt -> window.setVisible(false));
                 timer.setRepeats(false);
                 timer.start();
             }
@@ -1706,33 +1707,54 @@ public class TAB_Selling extends JFrame {
                 }
             }
 
-            // If all validations pass, print invoice details (placeholder for actual processing)
-            System.out.println("========== INVOICE LINES ==========");
-            System.out.println("Creator: " + invoice.getCreator().getFullName());
-            System.out.println("Prescription Code: " + invoice.getPrescriptionCode());
-            System.out.println("Total invoice lines: " + invoice.getInvoiceLineList().size());
-            System.out.println();
+            // Generate PDF invoice
+            try {
+                // Create invoices directory if it doesn't exist
+                File invoicesDir = new File("invoices");
+                if (!invoicesDir.exists()) {
+                    invoicesDir.mkdirs();
+                }
 
-            int lineNumber = 1;
-            for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                System.out.println("Line " + lineNumber + ":");
-                System.out.println("  Product Name: " + line.getProduct().getName());
-                System.out.println("  Quantity: " + line.getQuantity());
-                System.out.println("  UOM Name: " + line.getUnitOfMeasure().getName());
-                System.out.println("  Unit Price: " + line.getUnitPrice());
-                System.out.println();
-                lineNumber++;
+                // Generate filename with timestamp
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+                String timestamp = dateFormat.format(new Date());
+                String filename = "invoices/Invoice_" + timestamp + ".pdf";
+
+                // Generate PDF
+                File pdfFile = InvoicePDFGenerator.generateInvoicePDF(invoice, filename);
+
+                // Show success dialog with option to open PDF
+                int option = JOptionPane.showConfirmDialog(pnlSelling,
+                    "Thanh toán thành công!\n" +
+                    "Hóa đơn đã được lưu tại: " + pdfFile.getAbsolutePath() + "\n\n" +
+                    "Bạn có muốn mở hóa đơn không?",
+                    "Thành công",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE);
+
+                // Open PDF if user chooses Yes
+                if (option == JOptionPane.YES_OPTION) {
+                    if (Desktop.isDesktopSupported()) {
+                        Desktop.getDesktop().open(pdfFile);
+                    }
+                }
+
+                // TODO: Save invoice to database here
+                // busInvoice.addInvoice(invoice);
+
+                System.out.println("========== INVOICE PDF GENERATED ==========");
+                System.out.println("File: " + pdfFile.getAbsolutePath());
+                System.out.println("Invoice ID: " + invoice.getId());
+                System.out.println("Total: " + invoice.calculateTotal());
+                System.out.println("==========================================");
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(pnlSelling,
+                    "Lỗi khi tạo hóa đơn PDF:\n" + ex.getMessage(),
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
             }
-
-            System.out.println("Payment method: " + invoice.getPaymentMethod());
-            System.out.println("Total: " + invoice.calculateTotal());
-            System.out.println("===================================");
-
-            // TODO: Add actual invoice processing logic here (save to database, print receipt, etc.)
-            JOptionPane.showMessageDialog(pnlSelling,
-                "Thanh toán thành công!",
-                "Thành công",
-                JOptionPane.INFORMATION_MESSAGE);
         });
 
         boxPaymentButton.add(btnProcessPayment);
