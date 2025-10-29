@@ -55,6 +55,8 @@ public class PromotionCondition {
 
     public String getId() { return id; }
 
+    public void setId(String id) { this.id = id; }
+
     public Target getTarget() { return target; }
     public void setTarget(Target target) { this.target = target; }
 
