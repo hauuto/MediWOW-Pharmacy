@@ -1,3 +1,4 @@
+// File: /MediWOW-Pharmacy/src/main/java/com/dao/DAO_Product.java
 package com.dao;
 
 import com.entities.Lot;
@@ -8,52 +9,47 @@ import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.query.Query;   // ⇦ NEW
 
 import java.util.List;
-
-/**
- * @author Nguyễn Thanh Khôi
- */
 
 public class DAO_Product implements IProduct {
     private final SessionFactory sessionFactory;
 
-    public DAO_Product() {
-        this.sessionFactory = HibernateUtil.getSessionFactory();
-    }
+    public DAO_Product() { this.sessionFactory = HibernateUtil.getSessionFactory(); }
 
     @Override
     public Product getProductById(String id) {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            // Fetch product with unitOfMeasureList first
             Product product = session.createQuery(
-                "SELECT DISTINCT p FROM Product p " +
-                "LEFT JOIN FETCH p.unitOfMeasureList " +
-                "WHERE p.id = :id",
-                Product.class
+                    "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.unitOfMeasureList WHERE p.id = :id",
+                    Product.class
             ).setParameter("id", id).uniqueResult();
 
-            // Then fetch lotList for the same product
             if (product != null) {
                 session.createQuery(
-                    "SELECT DISTINCT p FROM Product p " +
-                    "LEFT JOIN FETCH p.lotList " +
-                    "WHERE p.id = :id",
-                    Product.class
+                        "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.lotList WHERE p.id = :id",
+                        Product.class
                 ).setParameter("id", id).uniqueResult();
             }
-
             return product;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
-        }
+        } catch (Exception e) { e.printStackTrace(); return null; }
+        finally { if (session != null && session.isOpen()) session.close(); }
+    }
+
+    @Override
+    public Product getProductByBarcode(String barcode) {
+        if (barcode == null || barcode.trim().isEmpty()) return null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.createQuery("FROM Product p WHERE p.barcode = :barcode", Product.class)
+                    .setParameter("barcode", barcode.trim())
+                    .uniqueResult();
+        } catch (Exception e) { e.printStackTrace(); return null; }
+        finally { if (session != null && session.isOpen()) session.close(); }
     }
 
     @Override
@@ -61,18 +57,10 @@ public class DAO_Product implements IProduct {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            return session.createQuery(
-                "FROM Lot l WHERE l.batchNumber = :batchNumber",
-                Lot.class
-            ).setParameter("batchNumber", batchNumber).uniqueResult();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
-        }
+            return session.createQuery("FROM Lot l WHERE l.batchNumber = :batchNumber", Lot.class)
+                    .setParameter("batchNumber", batchNumber).uniqueResult();
+        } catch (Exception e) { e.printStackTrace(); return null; }
+        finally { if (session != null && session.isOpen()) session.close(); }
     }
 
     @Override
@@ -81,14 +69,8 @@ public class DAO_Product implements IProduct {
         try {
             session = sessionFactory.openSession();
             return session.createQuery("FROM Lot", Lot.class).list();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
-        }
+        } catch (Exception e) { e.printStackTrace(); return null; }
+        finally { if (session != null && session.isOpen()) session.close(); }
     }
 
     @Override
@@ -96,18 +78,10 @@ public class DAO_Product implements IProduct {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            return session.createQuery(
-                "FROM UnitOfMeasure u WHERE u.id = :id",
-                UnitOfMeasure.class
-            ).setParameter("id", id).uniqueResult();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
-        }
+            return session.createQuery("FROM UnitOfMeasure u WHERE u.id = :id", UnitOfMeasure.class)
+                    .setParameter("id", id).uniqueResult();
+        } catch (Exception e) { e.printStackTrace(); return null; }
+        finally { if (session != null && session.isOpen()) session.close(); }
     }
 
     @Override
@@ -116,14 +90,8 @@ public class DAO_Product implements IProduct {
         try {
             session = sessionFactory.openSession();
             return session.createQuery("FROM UnitOfMeasure", UnitOfMeasure.class).list();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
-        }
+        } catch (Exception e) { e.printStackTrace(); return null; }
+        finally { if (session != null && session.isOpen()) session.close(); }
     }
 
     @Override
@@ -137,15 +105,11 @@ public class DAO_Product implements IProduct {
             transaction.commit();
             return true;
         } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-            }
+            if (transaction != null) transaction.rollback();
             e.printStackTrace();
             return false;
         } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
+            if (session != null && session.isOpen()) session.close();
         }
     }
 
@@ -154,31 +118,63 @@ public class DAO_Product implements IProduct {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            // Fetch products with unitOfMeasureList first
             List<Product> products = session.createQuery(
-                "SELECT DISTINCT p FROM Product p " +
-                "LEFT JOIN FETCH p.unitOfMeasureList",
-                Product.class
+                    "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.unitOfMeasureList",
+                    Product.class
             ).list();
 
-            // Then fetch lotList for the same products
             if (!products.isEmpty()) {
                 session.createQuery(
-                    "SELECT DISTINCT p FROM Product p " +
-                    "LEFT JOIN FETCH p.lotList " +
-                    "WHERE p IN :products",
-                    Product.class
+                        "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.lotList WHERE p IN :products",
+                        Product.class
                 ).setParameter("products", products).list();
             }
-
             return products;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
-            }
-        }
+        } catch (Exception e) { e.printStackTrace(); return null; }
+        finally { if (session != null && session.isOpen()) session.close(); }
+    }
+
+    // ============ existsBy* (duplicate checks) ============
+    @Override
+    public boolean existsByBarcode(String barcode) {
+        if (barcode == null || barcode.trim().isEmpty()) return false;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Long cnt = session.createQuery("SELECT COUNT(p) FROM Product p WHERE p.barcode = :b", Long.class)
+                    .setParameter("b", barcode.trim()).getSingleResult();
+            return cnt > 0;
+        } catch (Exception e) { e.printStackTrace(); return false; }
+        finally { if (session != null && session.isOpen()) session.close(); }
+    }
+
+    @Override
+    public boolean existsByNameAndManufacturer(String name, String manufacturer) {
+        if (name == null || name.trim().isEmpty() || manufacturer == null || manufacturer.trim().isEmpty()) return false;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Long cnt = session.createQuery(
+                            "SELECT COUNT(p) FROM Product p " +
+                                    "WHERE lower(p.name) = :n AND lower(p.manufacturer) = :m", Long.class)
+                    .setParameter("n", name.trim().toLowerCase())
+                    .setParameter("m", manufacturer.trim().toLowerCase())
+                    .getSingleResult();
+            return cnt > 0;
+        } catch (Exception e) { e.printStackTrace(); return false; }
+        finally { if (session != null && session.isOpen()) session.close(); }
+    }
+
+    @Override
+    public boolean existsLotByBatchNumber(String batchNumber) {
+        if (batchNumber == null || batchNumber.trim().isEmpty()) return false;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            Long cnt = session.createQuery("SELECT COUNT(l) FROM Lot l WHERE l.batchNumber = :bn", Long.class)
+                    .setParameter("bn", batchNumber.trim()).getSingleResult();
+            return cnt > 0;
+        } catch (Exception e) { e.printStackTrace(); return false; }
+        finally { if (session != null && session.isOpen()) session.close(); }
     }
 }

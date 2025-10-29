@@ -2,7 +2,6 @@ package com.entities;
 
 import com.enums.DosageForm;
 import com.enums.ProductCategory;
-import com.enums.LotStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -12,40 +11,36 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @author Bùi Quốc Trụ, Nguyễn Thanh Khôi
- */
 @Entity
 @Table(name = "Product")
 public class Product {
 
-
     @Id
     @UuidGenerator
-    @Column(name = "id", updatable = false, nullable = false, length = 50)
+    @Column(name = "id", insertable = false, updatable = false, nullable = false, length = 50)
     private String id;
 
-    @Column(name = "barcode")
+    @Column(name = "barcode", unique = true)
     private String barcode;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "category")
+    @Column(name = "category", nullable = false)
     private ProductCategory category;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "form")
+    @Column(name = "form", nullable = false)
     private DosageForm form;
 
-    @Column(name = "name")
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "shortName") // ✅ FIX
+    @Column(name = "shortName")
     private String shortName;
 
     @Column(name = "manufacturer")
     private String manufacturer;
 
-    @Column(name = "activeIngredient") // ✅ FIX
+    @Column(name = "activeIngredient")
     private String activeIngredient;
 
     @Column(name = "vat")
@@ -57,7 +52,7 @@ public class Product {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "baseUnitOfMeasure") // ✅ FIX
+    @Column(name = "baseUnitOfMeasure", nullable = false)
     private String baseUnitOfMeasure;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -76,201 +71,102 @@ public class Product {
 
     public Product() {}
 
-    // Existing constructor updated to no longer forcibly set creationDate (Hibernate will handle it)
-    public Product(String id, String barcode, ProductCategory category, DosageForm form, String name, String shortName, String manufacturer, String activeIngredient, double vat, String strength, String description, String baseUnitOfMeasure, List<UnitOfMeasure> unitOfMeasureList, List<Lot> lotList, LocalDateTime updateDate) {
+    public Product(String id, String barcode, ProductCategory category, DosageForm form, String name, String shortName,
+                   String manufacturer, String activeIngredient, double vat, String strength, String description,
+                   String baseUnitOfMeasure, List<UnitOfMeasure> unitOfMeasureList, List<Lot> lotList, LocalDateTime updateDate) {
         this.id = id;
-        this.barcode = barcode;
-        this.category = category;
-        this.form = form;
-        this.name = name;
+        setBarcode(barcode);
+        setCategory(category);
+        setForm(form);
+        setName(name);
         this.shortName = shortName;
         this.manufacturer = manufacturer;
         this.activeIngredient = activeIngredient;
-        this.vat = vat;
+        setVat(vat);
         this.strength = strength;
         this.description = description;
-        this.baseUnitOfMeasure = baseUnitOfMeasure;
-        this.unitOfMeasureList = unitOfMeasureList;
-        this.lotList = lotList;
-        // creationDate will be populated by @CreationTimestamp
+        setBaseUnitOfMeasure(baseUnitOfMeasure);
+        setUnitOfMeasureList(unitOfMeasureList);
+        setLotList(lotList);
         this.updateDate = updateDate;
     }
 
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
 
-    public String getBarcode() {
-        return barcode;
-    }
-
+    public String getBarcode() { return barcode; }
     public void setBarcode(String barcode) {
-        this.barcode = barcode;
+        if (barcode == null || barcode.trim().isEmpty())
+            throw new IllegalArgumentException("Mã vạch không được để trống");
+        // Cho phép số 8–20 ký tự (có thể mở rộng nếu cần)
+        if (!barcode.matches("\\d{8,20}"))
+            throw new IllegalArgumentException("Mã vạch chỉ gồm 8–20 chữ số");
+        this.barcode = barcode.trim();
     }
 
-    public ProductCategory getCategory() {
-        return category;
-    }
-
+    public ProductCategory getCategory() { return category; }
     public void setCategory(ProductCategory category) {
+        if (category == null) throw new IllegalArgumentException("Vui lòng chọn Loại sản phẩm");
         this.category = category;
     }
 
-    public DosageForm getForm() {
-        return form;
-    }
-
+    public DosageForm getForm() { return form; }
     public void setForm(DosageForm form) {
+        if (form == null) throw new IllegalArgumentException("Vui lòng chọn Dạng bào chế");
         this.form = form;
     }
 
-    public String getName() {
-        return name;
-    }
-
+    public String getName() { return name; }
     public void setName(String name) {
-        this.name = name;
+        if (name == null || name.trim().isEmpty())
+            throw new IllegalArgumentException("Tên sản phẩm không được để trống");
+        this.name = name.trim();
     }
 
-    public String getShortName() {
-        return shortName;
-    }
+    public String getShortName() { return shortName; }
+    public void setShortName(String shortName) { this.shortName = (shortName == null) ? null : shortName.trim(); }
 
-    public void setShortName(String shortName) {
-        this.shortName = shortName;
-    }
+    public String getManufacturer() { return manufacturer; }
+    public void setManufacturer(String manufacturer) { this.manufacturer = (manufacturer == null) ? null : manufacturer.trim(); }
 
-    public String getManufacturer() {
-        return manufacturer;
-    }
+    public String getActiveIngredient() { return activeIngredient; }
+    public void setActiveIngredient(String activeIngredient) { this.activeIngredient = (activeIngredient == null) ? null : activeIngredient.trim(); }
 
-    public void setManufacturer(String manufacturer) {
-        this.manufacturer = manufacturer;
-    }
-
-    public String getActiveIngredient() {
-        return activeIngredient;
-    }
-
-    public void setActiveIngredient(String activeIngredient) {
-        this.activeIngredient = activeIngredient;
-    }
-
-    public double getVat() {
-        return vat;
-    }
-
+    public double getVat() { return vat; }
     public void setVat(double vat) {
+        if (vat < 0 || vat > 100) throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
         this.vat = vat;
     }
 
-    public String getStrength() {
-        return strength;
-    }
+    public String getStrength() { return strength; }
+    public void setStrength(String strength) { this.strength = (strength == null) ? null : strength.trim(); }
 
-    public void setStrength(String strength) {
-        this.strength = strength;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = (description == null) ? null : description.trim(); }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getBaseUnitOfMeasure() {
-        return baseUnitOfMeasure;
-    }
-
+    public String getBaseUnitOfMeasure() { return baseUnitOfMeasure; }
     public void setBaseUnitOfMeasure(String baseUnitOfMeasure) {
-        this.baseUnitOfMeasure = baseUnitOfMeasure;
+        if (baseUnitOfMeasure == null || baseUnitOfMeasure.trim().isEmpty())
+            throw new IllegalArgumentException("Đơn vị tính gốc không được để trống");
+        this.baseUnitOfMeasure = baseUnitOfMeasure.trim();
     }
 
-    public List<UnitOfMeasure> getUnitOfMeasureList() {
-        return unitOfMeasureList;
-    }
-
+    public List<UnitOfMeasure> getUnitOfMeasureList() { return unitOfMeasureList; }
     public void setUnitOfMeasureList(List<UnitOfMeasure> unitOfMeasureList) {
-        this.unitOfMeasureList = unitOfMeasureList;
+        this.unitOfMeasureList = (unitOfMeasureList == null) ? new ArrayList<>() : new ArrayList<>(unitOfMeasureList);
+        for (UnitOfMeasure u : this.unitOfMeasureList) if (u != null) u.setProduct(this); // quan hệ 2 chiều
     }
 
-    public List<Lot> getLotList() {
-        return lotList;
-    }
-
+    public List<Lot> getLotList() { return lotList; }
     public void setLotList(List<Lot> lotList) {
-        this.lotList = lotList;
+        this.lotList = (lotList == null) ? new ArrayList<>() : new ArrayList<>(lotList);
+        for (Lot l : this.lotList) if (l != null) l.setProduct(this); // quan hệ 2 chiều
     }
 
-    public LocalDateTime getCreationDate() {
-        return creationDate;
-    }
+    public LocalDateTime getCreationDate() { return creationDate; }
+    public LocalDateTime getUpdateDate() { return updateDate; }
+    public void setUpdateDate(LocalDateTime updateDate) { this.updateDate = updateDate; }
 
-    public LocalDateTime getUpdateDate() {
-        return updateDate;
-    }
 
-    public void setUpdateDate(LocalDateTime updateDate) {
-        this.updateDate = updateDate;
-    }
-
-    /**
-     * @author Bùi Quốc Trụ
-     *
-     * Adds a new UnitOfMeasure to the product if it does not already exist.
-     *
-     * @param uom The UnitOfMeasure to add.
-     * @return true if the UnitOfMeasure was added, false if it already exists or is null.
-     */
-    public boolean addUnitOfMeasure(UnitOfMeasure uom) {
-        if (uom == null)
-            return false;
-
-        for (UnitOfMeasure existingUom : unitOfMeasureList)
-            if (existingUom.equals(uom))
-                return false;
-
-        unitOfMeasureList.add(uom);
-        return true;
-    }
-
-    /**
-     * @author Bùi Quốc Trụ
-     *
-     * Updates an existing UnitOfMeasure with new details.
-     *
-     * @param updatedUom The UnitOfMeasure containing updated details.
-     * @return true if the UnitOfMeasure was found and updated, false otherwise.
-     */
-    public boolean updateUnitOfMeasure(UnitOfMeasure updatedUom) {
-        if (updatedUom == null)
-            return false;
-
-        for (UnitOfMeasure uom : unitOfMeasureList) {
-            if (uom.equals(updatedUom)) {
-                uom.setBaseUnitConversionRate(updatedUom.getBaseUnitConversionRate());
-                uom.setName(updatedUom.getName());
-
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @author Bùi Quốc Trụ
-     *
-     * Removes a UnitOfMeasure by its ID.
-     *
-     * @param uomId The ID of the UnitOfMeasure to remove.
-     * @return true if the UnitOfMeasure was found and removed, false otherwise.
-     */
-    public boolean removeUnitOfMeasure(String uomId) {
-        return unitOfMeasureList.removeIf(uom -> uom.getId().equals(uomId));
-    }
 
     /**
      * @author Bùi Quốc Trụ
