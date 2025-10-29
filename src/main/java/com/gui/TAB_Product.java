@@ -204,30 +204,13 @@ public class TAB_Product {
 
             currentSelectedRow = row;
             isBindingFromTable = true;
-            // === THAY vì bindProductFromTableRow(row) ===
+            // === THAY ĐỔI TẠI ĐÂY: lấy ID rồi nạp từ BUS ===
             String selectedId = valStr(productModel.getValueAt(row, 0));
-            if (selectedId.isEmpty()) { clearProductDetails(); return; }
+            bindProductById(selectedId);   // ⇦ NEW (thay vì bindProductFromTableRow(row))
 
-            try {
-                Product full = productBUS.getProductById(selectedId); // ⇦ NEW (bên dưới có mục 2 & 3)
-                if (full == null) {
-                    warn("Không tải được chi tiết cho sản phẩm: " + selectedId);
-                    clearProductDetails();
-                    return;
-                }
-                isBindingFromTable = true;
-                bindProductFromEntity(full);  // ⇦ NEW
-            } finally {
-                isBindingFromTable = false;
-            }
-
-            setEditMode(false);
-            enableEditIfRowSelected();
-            //
             isBindingFromTable = false;
 
             setEditMode(false);
-            // đảm bảo lại sau khi actionBar được rebuild
             enableEditIfRowSelected();
         });
 
@@ -492,6 +475,7 @@ public class TAB_Product {
                     if (ok) {
                         // Lấy lại theo barcode để có ID do DB/trigger sinh (nếu có)
                         Product created = productBUS.getProductByBarcode(p.getBarcode());
+                        String createdId = (created != null ? created.getId() : null);
                         if (created != null) {
                             txtId.setText(created.getId() == null ? "" : created.getId());
                         }
@@ -505,6 +489,22 @@ public class TAB_Product {
                             productModel.setValueAt(p.getActiveIngredient(), idx, 3);
                             productModel.setValueAt(p.getManufacturer(), idx, 4);
                             productModel.setValueAt("—", idx, 5); // trạng thái UI (chưa lưu DB)
+                        }
+
+                        JOptionPane.showMessageDialog(pProduct, "Thêm sản phẩm thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                        isAddingNew = false; newProductRowIndex = -1;
+                        setEditMode(false);
+
+                        if (createdId != null && !createdId.isEmpty()) {
+                            Product full = productBUS.getProductByIdWithChildren(createdId);
+                            if (full != null) {
+                                bindProductFromEntity(full); // chi tiết hiển thị đúng theo DB
+                            } else {
+                                // fallback: vẫn bind từ "p" (đối tượng build từ form) nếu cần
+                                bindProductFromEntity(p);
+                            }
+                        } else {
+                            bindProductFromEntity(p);
                         }
 
                         JOptionPane.showMessageDialog(pProduct, "Thêm sản phẩm thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
@@ -1417,13 +1417,48 @@ public class TAB_Product {
         return (dt == null) ? "" : dt.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
     }
 
-    private String mapLotStatusEnumToVN(com.enums.LotStatus s) {
-        if (s == null) return LOT_STATUS_OPTIONS[0];
-        return switch (s) {
-            case EXPIRED -> "Hết hạn sử dụng";
-            case FAULTY  -> "Lỗi nhà sản xuất";
-            default      -> "Được bán";
-        };
+    // ==== NEW: helper mapping enum -> nhãn VN cho combo/detail ====
+    private String mapCategoryEnumToVN(ProductCategory c) {
+        if (c == null) return "Thuốc không kê đơn";
+        switch (c) {
+            case ETC:        return "Thuốc kê đơn";
+            case SUPPLEMENT: return "Sản phẩm chức năng";
+            default:         return "Thuốc không kê đơn";
+        }
+    }
+    private String mapFormEnumToVN(DosageForm f) {
+        if (f == null) return "Viên nén"; // chọn nhãn đại diện cho nhóm
+        switch (f) {
+            case LIQUID_DOSAGE: return "Si rô";
+            default:             return "Viên nén"; // thuộc nhóm SOLID
+        }
+    }
+    private String mapLotStatusEnumToVN(LotStatus st) {
+        if (st == null) return "Được bán";
+        switch (st) {
+            case EXPIRED: return "Hết hạn sử dụng";
+            case FAULTY:  return "Lỗi nhà sản xuất";
+            default:      return "Được bán";
+        }
+    }
+    private String formatDateDMY(java.time.LocalDateTime dt) {
+        if (dt == null) return "";
+        return dt.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
+
+    // ==== NEW: tải từ BUS theo ID rồi bind ====
+    private void bindProductById(String productId) {
+        clearProductDetails();
+        if (productId == null || productId.trim().isEmpty()) return;
+
+        // Bạn cần bổ sung BUS_Product#getProductByIdWithChildren(...)
+        // để trả về Product đã load kèm unitOfMeasureList + lotList
+        Product full = productBUS.getProductByIdWithChildren(productId);
+        if (full == null) {
+            warn("Không tìm thấy sản phẩm với ID: " + productId);
+            return;
+        }
+        bindProductFromEntity(full);
     }
 
 }

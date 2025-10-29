@@ -10,7 +10,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;   // ⇦ NEW
-
+import org.hibernate.Hibernate;
 import java.util.List;
 
 public class DAO_Product implements IProduct {
@@ -18,25 +18,43 @@ public class DAO_Product implements IProduct {
 
     public DAO_Product() { this.sessionFactory = HibernateUtil.getSessionFactory(); }
 
+     // <-- add
+
     @Override
     public Product getProductById(String id) {
         Session session = null;
         try {
             session = sessionFactory.openSession();
+
+            // 1) FETCH UOM
             Product product = session.createQuery(
-                    "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.unitOfMeasureList WHERE p.id = :id",
-                    Product.class
-            ).setParameter("id", id).uniqueResult();
+                            "SELECT DISTINCT p FROM Product p " +
+                                    "LEFT JOIN FETCH p.unitOfMeasureList " +
+                                    "WHERE p.id = :id", Product.class)
+                    .setParameter("id", id)
+                    .uniqueResult();
 
             if (product != null) {
+                // 2) FETCH LOT (trong cùng persistence context)
                 session.createQuery(
-                        "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.lotList WHERE p.id = :id",
-                        Product.class
-                ).setParameter("id", id).uniqueResult();
+                                "SELECT DISTINCT p FROM Product p " +
+                                        "LEFT JOIN FETCH p.lotList " +
+                                        "WHERE p.id = :id", Product.class)
+                        .setParameter("id", id)
+                        .uniqueResult();
+
+                // 3) Defensive: đảm bảo cả 2 collection đã init trước khi đóng session
+                Hibernate.initialize(product.getUnitOfMeasureList());
+                Hibernate.initialize(product.getLotList());
             }
             return product;
-        } catch (Exception e) { e.printStackTrace(); return null; }
-        finally { if (session != null && session.isOpen()) session.close(); }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
     }
 
     @Override

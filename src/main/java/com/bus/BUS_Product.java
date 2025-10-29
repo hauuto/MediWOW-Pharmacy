@@ -140,4 +140,8 @@ public class BUS_Product implements IProduct {
         String h = normalize(haystack);
         return h.contains(normalizedNeedle);
     }
+
+    public Product getProductByIdWithChildren(String id) {
+        return (id == null || id.isBlank()) ? null : dao.getProductById(id);
+    }
 }
