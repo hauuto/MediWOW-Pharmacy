@@ -7,7 +7,11 @@ import com.entities.UnitOfMeasure;
 import com.interfaces.IProduct;
 
 import java.util.List;
-
+import java.text.Normalizer;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 /**
  * @author Nguyễn Thanh Khôi
  */
@@ -92,5 +96,51 @@ public class BUS_Product implements IProduct {
     @Override
     public List<Product> getAllProducts() {
         return dao.getAllProducts();
+    }
+
+    public List<Product> searchProducts(String keyword, String categoryCode, String formCode) {
+        final String kw = normalize(keyword);
+        final boolean hasKw = kw != null && !kw.isEmpty();
+
+        final String cat = isBlank(categoryCode) ? null : categoryCode.trim();
+        final String form = isBlank(formCode)     ? null : formCode.trim();
+
+        // Lấy toàn bộ product theo cách DAO đang dùng (đã JOIN FETCH UOM/Lot để sẵn)
+        // -> lọc tại BUS theo yêu cầu search.
+        List<Product> all = dao.getAllProducts(); // có thể trả null nếu lỗi
+        if (all == null || all.isEmpty()) return java.util.Collections.emptyList();
+
+        return all.stream()
+                .filter(p -> {
+                    if (cat  != null && !cat.equalsIgnoreCase(nz(p.getCategory().toString())))   return false;
+                    if (form != null && !form.equalsIgnoreCase(nz(p.getForm().toString())))       return false;
+                    if (!hasKw) return true;
+                    return contains(nz(p.getId()), kw)
+                            || contains(nz(p.getName()), kw)
+                            || contains(nz(p.getShortName()), kw)
+                            || contains(nz(p.getBarcode()), kw)
+                            || contains(nz(p.getActiveIngredient()), kw)
+                            || contains(nz(p.getManufacturer()), kw);
+                })
+                .sorted(Comparator.comparing(p -> nz(p.getName()).toLowerCase(Locale.ROOT)))
+                .collect(Collectors.toList());
+    }
+
+    // ===== helpers =====
+    private static String nz(String s) { return s == null ? "" : s; }
+    private static boolean isBlank(String s) { return s == null || s.trim().isEmpty(); }
+
+    /** Chuẩn hoá: trim + lowercase + bỏ dấu (để search tiếng Việt thân thiện). */
+    private static String normalize(String s) {
+        if (s == null) return "";
+        String t = s.trim().toLowerCase(Locale.ROOT);
+        t = Normalizer.normalize(t, Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        return t;
+    }
+    private static boolean contains(String haystack, String normalizedNeedle) {
+        if (haystack == null) return false;
+        String h = normalize(haystack);
+        return h.contains(normalizedNeedle);
     }
 }
