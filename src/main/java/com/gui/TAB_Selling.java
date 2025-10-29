@@ -62,7 +62,12 @@ public class TAB_Selling extends JFrame {
     private JScrollPane scrInvoiceLine;
     private JButton btnRemoveItem;
     private JButton btnRemoveAllItems;
+    private JButton btnBarcodeScan;
+    private JTextField txtSearchInput;
     private JSplitPane splitPane;
+
+    // Barcode scanning state
+    private boolean barcodeScanningEnabled = false;
 
     // Field to hold the customer payment text field for cash button updates
     private JFormattedTextField txtCustomerPayment;
@@ -134,14 +139,72 @@ public class TAB_Selling extends JFrame {
         boxSearchBarHorizontal.add(Box.createHorizontalStrut(5));
 
         JLabel lblSearch = new JLabel("Tìm kiếm thuốc:");
-        JTextField txtSearchInput = new JTextField();
+        txtSearchInput = new JTextField();
 
         boxSearchBarHorizontal.add(generateLabelAndTextField(lblSearch, txtSearchInput, "Nhập mã/tên/tên rút gọn của thuốc...", "Nhập mã/tên/tên rút gọn của thuốc", 10));
 
         boxSearchBarHorizontal.add(Box.createHorizontalStrut(5));
 
-        // Setup autocomplete
+        // Create barcode scan button with custom styling to support toggle state
+        btnBarcodeScan = new JButton("");
+        btnBarcodeScan.setIcon(new ImageIcon("src/main/resources/icons/png_scanner.png"));
+        btnBarcodeScan.setMargin(new Insets(10, 10, 10, 10));
+        btnBarcodeScan.setBorderPainted(false);
+        btnBarcodeScan.setOpaque(true);
+        btnBarcodeScan.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnBarcodeScan.addActionListener(e -> toggleBarcodeScanning());
+
+        // Add mouse listener that respects the toggle state
+        btnBarcodeScan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (!barcodeScanningEnabled) {
+                    btnBarcodeScan.setBackground(AppColors.BACKGROUND);
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                updateBarcodeScanButtonAppearance();
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (!barcodeScanningEnabled) {
+                    btnBarcodeScan.setBackground(AppColors.LIGHT);
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                updateBarcodeScanButtonAppearance();
+            }
+        });
+
+        updateBarcodeScanButtonAppearance();
+
+        boxSearchBarHorizontal.add(btnBarcodeScan);
+
+        boxSearchBarHorizontal.add(Box.createHorizontalStrut(5));
+
+        // Setup autocomplete for search
         setupSearchAutocomplete(txtSearchInput);
+
+        // Add focus listener to untoggle barcode scanning when focus is lost to another user input field
+        txtSearchInput.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                // Only untoggle if focus is permanently lost (not temporary like dialogs)
+                if (!e.isTemporary() && barcodeScanningEnabled) {
+                    Component opposite = e.getOppositeComponent();
+                    // Only untoggle if user is focusing on another input component (not dialogs/buttons)
+                    if (opposite instanceof JTextField || opposite instanceof JFormattedTextField) {
+                        barcodeScanningEnabled = false;
+                        updateBarcodeScanButtonAppearance();
+                    }
+                }
+            }
+        });
 
         return boxSearchBarVertical;
     }
@@ -196,6 +259,14 @@ public class TAB_Selling extends JFrame {
         txtSearchInput.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+                // Handle Enter key for barcode scanning mode
+                if (e.getKeyCode() == KeyEvent.VK_ENTER && barcodeScanningEnabled) {
+                    processBarcodeInput();
+                    e.consume();
+                    return;
+                }
+
+                // Normal autocomplete navigation
                 if (searchWindow.isVisible()) {
                     if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                         int selectedIndex = searchResultsList.getSelectedIndex();
@@ -1074,6 +1145,100 @@ public class TAB_Selling extends JFrame {
     }
 
     /**
+     * Toggle barcode scanning mode on/off
+     */
+    private void toggleBarcodeScanning() {
+        barcodeScanningEnabled = !barcodeScanningEnabled;
+        updateBarcodeScanButtonAppearance();
+
+        if (barcodeScanningEnabled) {
+            // Clear any previous input and set focus on search text field
+            txtSearchInput.setText("");
+            txtSearchInput.requestFocusInWindow();
+
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Chế độ quét mã vạch đã BẬT!\n" +
+                "Sử dụng máy quét để thêm sản phẩm vào hóa đơn.",
+                "Quét mã vạch",
+                JOptionPane.INFORMATION_MESSAGE);
+
+            // Restore focus after dialog
+            SwingUtilities.invokeLater(() -> txtSearchInput.requestFocusInWindow());
+        } else {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Chế độ quét mã vạch đã TẮT!",
+                "Quét mã vạch",
+                JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    /**
+     * Update barcode scan button appearance based on state
+     */
+    private void updateBarcodeScanButtonAppearance() {
+        if (barcodeScanningEnabled) {
+            // ON state - Green background
+            btnBarcodeScan.setBackground(new Color(46, 204, 113)); // Green
+        } else {
+            // OFF state - White background (default style)
+            btnBarcodeScan.setBackground(Color.WHITE);
+        }
+    }
+
+    /**
+     * Process barcode input when scanned (triggered by Enter key)
+     */
+    private void processBarcodeInput() {
+        String barcode = txtSearchInput.getText().trim();
+
+        // Clear the input field immediately
+        txtSearchInput.setText("");
+
+        if (barcode.isEmpty()) {
+            return;
+        }
+
+        // Find product by barcode
+        Product foundProduct = null;
+        for (Product product : products) {
+            if (product.getBarcode() != null && product.getBarcode().equals(barcode)) {
+                foundProduct = product;
+                break;
+            }
+        }
+
+        if (foundProduct == null) {
+            // Product not found - play beep and show brief message
+            Toolkit.getDefaultToolkit().beep();
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Không tìm thấy sản phẩm với mã vạch: " + barcode,
+                "Lỗi",
+                JOptionPane.ERROR_MESSAGE);
+
+            // Restore focus to search field
+            SwingUtilities.invokeLater(() -> {
+                if (barcodeScanningEnabled) {
+                    txtSearchInput.requestFocusInWindow();
+                }
+            });
+            return;
+        }
+
+        // Product found - add to invoice
+        addProductToInvoice(foundProduct);
+
+        // Play success beep
+        Toolkit.getDefaultToolkit().beep();
+
+        // Restore focus to search field for next scan
+        SwingUtilities.invokeLater(() -> {
+            if (barcodeScanningEnabled) {
+                txtSearchInput.requestFocusInWindow();
+            }
+        });
+    }
+
+    /**
      * Remove selected items from the table and invoice
      */
     private void removeSelectedItems() {
@@ -1463,6 +1628,12 @@ public class TAB_Selling extends JFrame {
             boxPaymentVertical.revalidate();
             boxPaymentVertical.repaint();
 
+            // Enable txtCustomerPayment
+            if (txtCustomerPayment != null) {
+                txtCustomerPayment.setEnabled(true);
+                txtCustomerPayment.setEditable(true);
+            }
+
             // Update payment method in invoice
             if (invoice != null) {
                 invoice.setPaymentMethod(PaymentMethod.CASH);
@@ -1473,6 +1644,16 @@ public class TAB_Selling extends JFrame {
             boxCashOptions.setVisible(false);
             boxPaymentVertical.revalidate();
             boxPaymentVertical.repaint();
+
+            // Disable txtCustomerPayment and set value to total
+            if (txtCustomerPayment != null && txtTotal != null && invoice != null) {
+                txtCustomerPayment.setEnabled(false);
+                txtCustomerPayment.setEditable(false);
+
+                // Set value to total amount
+                long totalAmount = (long) invoice.calculateTotal();
+                txtCustomerPayment.setValue(totalAmount);
+            }
 
             // Update payment method in invoice
             if (invoice != null) {
@@ -1492,11 +1673,43 @@ public class TAB_Selling extends JFrame {
         btnProcessPayment = createStyledButton("Thanh toán");
         btnProcessPayment.setEnabled(true); // Initially enabled
 
-        // Add action listener to print invoice lines
+        // Add action listener to validate and process payment
         btnProcessPayment.addActionListener(e -> {
+            // Validate invoice line list is not empty
+            if (invoice.getInvoiceLineList() == null || invoice.getInvoiceLineList().isEmpty()) {
+                JOptionPane.showMessageDialog(pnlSelling,
+                    "Danh sách sản phẩm trống!\n" +
+                    "Vui lòng thêm sản phẩm vào hóa đơn trước khi thanh toán.",
+                    "Không thể thanh toán",
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Validate customer payment is >= total (only for CASH payment)
+            if (invoice.getPaymentMethod() == PaymentMethod.CASH && txtCustomerPayment != null) {
+                Object paymentValue = txtCustomerPayment.getValue();
+                long customerPayment = 0;
+                if (paymentValue instanceof Number) {
+                    customerPayment = ((Number) paymentValue).longValue();
+                }
+
+                long total = (long) invoice.calculateTotal();
+
+                if (customerPayment < total) {
+                    JOptionPane.showMessageDialog(pnlSelling,
+                        "Số tiền khách đưa không đủ!\n" +
+                        "Tổng tiền: " + String.format("%,d", total).replace(',', '.') + " Đ\n" +
+                        "Khách đưa: " + String.format("%,d", customerPayment).replace(',', '.') + " Đ",
+                        "Không thể thanh toán",
+                        JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+
+            // If all validations pass, print invoice details (placeholder for actual processing)
             System.out.println("========== INVOICE LINES ==========");
             System.out.println("Creator: " + invoice.getCreator().getFullName());
-            System.out.println("  Prescription Code: " + invoice.getPrescriptionCode());
+            System.out.println("Prescription Code: " + invoice.getPrescriptionCode());
             System.out.println("Total invoice lines: " + invoice.getInvoiceLineList().size());
             System.out.println();
 
@@ -1514,6 +1727,12 @@ public class TAB_Selling extends JFrame {
             System.out.println("Payment method: " + invoice.getPaymentMethod());
             System.out.println("Total: " + invoice.calculateTotal());
             System.out.println("===================================");
+
+            // TODO: Add actual invoice processing logic here (save to database, print receipt, etc.)
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Thanh toán thành công!",
+                "Thành công",
+                JOptionPane.INFORMATION_MESSAGE);
         });
 
         boxPaymentButton.add(btnProcessPayment);
