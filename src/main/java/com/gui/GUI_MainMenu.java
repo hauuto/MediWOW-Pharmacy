@@ -85,7 +85,7 @@ public class GUI_MainMenu implements ActionListener {
         TAB_Staff staffTab = new TAB_Staff();
         TAB_Customer customer = new TAB_Customer();
 
-        pnlMain.add(dashboard.pDashboard, "dashboard");
+        pnlMain.add(dashboard, "dashboard"); // Fixed: dashboard is already a JPanel
         pnlMain.add(sales.pnlSelling, "selling");
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic.pStatistic, "statistic");
