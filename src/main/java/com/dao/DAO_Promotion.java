@@ -233,4 +233,185 @@ public class DAO_Promotion implements IPromotion {
             }
         }
     }
+
+    @Override
+    public boolean updatePromotion(Promotion p) {
+        Session session = null;
+        Transaction transaction = null;
+        try {
+            session = sessionFactory.openSession();
+            transaction = session.beginTransaction();
+
+            // Load existing promotion
+            Promotion existing = session.get(Promotion.class, p.getId());
+            if (existing == null) {
+                System.err.println("❌ Không tìm thấy promotion với ID: " + p.getId());
+                return false;
+            }
+
+            // Clear existing conditions and actions
+            existing.getConditions().clear();
+            existing.getActions().clear();
+            session.flush();
+
+            // Update basic fields
+            existing.setName(p.getName());
+            existing.setDescription(p.getDescription());
+            existing.setEffectiveDate(p.getEffectiveDate());
+            existing.setEndDate(p.getEndDate());
+            existing.setIsActive(p.getIsActive());
+
+            // Add new conditions and actions
+            if (p.getConditions() != null) {
+                for (PromotionCondition c : p.getConditions()) {
+                    c.setPromotion(existing);
+                    existing.getConditions().add(c);
+                }
+            }
+            if (p.getActions() != null) {
+                for (PromotionAction a : p.getActions()) {
+                    a.setPromotion(existing);
+                    existing.getActions().add(a);
+                }
+            }
+
+            session.merge(existing);
+            transaction.commit();
+
+            System.out.println("✅ Đã cập nhật promotion thành công: " + p.getId());
+            return true;
+
+        } catch (Exception e) {
+            if (transaction != null && transaction.isActive()) {
+                try {
+                    transaction.rollback();
+                    System.err.println("⚠️ Đã rollback transaction");
+                } catch (Exception rollbackEx) {
+                    System.err.println("❌ Lỗi khi rollback: " + rollbackEx.getMessage());
+                }
+            }
+            System.err.println("❌ Lỗi khi cập nhật promotion: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+
+    @Override
+    public List<Promotion> searchPromotions(String keyword) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+
+            String searchPattern = "%" + keyword.toLowerCase() + "%";
+            List<Promotion> promotions = session.createQuery(
+                "SELECT DISTINCT p FROM Promotion p " +
+                "LEFT JOIN FETCH p.conditions " +
+                "LEFT JOIN FETCH p.actions " +
+                "WHERE LOWER(p.name) LIKE :keyword " +
+                "OR LOWER(p.id) LIKE :keyword " +
+                "OR LOWER(p.description) LIKE :keyword",
+                Promotion.class
+            ).setParameter("keyword", searchPattern).getResultList();
+
+            // Force initialize lazy collections
+            for (Promotion p : promotions) {
+                if (p.getConditions() != null) {
+                    p.getConditions().size();
+                    for (PromotionCondition cond : p.getConditions()) {
+                        if (cond.getProduct() != null) {
+                            cond.getProduct().getId();
+                        }
+                    }
+                }
+                if (p.getActions() != null) {
+                    p.getActions().size();
+                    for (PromotionAction act : p.getActions()) {
+                        if (act.getProduct() != null) {
+                            act.getProduct().getId();
+                        }
+                    }
+                }
+            }
+
+            return promotions;
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi khi tìm kiếm promotions: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    @Override
+    public List<Promotion> filterPromotions(Boolean isActive, Boolean isValid) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+
+            StringBuilder queryStr = new StringBuilder(
+                "SELECT DISTINCT p FROM Promotion p " +
+                "LEFT JOIN FETCH p.conditions " +
+                "LEFT JOIN FETCH p.actions " +
+                "WHERE 1=1"
+            );
+
+            if (isActive != null) {
+                queryStr.append(" AND p.isActive = :isActive");
+            }
+
+            if (isValid != null) {
+                if (isValid) {
+                    queryStr.append(" AND p.endDate >= CURRENT_DATE AND p.effectiveDate <= CURRENT_DATE");
+                } else {
+                    queryStr.append(" AND (p.endDate < CURRENT_DATE OR p.effectiveDate > CURRENT_DATE)");
+                }
+            }
+
+            var query = session.createQuery(queryStr.toString(), Promotion.class);
+
+            if (isActive != null) {
+                query.setParameter("isActive", isActive);
+            }
+
+            List<Promotion> promotions = query.getResultList();
+
+            // Force initialize lazy collections
+            for (Promotion p : promotions) {
+                if (p.getConditions() != null) {
+                    p.getConditions().size();
+                    for (PromotionCondition cond : p.getConditions()) {
+                        if (cond.getProduct() != null) {
+                            cond.getProduct().getId();
+                        }
+                    }
+                }
+                if (p.getActions() != null) {
+                    p.getActions().size();
+                    for (PromotionAction act : p.getActions()) {
+                        if (act.getProduct() != null) {
+                            act.getProduct().getId();
+                        }
+                    }
+                }
+            }
+
+            return promotions;
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi khi lọc promotions: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
 }

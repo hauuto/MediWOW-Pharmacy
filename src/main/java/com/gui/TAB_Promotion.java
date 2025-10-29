@@ -27,7 +27,7 @@ import java.util.List;
  * - SplitPane tổng: 60/40
  * - SplitPane bên trong: 40/60
  * - Bảng điều kiện & hành động có thể nhập trực tiếp
- * - Dưới cùng: 3 nút chính (Thêm mới, Xóa, Xóa trắng)
+ * - Dưới cùng: 3 nút chính (Thêm mới, Cập nhật, Xóa)
  */
 public class TAB_Promotion extends JPanel {
 
@@ -52,12 +52,52 @@ public class TAB_Promotion extends JPanel {
     private JTable table;
     private final List<Promotion> promotionCache = new ArrayList<>();
 
+    // Biến để theo dõi chế độ (thêm mới hay cập nhật)
+    private boolean isEditMode = false;
+    private String currentEditingId = null;
+
+    // Components cho filter
+    private ButtonGroup statusFilterGroup;
+    private ButtonGroup validFilterGroup;
+    private JTextField txtSearch;
+    private JComboBox<String> cbTypeSearch;
+    private JComboBox<String> cbStatusSearch;
+
     public TAB_Promotion() {
         setLayout(new BorderLayout());
         setBackground(new Color(245, 250, 250));
         setBorder(new EmptyBorder(10, 10, 10, 10));
 
         // -------------------- TOP: Thanh tìm kiếm --------------------
+        JPanel top = createSearchPanel();
+        add(top, BorderLayout.NORTH);
+
+        // -------------------- LEFT: Bộ lọc --------------------
+        JPanel left = createFilterPanel();
+        add(left, BorderLayout.WEST);
+
+        // -------------------- CENTER: Danh sách & Chi tiết --------------------
+        JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        mainSplit.setResizeWeight(0.6); // 60:40
+        mainSplit.setDividerSize(6);
+        mainSplit.setBackground(new Color(245, 250, 250));
+
+        // LEFT: Danh sách
+        JPanel mainLeft = createListPanel();
+
+        // RIGHT: Chi tiết
+        JPanel mainRight = createMainDetailPanel();
+
+        mainSplit.setLeftComponent(mainLeft);
+        mainSplit.setRightComponent(mainRight);
+        add(mainSplit, BorderLayout.CENTER);
+
+        // Load dữ liệu Promotion vào bảng
+        loadPromotions();
+    }
+
+    /** Tạo panel tìm kiếm */
+    private JPanel createSearchPanel() {
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         top.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(new Color(200, 230, 240)),
@@ -68,45 +108,60 @@ public class TAB_Promotion extends JPanel {
         top.setBackground(new Color(245, 250, 250));
 
         JLabel lblSearch = new JLabel("Tìm kiếm:");
-        JTextField txtSearch = new JTextField(25);
+        txtSearch = new JTextField(25);
         JButton btnSearch = new JButton("Tìm");
-        JComboBox<String> cbType = new JComboBox<>(new String[]{"Tất cả", "Giảm giá", "Tặng phẩm"});
-        JComboBox<String> cbStatus = new JComboBox<>(new String[]{"Tất cả", "Kích hoạt", "Chưa áp dụng"});
+        cbTypeSearch = new JComboBox<>(new String[]{"Tất cả", "Giảm giá", "Tặng phẩm"});
+        cbStatusSearch = new JComboBox<>(new String[]{"Tất cả", "Kích hoạt", "Chưa áp dụng"});
         JButton btnRefresh = new JButton("Làm mới");
 
         styleButton(btnSearch, AppColors.PRIMARY, Color.WHITE);
         styleButton(btnRefresh, AppColors.PRIMARY, Color.WHITE);
 
+        // Sự kiện tìm kiếm
+        btnSearch.addActionListener(e -> handleSearch());
+        txtSearch.addActionListener(e -> handleSearch());
+        btnRefresh.addActionListener(e -> {
+            txtSearch.setText("");
+            cbTypeSearch.setSelectedIndex(0);
+            cbStatusSearch.setSelectedIndex(0);
+            resetFilters();
+            loadPromotions();
+        });
+
         top.add(lblSearch);
         top.add(txtSearch);
         top.add(btnSearch);
         top.add(new JLabel("Hình thức:"));
-        top.add(cbType);
+        top.add(cbTypeSearch);
         top.add(new JLabel("Trạng thái:"));
-        top.add(cbStatus);
+        top.add(cbStatusSearch);
         top.add(btnRefresh);
 
-        add(top, BorderLayout.NORTH);
+        return top;
+    }
 
-        // -------------------- LEFT: Bộ lọc --------------------
+    /** Tạo panel filter bên trái */
+    private JPanel createFilterPanel() {
         JPanel left = new JPanel();
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
         left.setBorder(new EmptyBorder(6, 6, 6, 12));
         left.setBackground(new Color(245, 250, 250));
 
-        left.add(createFilterCard("Trạng thái", new String[]{"Tất cả", "Kích hoạt", "Chưa áp dụng"}));
+        JPanel statusCard = createFilterCard("Trạng thái",
+            new String[]{"Tất cả", "Kích hoạt", "Chưa áp dụng"}, true);
+        JPanel validCard = createFilterCard("Hiệu lực",
+            new String[]{"Tất cả", "Còn hiệu lực", "Hết hiệu lực"}, false);
+
+        left.add(statusCard);
         left.add(Box.createVerticalStrut(12));
-        left.add(createFilterCard("Hiệu lực", new String[]{"Tất cả", "Còn hiệu lực", "Hết hiệu lực"}));
+        left.add(validCard);
         left.add(Box.createVerticalGlue());
-        add(left, BorderLayout.WEST);
 
-        // -------------------- CENTER: Danh sách & Chi tiết --------------------
-        JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        mainSplit.setResizeWeight(0.6); // 60:40
-        mainSplit.setDividerSize(6);
-        mainSplit.setBackground(new Color(245, 250, 250));
+        return left;
+    }
 
-        // LEFT: Danh sách
+    /** Tạo panel danh sách khuyến mãi */
+    private JPanel createListPanel() {
         JPanel mainLeft = new JPanel(new BorderLayout());
         mainLeft.setBackground(new Color(245, 250, 250));
         mainLeft.setBorder(BorderFactory.createTitledBorder(
@@ -138,19 +193,7 @@ public class TAB_Promotion extends JPanel {
         scroll.setBorder(BorderFactory.createLineBorder(new Color(220, 230, 240)));
         mainLeft.add(scroll, BorderLayout.CENTER);
 
-        // RIGHT: Chi tiết
-        JPanel mainRight = createMainDetailPanel();
-
-        mainSplit.setLeftComponent(mainLeft);
-        mainSplit.setRightComponent(mainRight);
-        add(mainSplit, BorderLayout.CENTER);
-
-        // Load dữ liệu Promotion vào bảng
-        loadPromotions();
-
-        // Nút làm mới
-        btnRefresh.addActionListener(e -> loadPromotions());
-        // (btnSearch, cbType, cbStatus hiện tại chưa triển khai lọc — giữ nguyên giao diện như yêu cầu)
+        return mainLeft;
     }
 
     /** Panel chi tiết bên phải */
@@ -187,14 +230,17 @@ public class TAB_Promotion extends JPanel {
 
         JButton btnAdd = new JButton("Thêm mới");
         styleButton(btnAdd, new Color(40, 167, 69), Color.WHITE);
+        JButton btnUpdate = new JButton("Cập nhật");
+        styleButton(btnUpdate, new Color(255, 193, 7), Color.WHITE);
         JButton btnClear = new JButton("Xóa trắng");
         styleButton(btnClear, AppColors.PRIMARY, Color.WHITE);
 
-        // Giữ nguyên logic cũ của bạn
-        btnAdd.addActionListener(e -> handleSaveFromMainPanel());
+        btnAdd.addActionListener(e -> handleAdd());
+        btnUpdate.addActionListener(e -> handleUpdate());
         btnClear.addActionListener(e -> handleClearMainPanel());
 
         buttonPanel.add(btnAdd);
+        buttonPanel.add(btnUpdate);
         buttonPanel.add(btnClear);
 
         mainPanel.add(verticalSplit, BorderLayout.CENTER);
@@ -212,6 +258,7 @@ public class TAB_Promotion extends JPanel {
         grid.setOpaque(false);
 
         txtCodeField = new JTextField();
+        txtCodeField.setEditable(false); // Không cho sửa mã
         txtNameField = new JTextField();
         dpStartDate = new DIALOG_DatePicker(new Date());
         dpEndDate = new DIALOG_DatePicker(new Date());
@@ -351,7 +398,8 @@ public class TAB_Promotion extends JPanel {
         return table;
     }
 
-    private void handleSaveFromMainPanel() {
+    /** Xử lý thêm mới */
+    private void handleAdd() {
         // Validation
         String name = txtNameField.getText().trim();
         if (name.isEmpty()) {
@@ -364,131 +412,8 @@ public class TAB_Promotion extends JPanel {
         }
 
         try {
-            // Tạo đối tượng Promotion
-            String promoId = generatePromotionId();
-            String code = txtCodeField.getText().trim();
-            if (code.isEmpty()) code = promoId; // Dùng ID làm code nếu không nhập
-
-            String description = txtDescField.getText().trim();
-
-            // Convert Date to LocalDate
-            LocalDate startDate = dpStartDate.getDate().toInstant()
-                    .atZone(ZoneId.systemDefault()).toLocalDate();
-            LocalDate endDate = dpEndDate.getDate().toInstant()
-                    .atZone(ZoneId.systemDefault()).toLocalDate();
-
-            Promotion promotion = new Promotion(promoId, name, startDate, endDate, false, description);
-
-            // Thu thập điều kiện từ bảng condModel
-            java.util.Set<PromotionCondition> conditions = new java.util.HashSet<>();
-            int condCounter = 1;
-            for (int i = 0; i < condModel.getRowCount(); i++) {
-                Object targetObj = condModel.getValueAt(i, 0);
-                Object compObj = condModel.getValueAt(i, 1);
-                Object val1Obj = condModel.getValueAt(i, 2);
-
-                // Bỏ qua dòng trống
-                if (targetObj == null && compObj == null && val1Obj == null) continue;
-
-                if (targetObj == null || compObj == null || val1Obj == null) {
-                    JOptionPane.showMessageDialog(this,
-                        "Điều kiện dòng " + (i+1) + " chưa đầy đủ thông tin!",
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
-                    ? (PromotionEnum.Target) targetObj
-                    : PromotionEnum.Target.valueOf(targetObj.toString());
-
-                PromotionEnum.Comp comp = (compObj instanceof PromotionEnum.Comp)
-                    ? (PromotionEnum.Comp) compObj
-                    : PromotionEnum.Comp.valueOf(compObj.toString());
-
-                Double val1 = parseDouble(val1Obj);
-                Double val2 = parseDouble(condModel.getValueAt(i, 3));
-
-                Object prodIdObj = condModel.getValueAt(i, 4);
-                Product product = null;
-                if (prodIdObj != null && !prodIdObj.toString().trim().isEmpty()) {
-                    // Tạo product reference với ID qua constructor
-                    String productId = prodIdObj.toString().trim();
-                    product = new Product(productId, null, null, null, null, null, null, null, 0, null, null, null, null, null, null);
-                }
-
-                PromotionCondition cond = new PromotionCondition(
-                    target, comp, PromotionEnum.ConditionType.PRODUCT_QTY, val1, val2, product
-                );
-                // Generate ID cho condition (format: PRMC-YYYYMMDD-XXXX-YY)
-                String condId = promoId.replace("PRM-", "PRMC-") + "-" + String.format("%02d", condCounter++);
-                cond.setId(condId);
-
-                conditions.add(cond);
-            }
-
-            // Thu thập hành động từ bảng actModel
-            java.util.Set<PromotionAction> actions = new java.util.HashSet<>();
-            int actCounter = 1;
-            for (int i = 0; i < actModel.getRowCount(); i++) {
-                Object typeObj = actModel.getValueAt(i, 0);
-                Object targetObj = actModel.getValueAt(i, 1);
-                Object val1Obj = actModel.getValueAt(i, 2);
-
-                // Bỏ qua dòng trống
-                if (typeObj == null && targetObj == null && val1Obj == null) continue;
-
-                if (typeObj == null || targetObj == null || val1Obj == null) {
-                    JOptionPane.showMessageDialog(this,
-                        "Hành động dòng " + (i+1) + " chưa đầy đủ thông tin!",
-                        "Lỗi", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-
-                PromotionEnum.ActionType type = (typeObj instanceof PromotionEnum.ActionType)
-                    ? (PromotionEnum.ActionType) typeObj
-                    : PromotionEnum.ActionType.valueOf(typeObj.toString());
-
-                PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
-                    ? (PromotionEnum.Target) targetObj
-                    : PromotionEnum.Target.valueOf(targetObj.toString());
-
-                Double val1 = parseDouble(val1Obj);
-                Double val2 = parseDouble(actModel.getValueAt(i, 3));
-
-                Object prodIdObj = actModel.getValueAt(i, 4);
-                Product product = null;
-                if (prodIdObj != null && !prodIdObj.toString().trim().isEmpty()) {
-                    // Tạo product reference với ID qua constructor
-                    String productId = prodIdObj.toString().trim();
-                    product = new Product(productId, null, null, null, null, null, null, null, 0, null, null, null, null, null, null);
-                }
-
-                PromotionAction action = new PromotionAction(
-                    type, target, val1, val2, product, i
-                );
-                // Generate ID cho action (format: PRMA-YYYYMMDD-XXXX-YY)
-                String actId = promoId.replace("PRM-", "PRMA-") + "-" + String.format("%02d", actCounter++);
-                action.setId(actId);
-
-                actions.add(action);
-            }
-
-            // Kiểm tra phải có ít nhất 1 điều kiện và 1 hành động
-            if (conditions.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                    "Phải có ít nhất 1 điều kiện áp dụng!",
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            if (actions.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                    "Phải có ít nhất 1 hành động khuyến mãi!",
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            promotion.setConditions(conditions);
-            promotion.setActions(actions);
+            Promotion promotion = buildPromotionFromForm(true);
+            if (promotion == null) return;
 
             // Lưu vào database
             boolean success = busPromotion.addPromotion(promotion);
@@ -501,7 +426,7 @@ public class TAB_Promotion extends JPanel {
                 loadPromotions(); // Reload danh sách
             } else {
                 JOptionPane.showMessageDialog(this,
-                    "❌ Không thể thêm khuyến mãi. Vui lòng kiểm tra lại thông tin hoặc xem console để biết chi tiết!",
+                    "❌ Không thể thêm khuyến mãi. Vui lòng kiểm tra lại thông tin hoặc xem console!",
                     "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
 
@@ -511,6 +436,190 @@ public class TAB_Promotion extends JPanel {
                 "❌ Lỗi khi thêm khuyến mãi: " + ex.getMessage(),
                 "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /** Xử lý cập nhật */
+    private void handleUpdate() {
+        if (currentEditingId == null || currentEditingId.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "Vui lòng chọn một khuyến mãi từ danh sách để cập nhật!",
+                "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Validation
+        String name = txtNameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên chương trình!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (dpEndDate.getDate().before(dpStartDate.getDate())) {
+            JOptionPane.showMessageDialog(this, "Ngày kết thúc không thể trước ngày bắt đầu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            Promotion promotion = buildPromotionFromForm(false);
+            if (promotion == null) return;
+
+            promotion.setId(currentEditingId); // Giữ nguyên ID
+
+            int confirm = JOptionPane.showConfirmDialog(this,
+                "Bạn có chắc muốn cập nhật khuyến mãi này?",
+                "Xác nhận", JOptionPane.YES_NO_OPTION);
+
+            if (confirm != JOptionPane.YES_OPTION) return;
+
+            boolean success = busPromotion.updatePromotion(promotion);
+
+            if (success) {
+                JOptionPane.showMessageDialog(this,
+                    "✅ Đã cập nhật khuyến mãi thành công!",
+                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                handleClearMainPanel();
+                loadPromotions();
+            } else {
+                JOptionPane.showMessageDialog(this,
+                    "❌ Không thể cập nhật khuyến mãi!",
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                "❌ Lỗi khi cập nhật: " + ex.getMessage(),
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+
+    /** Xây dựng object Promotion từ form */
+    private Promotion buildPromotionFromForm(boolean isNew) {
+        String name = txtNameField.getText().trim();
+        String description = txtDescField.getText().trim();
+
+        // Convert Date to LocalDate
+        LocalDate startDate = dpStartDate.getDate().toInstant()
+                .atZone(ZoneId.systemDefault()).toLocalDate();
+        LocalDate endDate = dpEndDate.getDate().toInstant()
+                .atZone(ZoneId.systemDefault()).toLocalDate();
+
+        String promoId = isNew ? generatePromotionId() : currentEditingId;
+
+        boolean isActive = cbStatusField.getSelectedIndex() == 0;
+
+        Promotion promotion = new Promotion(promoId, name, startDate, endDate, isActive, description);
+
+        // Thu thập điều kiện từ bảng condModel
+        java.util.Set<PromotionCondition> conditions = new java.util.HashSet<>();
+        int condCounter = 1;
+        for (int i = 0; i < condModel.getRowCount(); i++) {
+            Object targetObj = condModel.getValueAt(i, 0);
+            Object compObj = condModel.getValueAt(i, 1);
+            Object val1Obj = condModel.getValueAt(i, 2);
+
+            // Bỏ qua dòng trống
+            if (targetObj == null && compObj == null && val1Obj == null) continue;
+
+            if (targetObj == null || compObj == null || val1Obj == null) {
+                JOptionPane.showMessageDialog(this,
+                    "Điều kiện dòng " + (i+1) + " chưa đầy đủ thông tin!",
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return null;
+            }
+
+            PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                ? (PromotionEnum.Target) targetObj
+                : PromotionEnum.Target.valueOf(targetObj.toString());
+
+            PromotionEnum.Comp comp = (compObj instanceof PromotionEnum.Comp)
+                ? (PromotionEnum.Comp) compObj
+                : PromotionEnum.Comp.valueOf(compObj.toString());
+
+            Double val1 = parseDouble(val1Obj);
+            Double val2 = parseDouble(condModel.getValueAt(i, 3));
+
+            Object prodIdObj = condModel.getValueAt(i, 4);
+            Product product = null;
+            if (prodIdObj != null && !prodIdObj.toString().trim().isEmpty()) {
+                String productId = prodIdObj.toString().trim();
+                product = new Product(productId, null, null, null, null, null, null, null, 0, null, null, null, null, null, null);
+            }
+
+            PromotionCondition cond = new PromotionCondition(
+                target, comp, PromotionEnum.ConditionType.PRODUCT_QTY, val1, val2, product
+            );
+            // Generate ID cho condition
+            String condId = promoId.replace("PRM-", "PRMC-") + "-" + String.format("%02d", condCounter++);
+            cond.setId(condId);
+
+            conditions.add(cond);
+        }
+
+        // Thu thập hành động từ bảng actModel
+        java.util.Set<PromotionAction> actions = new java.util.HashSet<>();
+        int actCounter = 1;
+        for (int i = 0; i < actModel.getRowCount(); i++) {
+            Object typeObj = actModel.getValueAt(i, 0);
+            Object targetObj = actModel.getValueAt(i, 1);
+            Object val1Obj = actModel.getValueAt(i, 2);
+
+            // Bỏ qua dòng trống
+            if (typeObj == null && targetObj == null && val1Obj == null) continue;
+
+            if (typeObj == null || targetObj == null || val1Obj == null) {
+                JOptionPane.showMessageDialog(this,
+                    "Hành động dòng " + (i+1) + " chưa đầy đủ thông tin!",
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return null;
+            }
+
+            PromotionEnum.ActionType type = (typeObj instanceof PromotionEnum.ActionType)
+                ? (PromotionEnum.ActionType) typeObj
+                : PromotionEnum.ActionType.valueOf(typeObj.toString());
+
+            PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                ? (PromotionEnum.Target) targetObj
+                : PromotionEnum.Target.valueOf(targetObj.toString());
+
+            Double val1 = parseDouble(val1Obj);
+            Double val2 = parseDouble(actModel.getValueAt(i, 3));
+
+            Object prodIdObj = actModel.getValueAt(i, 4);
+            Product product = null;
+            if (prodIdObj != null && !prodIdObj.toString().trim().isEmpty()) {
+                String productId = prodIdObj.toString().trim();
+                product = new Product(productId, null, null, null, null, null, null, null, 0, null, null, null, null, null, null);
+            }
+
+            PromotionAction action = new PromotionAction(
+                type, target, val1, val2, product, i
+            );
+            // Generate ID cho action
+            String actId = promoId.replace("PRM-", "PRMA-") + "-" + String.format("%02d", actCounter++);
+            action.setId(actId);
+
+            actions.add(action);
+        }
+
+        // Kiểm tra phải có ít nhất 1 điều kiện và 1 hành động
+        if (conditions.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "Phải có ít nhất 1 điều kiện áp dụng!",
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+        if (actions.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "Phải có ít nhất 1 hành động khuyến mãi!",
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+
+        promotion.setConditions(conditions);
+        promotion.setActions(actions);
+
+        return promotion;
     }
 
     /** Generate ID cho Promotion theo format PRM-YYYYMMDD-XXXX */
@@ -550,6 +659,100 @@ public class TAB_Promotion extends JPanel {
         }
     }
 
+    /** Xử lý tìm kiếm */
+    private void handleSearch() {
+        String keyword = txtSearch.getText().trim();
+
+        if (keyword.isEmpty()) {
+            loadPromotions();
+            return;
+        }
+
+        tableModel.setRowCount(0);
+        promotionCache.clear();
+
+        List<Promotion> promotions = busPromotion.searchPromotions(keyword);
+        if (promotions != null) {
+            for (Promotion p : promotions) {
+                promotionCache.add(p);
+                addPromotionToTable(p);
+            }
+        }
+    }
+
+    /** Reset các filter */
+    private void resetFilters() {
+        if (statusFilterGroup != null) {
+            for (java.util.Enumeration<AbstractButton> buttons = statusFilterGroup.getElements();
+                 buttons.hasMoreElements();) {
+                AbstractButton button = buttons.nextElement();
+                if (button.getText().equals("Tất cả")) {
+                    button.setSelected(true);
+                    break;
+                }
+            }
+        }
+        if (validFilterGroup != null) {
+            for (java.util.Enumeration<AbstractButton> buttons = validFilterGroup.getElements();
+                 buttons.hasMoreElements();) {
+                AbstractButton button = buttons.nextElement();
+                if (button.getText().equals("Tất cả")) {
+                    button.setSelected(true);
+                    break;
+                }
+            }
+        }
+    }
+
+    /** Xử lý filter */
+    private void handleFilter() {
+        Boolean isActive = null;
+        Boolean isValid = null;
+
+        // Lấy giá trị từ status filter
+        if (statusFilterGroup != null) {
+            String statusSelected = getSelectedRadioButtonText(statusFilterGroup);
+            if ("Kích hoạt".equals(statusSelected)) {
+                isActive = true;
+            } else if ("Chưa áp dụng".equals(statusSelected)) {
+                isActive = false;
+            }
+        }
+
+        // Lấy giá trị từ validity filter
+        if (validFilterGroup != null) {
+            String validSelected = getSelectedRadioButtonText(validFilterGroup);
+            if ("Còn hiệu lực".equals(validSelected)) {
+                isValid = true;
+            } else if ("Hết hiệu lực".equals(validSelected)) {
+                isValid = false;
+            }
+        }
+
+        tableModel.setRowCount(0);
+        promotionCache.clear();
+
+        List<Promotion> promotions = busPromotion.filterPromotions(isActive, isValid);
+        if (promotions != null) {
+            for (Promotion p : promotions) {
+                promotionCache.add(p);
+                addPromotionToTable(p);
+            }
+        }
+    }
+
+    /** Lấy text của radio button được chọn */
+    private String getSelectedRadioButtonText(ButtonGroup group) {
+        for (java.util.Enumeration<AbstractButton> buttons = group.getElements();
+             buttons.hasMoreElements();) {
+            AbstractButton button = buttons.nextElement();
+            if (button.isSelected()) {
+                return button.getText();
+            }
+        }
+        return null;
+    }
+
     /** Load danh sách promotion từ database */
     private void loadPromotions() {
         tableModel.setRowCount(0);
@@ -559,24 +762,31 @@ public class TAB_Promotion extends JPanel {
         if (promotions != null) {
             for (Promotion p : promotions) {
                 promotionCache.add(p);
-
-                String status = p.getIsActive() ? "Kích hoạt" : "Chưa áp dụng";
-                String type = "Khuyến mãi"; // Có thể tùy chỉnh dựa trên actions
-
-                tableModel.addRow(new Object[]{
-                    p.getName(),
-                    p.getEffectiveDate(),
-                    p.getEndDate(),
-                    type,
-                    status
-                });
+                addPromotionToTable(p);
             }
         }
+    }
+
+    /** Thêm promotion vào bảng */
+    private void addPromotionToTable(Promotion p) {
+        String status = p.getIsActive() ? "Kích hoạt" : "Chưa áp dụng";
+        String type = "Khuyến mãi"; // Có thể tùy chỉnh dựa trên actions
+
+        tableModel.addRow(new Object[]{
+            p.getName(),
+            p.getEffectiveDate(),
+            p.getEndDate(),
+            type,
+            status
+        });
     }
 
     /** Hiển thị chi tiết promotion khi chọn dòng */
     private void showPromotionDetails(Promotion promo) {
         if (promo == null) return;
+
+        isEditMode = true;
+        currentEditingId = promo.getId();
 
         // Điền thông tin cơ bản
         txtCodeField.setText(promo.getId());
@@ -630,6 +840,9 @@ public class TAB_Promotion extends JPanel {
 
     /** Xóa trắng form */
     private void handleClearMainPanel() {
+        isEditMode = false;
+        currentEditingId = null;
+
         txtCodeField.setText("");
         txtNameField.setText("");
         txtDescField.setText("");
@@ -655,6 +868,9 @@ public class TAB_Promotion extends JPanel {
         actModel.setRowCount(0);
         actModel.addRow(new Object[actModel.getColumnCount()]);
         if (actListener != null) actModel.addTableModelListener(actListener);
+
+        // Clear selection
+        table.clearSelection();
     }
 
     /** Style button */
@@ -681,7 +897,7 @@ public class TAB_Promotion extends JPanel {
     }
 
     /** Tạo filter card */
-    private JPanel createFilterCard(String title, String[] options) {
+    private JPanel createFilterCard(String title, String[] options, boolean isStatusFilter) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
@@ -698,12 +914,22 @@ public class TAB_Promotion extends JPanel {
         card.add(Box.createVerticalStrut(8));
 
         ButtonGroup group = new ButtonGroup();
+        if (isStatusFilter) {
+            statusFilterGroup = group;
+        } else {
+            validFilterGroup = group;
+        }
+
         for (String opt : options) {
             JRadioButton radio = new JRadioButton(opt);
             radio.setBackground(Color.WHITE);
             radio.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             radio.setAlignmentX(Component.LEFT_ALIGNMENT);
             if (opt.equals("Tất cả")) radio.setSelected(true);
+
+            // Thêm listener để filter khi chọn
+            radio.addActionListener(e -> handleFilter());
+
             group.add(radio);
             card.add(radio);
             card.add(Box.createVerticalStrut(4));
