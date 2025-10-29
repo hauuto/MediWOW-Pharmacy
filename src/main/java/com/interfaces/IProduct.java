@@ -14,6 +14,5 @@ public interface IProduct {
     public UnitOfMeasure getUnitOfMeasureById(String id);
     public List<UnitOfMeasure> getAllUnitOfMeasures();
     public boolean addProduct(Product p);
-    public boolean updateProduct(Product p);
     public List<Product> getAllProducts();
 }

@@ -93,45 +93,4 @@ public class BUS_Product implements IProduct {
     public List<Product> getAllProducts() {
         return dao.getAllProducts();
     }
-
-    @Override
-    public boolean updateProduct(Product p) {
-        // ==== VALIDATION ====
-        if (p == null) {
-            System.err.println("❌ Product null");
-            return false;
-        }
-
-        if (p.getName() == null || p.getName().isBlank()) {
-            System.err.println("❌ Tên sản phẩm không được để trống");
-            return false;
-        }
-
-        if (p.getCategory() == null) {
-            System.err.println("❌ Danh mục chưa chọn");
-            return false;
-        }
-
-        if (p.getForm() == null) {
-            System.err.println("❌ Dạng bào chế chưa chọn");
-            return false;
-        }
-
-        if (p.getVat() < 0) {
-            System.err.println("❌ VAT không thể âm");
-            return false;
-        }
-
-        // Nếu có UnitOfMeasure đi kèm → gán quan hệ 2 chiều
-        for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
-            u.setProduct(p);
-        }
-
-        // Nếu có Lot đi kèm → gán quan hệ 2 chiều
-        for (Lot lot : p.getLotList()) {
-            lot.setProduct(p);
-        }
-
-        return dao.updateProduct(p);
-    }
 }
