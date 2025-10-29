@@ -2,9 +2,11 @@ package com.gui;
 
 import com.bus.BUS_Invoice;
 import com.bus.BUS_Product;
+import com.bus.BUS_Promotion;
 import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LineType;
+import com.enums.PaymentMethod;
 import com.enums.ProductCategory;
 import com.utils.AppColors;
 
@@ -39,10 +41,12 @@ public class TAB_Selling extends JFrame {
 
     private final BUS_Product busProduct;
     private final BUS_Invoice busInvoice;
+    private final BUS_Promotion busPromotion;
 
     private Invoice invoice;
     private List<String> previousPrescriptionCodes;
     private List<Product> products;
+    private final List<Promotion> promotions;
 
     // Map to store product reference for each row (key: product ID)
     private Map<String, Product> productMap;
@@ -58,7 +62,12 @@ public class TAB_Selling extends JFrame {
     private JScrollPane scrInvoiceLine;
     private JButton btnRemoveItem;
     private JButton btnRemoveAllItems;
+    private JButton btnBarcodeScan;
+    private JTextField txtSearchInput;
     private JSplitPane splitPane;
+
+    // Barcode scanning state
+    private boolean barcodeScanningEnabled = false;
 
     // Field to hold the customer payment text field for cash button updates
     private JFormattedTextField txtCustomerPayment;
@@ -70,6 +79,14 @@ public class TAB_Selling extends JFrame {
     // Field for VAT display
     private JTextField txtVat;
 
+    // Fields for promotion search and display
+    private JTextField txtPromotionSearch;
+    private JTextField txtPromotionDetails;
+    private JTextField txtTotal;
+
+    // Field for cash options panel
+    private JPanel pnlCashOptions;
+
     // Prescription code regex pattern: xxxxxyyyyyyy-z
     // 5 chars (facility code) + 7 chars (random alphanumeric) + dash + 1 char (type: N/H/C)
     private static final String PRESCRIPTION_CODE_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
@@ -80,14 +97,25 @@ public class TAB_Selling extends JFrame {
     private DefaultListModel<String> searchResultsModel;
     private List<Product> currentSearchResults;
 
+    // Fields for promotion search autocomplete
+    private JWindow promotionSearchWindow;
+    private JList<String> promotionSearchResultsList;
+    private DefaultListModel<String> promotionSearchResultsModel;
+    private List<Promotion> currentPromotionSearchResults;
+
     public TAB_Selling(Staff creator) {
         busProduct = new BUS_Product();
         busInvoice = new BUS_Invoice();
+        busPromotion = new BUS_Promotion();
 
         invoice = new Invoice(InvoiceType.SALES, creator);
+        invoice.setPaymentMethod(PaymentMethod.CASH); // default payment method
 
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
+        promotions = busPromotion.getAllPromotions().stream()
+                .filter(Promotion::getIsActive)
+                .toList();
         productMap = new HashMap<>();
         previousUOMMap = new HashMap<>();
         oldUOMIdMap = new HashMap<>();
@@ -111,14 +139,72 @@ public class TAB_Selling extends JFrame {
         boxSearchBarHorizontal.add(Box.createHorizontalStrut(5));
 
         JLabel lblSearch = new JLabel("Tìm kiếm thuốc:");
-        JTextField txtSearchInput = new JTextField();
+        txtSearchInput = new JTextField();
 
         boxSearchBarHorizontal.add(generateLabelAndTextField(lblSearch, txtSearchInput, "Nhập mã/tên/tên rút gọn của thuốc...", "Nhập mã/tên/tên rút gọn của thuốc", 10));
 
         boxSearchBarHorizontal.add(Box.createHorizontalStrut(5));
 
-        // Setup autocomplete
+        // Create barcode scan button with custom styling to support toggle state
+        btnBarcodeScan = new JButton("");
+        btnBarcodeScan.setIcon(new ImageIcon("src/main/resources/icons/png_scanner.png"));
+        btnBarcodeScan.setMargin(new Insets(10, 10, 10, 10));
+        btnBarcodeScan.setBorderPainted(false);
+        btnBarcodeScan.setOpaque(true);
+        btnBarcodeScan.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnBarcodeScan.addActionListener(e -> toggleBarcodeScanning());
+
+        // Add mouse listener that respects the toggle state
+        btnBarcodeScan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (!barcodeScanningEnabled) {
+                    btnBarcodeScan.setBackground(AppColors.BACKGROUND);
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                updateBarcodeScanButtonAppearance();
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (!barcodeScanningEnabled) {
+                    btnBarcodeScan.setBackground(AppColors.LIGHT);
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                updateBarcodeScanButtonAppearance();
+            }
+        });
+
+        updateBarcodeScanButtonAppearance();
+
+        boxSearchBarHorizontal.add(btnBarcodeScan);
+
+        boxSearchBarHorizontal.add(Box.createHorizontalStrut(5));
+
+        // Setup autocomplete for search
         setupSearchAutocomplete(txtSearchInput);
+
+        // Add focus listener to untoggle barcode scanning when focus is lost to another user input field
+        txtSearchInput.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                // Only untoggle if focus is permanently lost (not temporary like dialogs)
+                if (!e.isTemporary() && barcodeScanningEnabled) {
+                    Component opposite = e.getOppositeComponent();
+                    // Only untoggle if user is focusing on another input component (not dialogs/buttons)
+                    if (opposite instanceof JTextField || opposite instanceof JFormattedTextField) {
+                        barcodeScanningEnabled = false;
+                        updateBarcodeScanButtonAppearance();
+                    }
+                }
+            }
+        });
 
         return boxSearchBarVertical;
     }
@@ -173,6 +259,14 @@ public class TAB_Selling extends JFrame {
         txtSearchInput.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+                // Handle Enter key for barcode scanning mode
+                if (e.getKeyCode() == KeyEvent.VK_ENTER && barcodeScanningEnabled) {
+                    processBarcodeInput();
+                    e.consume();
+                    return;
+                }
+
+                // Normal autocomplete navigation
                 if (searchWindow.isVisible()) {
                     if (e.getKeyCode() == KeyEvent.VK_DOWN) {
                         int selectedIndex = searchResultsList.getSelectedIndex();
@@ -298,6 +392,210 @@ public class TAB_Selling extends JFrame {
     }
 
     /**
+     * Setup autocomplete functionality for promotion search
+     */
+    private void setupPromotionSearchAutocomplete(JTextField txtPromotionSearch) {
+        // Initialize search results
+        promotionSearchResultsModel = new DefaultListModel<>();
+        promotionSearchResultsList = new JList<>(promotionSearchResultsModel);
+        promotionSearchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
+        promotionSearchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        currentPromotionSearchResults = new ArrayList<>();
+
+        // Create a JWindow for dropdown
+        promotionSearchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
+        JScrollPane scrollPane = new JScrollPane(promotionSearchResultsList);
+        promotionSearchWindow.add(scrollPane);
+        promotionSearchWindow.setFocusableWindowState(false);
+
+        // Setup autocomplete with generalized method
+        setupAutocomplete(
+            txtPromotionSearch,
+            promotionSearchWindow,
+            promotionSearchResultsList,
+            promotionSearchResultsModel,
+            "Điền mã hoặc tên khuyến mãi (nếu có)...",
+            this::performPromotionSearch,
+            this::selectPromotion
+        );
+    }
+
+    /**
+     * Generalized autocomplete setup
+     */
+    private void setupAutocomplete(
+            JTextField textField,
+            JWindow window,
+            JList<String> resultsList,
+            DefaultListModel<String> resultsModel,
+            String placeholder,
+            Runnable searchAction,
+            java.util.function.Consumer<Integer> selectionAction) {
+
+        // Add document listener to search as user types
+        textField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                SwingUtilities.invokeLater(searchAction);
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                SwingUtilities.invokeLater(searchAction);
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                SwingUtilities.invokeLater(searchAction);
+            }
+        });
+
+        // Handle mouse click on list
+        resultsList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int selectedIndex = resultsList.getSelectedIndex();
+                if (selectedIndex != -1) {
+                    selectionAction.accept(selectedIndex);
+                }
+            }
+        });
+
+        // Handle keyboard navigation
+        textField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (window.isVisible()) {
+                    if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+                        int selectedIndex = resultsList.getSelectedIndex();
+                        if (selectedIndex < resultsModel.getSize() - 1) {
+                            resultsList.setSelectedIndex(selectedIndex + 1);
+                            resultsList.ensureIndexIsVisible(selectedIndex + 1);
+                        } else if (resultsModel.getSize() > 0) {
+                            resultsList.setSelectedIndex(0);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == KeyEvent.VK_UP) {
+                        int selectedIndex = resultsList.getSelectedIndex();
+                        if (selectedIndex > 0) {
+                            resultsList.setSelectedIndex(selectedIndex - 1);
+                            resultsList.ensureIndexIsVisible(selectedIndex - 1);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        int selectedIndex = resultsList.getSelectedIndex();
+                        if (selectedIndex != -1) {
+                            selectionAction.accept(selectedIndex);
+                            e.consume();
+                        }
+                    } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                        window.setVisible(false);
+                        e.consume();
+                    }
+                }
+            }
+        });
+
+        // Hide search window when focus is lost
+        textField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                // Delay to allow click on list
+                Timer timer = new Timer(150, evt -> window.setVisible(false));
+                timer.setRepeats(false);
+                timer.start();
+            }
+        });
+    }
+
+    /**
+     * Perform promotion search and update results
+     */
+    private void performPromotionSearch() {
+        String searchText = txtPromotionSearch.getText().trim();
+
+        // Check if it's placeholder text
+        if (searchText.isEmpty() ||
+                searchText.equals("Điền mã hoặc tên khuyến mãi (nếu có)...") ||
+                txtPromotionSearch.getForeground().equals(Color.GRAY)) {
+            promotionSearchWindow.setVisible(false);
+            return;
+        }
+
+        // Clear previous results
+        promotionSearchResultsModel.clear();
+        currentPromotionSearchResults.clear();
+
+        // Search promotions
+        String lowerSearch = searchText.toLowerCase();
+        for (Promotion promotion : promotions) {
+            boolean matches = false;
+
+            if (promotion.getId() != null && promotion.getId().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+            if (promotion.getName() != null && promotion.getName().toLowerCase().contains(lowerSearch)) {
+                matches = true;
+            }
+
+            if (matches) {
+                currentPromotionSearchResults.add(promotion);
+                String displayText = String.format("%s - %s",
+                        promotion.getId(),
+                        promotion.getName());
+                promotionSearchResultsModel.addElement(displayText);
+            }
+        }
+
+        // Show or hide window based on results
+        if (!currentPromotionSearchResults.isEmpty()) {
+            // Position window below text field
+            Point location = txtPromotionSearch.getLocationOnScreen();
+            int width = txtPromotionSearch.getWidth();
+            // Show up to 5 items before scrollbar appears
+            int maxVisibleItems = 5;
+            int itemHeight = 25;
+            int visibleItems = Math.min(currentPromotionSearchResults.size(), maxVisibleItems);
+            int height = visibleItems * itemHeight + 4;
+
+            promotionSearchWindow.setLocation(location.x, location.y + txtPromotionSearch.getHeight());
+            promotionSearchWindow.setSize(width, height);
+            promotionSearchWindow.setVisible(true);
+
+            // Select first item by default
+            if (promotionSearchResultsModel.getSize() > 0) {
+                promotionSearchResultsList.setSelectedIndex(0);
+            }
+        } else {
+            promotionSearchWindow.setVisible(false);
+        }
+    }
+
+    /**
+     * Handle promotion selection from search results
+     */
+    private void selectPromotion(int selectedIndex) {
+        if (selectedIndex < 0 || selectedIndex >= currentPromotionSearchResults.size()) {
+            return;
+        }
+
+        Promotion selectedPromotion = currentPromotionSearchResults.get(selectedIndex);
+
+        // Apply promotion to invoice
+        invoice.setPromotion(selectedPromotion);
+
+        // Update promotion display text field (if exists)
+        // For now, just show the promotion name in search field
+        txtPromotionSearch.setText(selectedPromotion.getId() + " - " + selectedPromotion.getName());
+        txtPromotionSearch.setForeground(Color.BLACK);
+
+        // Hide search window
+        promotionSearchWindow.setVisible(false);
+
+        // TODO: Update invoice calculations with promotion applied
+    }
+
+    /**
      * Add product to invoice line table
      */
     private void addProductToInvoice(Product product) {
@@ -349,6 +647,9 @@ public class TAB_Selling extends JFrame {
                 // Update VAT display
                 updateVatDisplay();
 
+                // Update total display
+                updateTotalDisplay();
+
                 // Check prescription code requirement after adding
                 validatePrescriptionCodeForInvoice();
                 return;
@@ -393,6 +694,9 @@ public class TAB_Selling extends JFrame {
 
         // Update VAT display
         updateVatDisplay();
+
+        // Update total display
+        updateTotalDisplay();
 
         // Check prescription code requirement after adding
         validatePrescriptionCodeForInvoice();
@@ -625,6 +929,9 @@ public class TAB_Selling extends JFrame {
 
             // Update VAT display
             updateVatDisplay();
+
+            // Update total display
+            updateTotalDisplay();
         }
     }
 
@@ -838,6 +1145,100 @@ public class TAB_Selling extends JFrame {
     }
 
     /**
+     * Toggle barcode scanning mode on/off
+     */
+    private void toggleBarcodeScanning() {
+        barcodeScanningEnabled = !barcodeScanningEnabled;
+        updateBarcodeScanButtonAppearance();
+
+        if (barcodeScanningEnabled) {
+            // Clear any previous input and set focus on search text field
+            txtSearchInput.setText("");
+            txtSearchInput.requestFocusInWindow();
+
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Chế độ quét mã vạch đã BẬT!\n" +
+                "Sử dụng máy quét để thêm sản phẩm vào hóa đơn.",
+                "Quét mã vạch",
+                JOptionPane.INFORMATION_MESSAGE);
+
+            // Restore focus after dialog
+            SwingUtilities.invokeLater(() -> txtSearchInput.requestFocusInWindow());
+        } else {
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Chế độ quét mã vạch đã TẮT!",
+                "Quét mã vạch",
+                JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    /**
+     * Update barcode scan button appearance based on state
+     */
+    private void updateBarcodeScanButtonAppearance() {
+        if (barcodeScanningEnabled) {
+            // ON state - Green background
+            btnBarcodeScan.setBackground(new Color(46, 204, 113)); // Green
+        } else {
+            // OFF state - White background (default style)
+            btnBarcodeScan.setBackground(Color.WHITE);
+        }
+    }
+
+    /**
+     * Process barcode input when scanned (triggered by Enter key)
+     */
+    private void processBarcodeInput() {
+        String barcode = txtSearchInput.getText().trim();
+
+        // Clear the input field immediately
+        txtSearchInput.setText("");
+
+        if (barcode.isEmpty()) {
+            return;
+        }
+
+        // Find product by barcode
+        Product foundProduct = null;
+        for (Product product : products) {
+            if (product.getBarcode() != null && product.getBarcode().equals(barcode)) {
+                foundProduct = product;
+                break;
+            }
+        }
+
+        if (foundProduct == null) {
+            // Product not found - play beep and show brief message
+            Toolkit.getDefaultToolkit().beep();
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Không tìm thấy sản phẩm với mã vạch: " + barcode,
+                "Lỗi",
+                JOptionPane.ERROR_MESSAGE);
+
+            // Restore focus to search field
+            SwingUtilities.invokeLater(() -> {
+                if (barcodeScanningEnabled) {
+                    txtSearchInput.requestFocusInWindow();
+                }
+            });
+            return;
+        }
+
+        // Product found - add to invoice
+        addProductToInvoice(foundProduct);
+
+        // Play success beep
+        Toolkit.getDefaultToolkit().beep();
+
+        // Restore focus to search field for next scan
+        SwingUtilities.invokeLater(() -> {
+            if (barcodeScanningEnabled) {
+                txtSearchInput.requestFocusInWindow();
+            }
+        });
+    }
+
+    /**
      * Remove selected items from the table and invoice
      */
     private void removeSelectedItems() {
@@ -909,6 +1310,9 @@ public class TAB_Selling extends JFrame {
         // Update VAT display
         updateVatDisplay();
 
+        // Update total display
+        updateTotalDisplay();
+
         // Check prescription code requirement after removal
         validatePrescriptionCodeForInvoice();
     }
@@ -959,6 +1363,9 @@ public class TAB_Selling extends JFrame {
 
         // Update VAT display
         updateVatDisplay();
+
+        // Update total display
+        updateTotalDisplay();
 
         // Check prescription code requirement after removal
         validatePrescriptionCodeForInvoice();
@@ -1101,11 +1508,14 @@ public class TAB_Selling extends JFrame {
         Box boxPaymentVertical = Box.createVerticalBox();
         boxPaymentHorizontal.add(boxPaymentVertical);
 
-        // Adding promotion code label and text field
-        JLabel lblPromotionCode = new JLabel("Mã khuyến mãi:");
-        JTextField txtPromotionCode = new JTextField();
+        // Adding promotion search label and text field
+        JLabel lblPromotionSearch = new JLabel("Tìm kiếm khuyến mãi:");
+        txtPromotionSearch = new JTextField();
 
-        boxPaymentVertical.add(generateLabelAndTextField(lblPromotionCode, txtPromotionCode, "Điền mã khuyến mãi (nếu có)...", "Điền mã khuyến mãi", 93));
+        boxPaymentVertical.add(generateLabelAndTextField(lblPromotionSearch, txtPromotionSearch, "Điền mã hoặc tên khuyến mãi (nếu có)...", "Điền mã hoặc tên khuyến mãi", 52));
+
+        // Setup autocomplete for promotion search
+        setupPromotionSearchAutocomplete(txtPromotionSearch);
 
         boxPaymentVertical.add(Box.createVerticalStrut(10));
 
@@ -1141,7 +1551,7 @@ public class TAB_Selling extends JFrame {
 
         // Adding total label and text field
         JLabel lblTotal = new JLabel("Tổng tiền:");
-        JTextField txtTotal = new JTextField();
+        txtTotal = new JTextField();
         txtTotal.setEditable(false);
         txtTotal.setFocusable(false);
 
@@ -1209,7 +1619,7 @@ public class TAB_Selling extends JFrame {
 
         boxCashOptions.add(Box.createHorizontalStrut(203));
 
-        JPanel pnlCashOptions = createCashOptionsPanel();
+        pnlCashOptions = createCashOptionsPanel();
         boxCashOptions.add(pnlCashOptions);
 
         // Add action listeners to show/hide cash options based on payment method
@@ -1217,12 +1627,38 @@ public class TAB_Selling extends JFrame {
             boxCashOptions.setVisible(true);
             boxPaymentVertical.revalidate();
             boxPaymentVertical.repaint();
+
+            // Enable txtCustomerPayment
+            if (txtCustomerPayment != null) {
+                txtCustomerPayment.setEnabled(true);
+                txtCustomerPayment.setEditable(true);
+            }
+
+            // Update payment method in invoice
+            if (invoice != null) {
+                invoice.setPaymentMethod(PaymentMethod.CASH);
+            }
         });
 
         rdoBankOrDigitalWallet.addActionListener(e -> {
             boxCashOptions.setVisible(false);
             boxPaymentVertical.revalidate();
             boxPaymentVertical.repaint();
+
+            // Disable txtCustomerPayment and set value to total
+            if (txtCustomerPayment != null && txtTotal != null && invoice != null) {
+                txtCustomerPayment.setEnabled(false);
+                txtCustomerPayment.setEditable(false);
+
+                // Set value to total amount
+                long totalAmount = (long) invoice.calculateTotal();
+                txtCustomerPayment.setValue(totalAmount);
+            }
+
+            // Update payment method in invoice
+            if (invoice != null) {
+                invoice.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
+            }
         });
 
         boxInvoiceVertical.add(Box.createVerticalStrut(20));
@@ -1237,11 +1673,43 @@ public class TAB_Selling extends JFrame {
         btnProcessPayment = createStyledButton("Thanh toán");
         btnProcessPayment.setEnabled(true); // Initially enabled
 
-        // Add action listener to print invoice lines
+        // Add action listener to validate and process payment
         btnProcessPayment.addActionListener(e -> {
+            // Validate invoice line list is not empty
+            if (invoice.getInvoiceLineList() == null || invoice.getInvoiceLineList().isEmpty()) {
+                JOptionPane.showMessageDialog(pnlSelling,
+                    "Danh sách sản phẩm trống!\n" +
+                    "Vui lòng thêm sản phẩm vào hóa đơn trước khi thanh toán.",
+                    "Không thể thanh toán",
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Validate customer payment is >= total (only for CASH payment)
+            if (invoice.getPaymentMethod() == PaymentMethod.CASH && txtCustomerPayment != null) {
+                Object paymentValue = txtCustomerPayment.getValue();
+                long customerPayment = 0;
+                if (paymentValue instanceof Number) {
+                    customerPayment = ((Number) paymentValue).longValue();
+                }
+
+                long total = (long) invoice.calculateTotal();
+
+                if (customerPayment < total) {
+                    JOptionPane.showMessageDialog(pnlSelling,
+                        "Số tiền khách đưa không đủ!\n" +
+                        "Tổng tiền: " + String.format("%,d", total).replace(',', '.') + " Đ\n" +
+                        "Khách đưa: " + String.format("%,d", customerPayment).replace(',', '.') + " Đ",
+                        "Không thể thanh toán",
+                        JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+
+            // If all validations pass, print invoice details (placeholder for actual processing)
             System.out.println("========== INVOICE LINES ==========");
             System.out.println("Creator: " + invoice.getCreator().getFullName());
-            System.out.println("  Prescription Code: " + invoice.getPrescriptionCode());
+            System.out.println("Prescription Code: " + invoice.getPrescriptionCode());
             System.out.println("Total invoice lines: " + invoice.getInvoiceLineList().size());
             System.out.println();
 
@@ -1255,7 +1723,16 @@ public class TAB_Selling extends JFrame {
                 System.out.println();
                 lineNumber++;
             }
+
+            System.out.println("Payment method: " + invoice.getPaymentMethod());
+            System.out.println("Total: " + invoice.calculateTotal());
             System.out.println("===================================");
+
+            // TODO: Add actual invoice processing logic here (save to database, print receipt, etc.)
+            JOptionPane.showMessageDialog(pnlSelling,
+                "Thanh toán thành công!",
+                "Thành công",
+                JOptionPane.INFORMATION_MESSAGE);
         });
 
         boxPaymentButton.add(btnProcessPayment);
@@ -1272,27 +1749,63 @@ public class TAB_Selling extends JFrame {
         pnlCashOptions.setBackground(Color.WHITE);
         pnlCashOptions.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-        for (int amount = 100_000; amount <= 600_000; amount += 100_000) {
-            JButton btn = createCashButton(amount);
-            pnlCashOptions.add(btn);
-        }
+        // Initial buttons - will be updated dynamically
+        updateCashButtons();
 
         return pnlCashOptions;
     }
 
     /**
+     * Update cash buttons based on current total
+     */
+    private void updateCashButtons() {
+        if (pnlCashOptions == null || txtTotal == null || invoice == null) {
+            return;
+        }
+
+        // Clear existing buttons
+        pnlCashOptions.removeAll();
+
+        // Get current total
+        double total = invoice.calculateTotal();
+
+        // Round up to nearest 1,000
+        long minAmount = ((long) Math.ceil(total / 1000)) * 1000;
+
+        // Generate 6 buttons with custom increments: +0, +10k, +20k, +50k, +100k, +200k
+        long[] increments = {0, 10000, 20000, 50000, 100000, 200000};
+        for (long increment : increments) {
+            long amount = minAmount + increment;
+            JButton btn = createCashButton(amount);
+            pnlCashOptions.add(btn);
+        }
+
+        pnlCashOptions.revalidate();
+        pnlCashOptions.repaint();
+    }
+
+    /**
      * Creates a single cash amount button with styling
      */
-    private JButton createCashButton(int amount) {
+    private JButton createCashButton(long amount) {
         // Format amount with dots as thousands separator (e.g., 100.000)
         String text = String.format("%,d", amount).replace(',', '.');
 
         JButton btn = createStyledButton(text);
 
-        // Set the amount in the payment field when clicked
+        // Add the amount to the payment field when clicked (not replace)
         btn.addActionListener(e -> {
             if (txtCustomerPayment != null) {
-                txtCustomerPayment.setValue(Long.valueOf(amount));
+                // Get current value
+                Object currentValue = txtCustomerPayment.getValue();
+                long currentAmount = 0;
+                if (currentValue instanceof Number) {
+                    currentAmount = ((Number) currentValue).longValue();
+                }
+
+                // Add new amount to current
+                long newAmount = currentAmount + amount;
+                txtCustomerPayment.setValue(newAmount);
                 txtCustomerPayment.setForeground(Color.BLACK);
                 txtCustomerPayment.requestFocusInWindow();
             }
@@ -1620,6 +2133,22 @@ public class TAB_Selling extends JFrame {
             DecimalFormat currencyFormat = createCurrencyFormat();
 
             txtVat.setText(currencyFormat.format(vatAmount));
+        }
+    }
+
+    /**
+     * Update the total display field with calculated total from invoice
+     */
+    private void updateTotalDisplay() {
+        if (txtTotal != null && invoice != null) {
+            double total = invoice.calculateTotal();
+
+            // Format total as Vietnamese currency
+            DecimalFormat currencyFormat = createCurrencyFormat();
+            txtTotal.setText(currencyFormat.format(total));
+
+            // Update cash buttons based on new total
+            updateCashButtons();
         }
     }
 
