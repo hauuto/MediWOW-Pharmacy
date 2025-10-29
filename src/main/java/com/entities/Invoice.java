@@ -164,20 +164,48 @@ public class Invoice {
     /**
      * @author Bùi Quốc Trụ
      *
-     * Updates the quantity of an existing InvoiceLine in the invoice.
+     * Updates an existing InvoiceLine in the invoice.
+     * If the UOM changes, removes the old line and adds the new one.
+     * If only quantity changes, updates the existing line.
      *
-     * @param invoiceLine The InvoiceLine with updated quantity.
+     * @param oldProductId The product ID of the line to update
+     * @param oldUomId The old UOM ID
+     * @param newInvoiceLine The new InvoiceLine with updated values
      * @return true if the InvoiceLine was found and updated, false otherwise.
      */
-    public boolean updateInvoiceLine(InvoiceLine invoiceLine) {
-        if (invoiceLine == null)
+    public boolean updateInvoiceLine(String oldProductId, String oldUomId, InvoiceLine newInvoiceLine) {
+        if (newInvoiceLine == null)
             return false;
 
-        for (InvoiceLine existingLine : invoiceLineList) {
-            if (existingLine.equals(invoiceLine)) {
-                existingLine.setQuantity(invoiceLine.getQuantity());
-                return true;
+        // Find and remove the old invoice line
+        InvoiceLine oldLine = null;
+        for (InvoiceLine line : invoiceLineList) {
+            if (line.getProduct().getId().equals(oldProductId) &&
+                line.getUnitOfMeasure().getId().equals(oldUomId)) {
+                oldLine = line;
+                break;
             }
+        }
+
+        if (oldLine != null) {
+            invoiceLineList.remove(oldLine);
+
+            // Check if the new line already exists (after UOM change)
+            boolean exists = false;
+            for (InvoiceLine existingLine : invoiceLineList) {
+                if (existingLine.getProduct().getId().equals(newInvoiceLine.getProduct().getId()) &&
+                    existingLine.getUnitOfMeasure().getId().equals(newInvoiceLine.getUnitOfMeasure().getId())) {
+                    // Merge quantities
+                    existingLine.setQuantity(existingLine.getQuantity() + newInvoiceLine.getQuantity());
+                    exists = true;
+                    break;
+                }
+            }
+
+            if (!exists) {
+                invoiceLineList.add(newInvoiceLine);
+            }
+            return true;
         }
 
         return false;
@@ -188,11 +216,15 @@ public class Invoice {
      *
      * Removes an InvoiceLine from the invoice.
      *
-     * @param invoiceLine The InvoiceLine to be removed.
-     * @return true if the InvoiceLine was removed, false otherwise.
+     * @param productId The ID of the product in the InvoiceLine to be removed.
+     * @param unitOfMeasureId The ID of the unit of measure in the InvoiceLine to be removed.
+     * @return true if the InvoiceLine was found and removed, false otherwise
      */
-    public boolean removeInvoiceLine(InvoiceLine invoiceLine) {
-        return invoiceLineList.remove(invoiceLine);
+    public boolean removeInvoiceLine(String productId, String unitOfMeasureId) {
+        return invoiceLineList.removeIf(line ->
+                line.getProduct().getId().equals(productId) &&
+                line.getUnitOfMeasure().getId().equals(unitOfMeasureId)
+        );
     }
 
     /**
