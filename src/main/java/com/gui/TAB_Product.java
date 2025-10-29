@@ -97,6 +97,7 @@ public class TAB_Product {
     public TAB_Product() {
         buildUI();
         setEditMode(false);
+        loadAllProducts();
     }
 
     // ===================== UI =====================
@@ -168,7 +169,7 @@ public class TAB_Product {
 
         tblProducts.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tblProducts.getSelectionModel().addListSelectionListener(e -> {
-            // luôn refresh trạng thái nút Chỉnh sửa theo selection hiện tại
+            // luôn refresh trạng thái nút Chỉnh sửa theo selection hiện t��i
             enableEditIfRowSelected();
 
             if (e.getValueIsAdjusting() || suppressSelectionEvent) return;
@@ -713,6 +714,165 @@ public class TAB_Product {
         applyDefaultVatByCategory();                // VAT theo Loại
     }
 
+    // NEW: Load all products from database
+    private void loadAllProducts() {
+        try {
+            List<Product> products = productBUS.getAllProducts();
+            if (products != null && !products.isEmpty()) {
+                bindProductsToTable(products);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(pProduct,
+                "Lỗi khi tải danh sách sản phẩm: " + ex.getMessage(),
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // NEW: Bind full product details including UOM and Lot from database
+    private void bindProductDetailsFromDB(String productId) {
+        if (productId == null || productId.trim().isEmpty()) return;
+
+        try {
+            Product product = productBUS.getProductById(productId);
+            if (product == null) {
+                warn("Không tìm thấy sản phẩm với ID: " + productId);
+                return;
+            }
+
+            // Bind basic info
+            txtId.setText(safe(product.getId()));
+            txtName.setText(safe(product.getName()));
+            txtShortName.setText(safe(product.getShortName()));
+            txtBarcode.setText(safe(product.getBarcode()));
+            txtActiveIngredient.setText(safe(product.getActiveIngredient()));
+            txtManufacturer.setText(safe(product.getManufacturer()));
+            txtStrength.setText(safe(product.getStrength()));
+            txtBaseUom.setText(safe(product.getBaseUnitOfMeasure()));
+            txtDescription.setText(safe(product.getDescription()));
+
+            // Set VAT
+            spVat.setValue(product.getVat());
+
+            // Set category
+            if (product.getCategory() != null) {
+                selectComboItem(cbCategoryDetail, mapCategoryCodeToVN(product.getCategory().toString()));
+            }
+
+            // Set form
+            if (product.getForm() != null) {
+                selectComboItem(cbFormDetail, mapFormCodeToVN(product.getForm().toString()));
+            }
+
+            // Bind UOM table
+            uomModel.setRowCount(0);
+            if (product.getUnitOfMeasureList() != null) {
+                for (com.entities.UnitOfMeasure uom : product.getUnitOfMeasureList()) {
+                    uomModel.addRow(new Object[]{
+                        safe(uom.getId()),
+                        safe(uom.getName()),
+                        (int) uom.getBaseUnitConversionRate()
+                    });
+                }
+            }
+
+            // Bind Lot table
+            lotModel.setRowCount(0);
+            if (product.getLotList() != null) {
+                for (com.entities.Lot lot : product.getLotList()) {
+                    String expiry = "";
+                    if (lot.getExpiryDate() != null) {
+                        expiry = new SimpleDateFormat("dd/MM/yyyy").format(
+                            java.sql.Timestamp.valueOf(lot.getExpiryDate())
+                        );
+                    }
+                    lotModel.addRow(new Object[]{
+                        safe(lot.getBatchNumber()),
+                        lot.getQuantity(),
+                        lot.getRawPrice(),
+                        expiry,
+                        mapLotStatusToVN(lot.getStatus())
+                    });
+                }
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            warn("Lỗi khi tải chi tiết sản phẩm: " + ex.getMessage());
+        }
+    }
+
+    // NEW: Map form code to Vietnamese label
+    private String mapFormCodeToVN(String code) {
+        if (code == null) return "";
+        switch (code) {
+            case "SOLID": return "Viên nén";
+            case "LIQUID_DOSAGE": return "Si rô";
+            case "LIQUID_ORAL_DOSAGE": return "Thuốc nhỏ giọt";
+            default: return code;
+        }
+    }
+
+    // NEW: Map lot status enum to Vietnamese
+    private String mapLotStatusToVN(com.enums.LotStatus status) {
+        if (status == null) return LOT_STATUS_OPTIONS[0];
+        switch (status) {
+            case AVAILABLE: return "Được bán";
+            case EXPIRED: return "Hết hạn sử dụng";
+            case FAULTY: return "Lỗi nhà sản xuất";
+            default: return LOT_STATUS_OPTIONS[0];
+        }
+    }
+
+    // NEW: Map Vietnamese lot status to enum
+    private com.enums.LotStatus mapVNToLotStatus(String vnStatus) {
+        if (vnStatus == null) return com.enums.LotStatus.AVAILABLE;
+        switch (vnStatus.trim()) {
+            case "Được bán": return com.enums.LotStatus.AVAILABLE;
+            case "Hết hạn sử dụng": return com.enums.LotStatus.EXPIRED;
+            case "Lỗi nhà sản xuất": return com.enums.LotStatus.FAULTY;
+            default: return com.enums.LotStatus.AVAILABLE;
+        }
+    }
+
+    private void bindProductFromTableRow(int row) {
+        if (row < 0 || productModel == null) return;
+
+        String id = valStr(productModel.getValueAt(row, 0));
+        
+        // NEW: Load full product details from database if ID exists
+        if (!id.isEmpty()) {
+            bindProductDetailsFromDB(id);
+        } else {
+            // Fallback to basic table data for new unsaved products
+            String name  = valStr(productModel.getValueAt(row, 1));
+            String cat   = valStr(productModel.getValueAt(row, 2));
+            String ingr  = valStr(productModel.getValueAt(row, 3));
+            String manu  = valStr(productModel.getValueAt(row, 4));
+            String stat  = valStr(productModel.getValueAt(row, 5));
+
+            txtId.setText(id);
+            txtName.setText(name);
+            if (txtShortName != null) txtShortName.setText("");
+            txtBarcode.setText("");
+
+            selectComboItem(cbCategoryDetail, cat);
+            selectComboItem(cbStatusDetail,   stat);
+
+            txtActiveIngredient.setText(ingr);
+            txtManufacturer.setText(manu);
+            cbFormDetail.setSelectedIndex(0);
+            applyDefaultVatByCategory();
+
+            txtStrength.setText("");
+            txtBaseUom.setText("");
+            txtDescription.setText("");
+
+            uomModel.setRowCount(0);
+            lotModel.setRowCount(0);
+        }
+    }
+
     // ===================== Export/Import =====================
     private void exportProductsToCSV() {
         try {
@@ -757,18 +917,14 @@ public class TAB_Product {
     }
 
     private File getDownloadsDir() {
-        // Cách 1: ~/Downloads (thông dụng)
         File d = new File(System.getProperty("user.home"), "Downloads");
         if (d.exists() && d.isDirectory()) return d;
-
-        // Cách 2: Documents/Downloads
         File sys = FileSystemView.getFileSystemView().getDefaultDirectory();
         if (sys != null && sys.exists()) {
             File dl = new File(sys, "Downloads");
             if (dl.exists() && dl.isDirectory()) return dl;
-            return sys; // fallback: Documents
+            return sys;
         }
-        // Cuối cùng: home
         return new File(System.getProperty("user.home"));
     }
 
@@ -812,7 +968,7 @@ public class TAB_Product {
                         headerChecked = true;
                         if (cols.length >= 6) {
                             String h0 = cols[0].trim().toLowerCase();
-                            if (h0.contains("mã") || h0.equals("id")) continue; // bỏ header
+                            if (h0.contains("mã") || h0.equals("id")) continue;
                         }
                     }
                     Object[] rowData = new Object[productModel.getColumnCount()];
@@ -835,7 +991,6 @@ public class TAB_Product {
         }
     }
 
-    /** Parser CSV đơn giản: hỗ trợ dấu ngoặc kép & dấu phẩy trong ô. */
     private String[] parseCsvLine(String line) {
         List<String> out = new ArrayList<>();
         StringBuilder cur = new StringBuilder();
@@ -844,7 +999,7 @@ public class TAB_Product {
             char ch = line.charAt(i);
             if (ch == '"') {
                 if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
-                    cur.append('"'); i++; // escaped quote
+                    cur.append('"'); i++;
                 } else {
                     inQuotes = !inQuotes;
                 }
@@ -865,7 +1020,7 @@ public class TAB_Product {
             File f = new File(userDir, c);
             if (f.exists() && f.isDirectory()) return f;
         }
-        return new File(userDir); // fallback: thư mục project
+        return new File(userDir);
     }
 
     // ==== Model tối ưu (BitSet) ====
@@ -929,14 +1084,13 @@ public class TAB_Product {
         }
     }
 
-    /** Editor ngày: dùng DIALOG_DatePicker; không cảnh báo tại đây, chỉ trả về text thô. */
     private class DatePickerCellEditor extends AbstractCellEditor implements TableCellEditor {
         private DIALOG_DatePicker picker;
         @Override public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
             picker = new DIALOG_DatePicker(new Date());
             String s = (value == null) ? "" : String.valueOf(value).trim();
             picker.setTextValue(s);
-            picker.addPropertyChangeListener("date", e -> super.stopCellEditing()); // chọn từ lịch -> đóng editor
+            picker.addPropertyChangeListener("date", e -> super.stopCellEditing());
             return picker;
         }
         @Override public Object getCellEditorValue() { return picker.getTextValue(); }
@@ -947,38 +1101,6 @@ public class TAB_Product {
         int rows = Math.min(table.getRowCount(), maxRows);
         int h = header + table.getRowHeight() * rows + 2;
         table.setPreferredScrollableViewportSize(new Dimension(0, h));
-    }
-
-    private void bindProductFromTableRow(int row) {
-        if (row < 0 || productModel == null) return;
-
-        String id    = valStr(productModel.getValueAt(row, 0));
-        String name  = valStr(productModel.getValueAt(row, 1));
-        String cat   = valStr(productModel.getValueAt(row, 2));
-        String ingr  = valStr(productModel.getValueAt(row, 3));
-        String manu  = valStr(productModel.getValueAt(row, 4));
-        String stat  = valStr(productModel.getValueAt(row, 5));
-
-        txtId.setText(id);
-        txtName.setText(name);
-        if (txtShortName != null) txtShortName.setText("");
-        txtBarcode.setText("");
-
-        selectComboItem(cbCategoryDetail, cat);
-        selectComboItem(cbStatusDetail,   stat);
-
-        // Các trường còn lại điền từ hàng/DB khác – set trống/mặc định
-        txtActiveIngredient.setText(ingr);
-        txtManufacturer.setText(manu);
-        cbFormDetail.setSelectedIndex(0);
-        applyDefaultVatByCategory();
-
-        txtStrength.setText("");
-        txtBaseUom.setText("");
-        txtDescription.setText("");
-
-        uomModel.setRowCount(0);
-        lotModel.setRowCount(0);
     }
 
     private String valStr(Object v) { return v == null ? "" : String.valueOf(v).trim(); }
@@ -1022,9 +1144,9 @@ public class TAB_Product {
         }
         return true;
     }
+    
     private boolean validateLotRows(int fromRowIncl) {
         for (int r = fromRowIncl; r < lotModel.getRowCount(); r++) {
-            // NEW: bắt buộc nhập Mã lô
             String code = valStr(lotModel.getValueAt(r, LOT_COL_ID));
             if (code.isEmpty()) {
                 selectAndStartEdit(tblLot, r, LOT_COL_ID);
@@ -1071,18 +1193,14 @@ public class TAB_Product {
             if (cbStatusDetail.getSelectedItem() == null)  { warnAndFocus("Vui lòng chọn Trạng thái.", cbStatusDetail); return false; }
             if (txtBaseUom.getText().trim().isEmpty())     { warnAndFocus("Vui lòng nhập ĐVT gốc.", txtBaseUom); return false; }
 
-            // UOM: cho phép trống; nếu có dòng thì validate từng dòng
             if (!validateUomRows(0)) return false;
 
-            // Lô: yêu cầu ≥ 1 dòng khi thêm mới
             if (lotModel.getRowCount() < 1)                { warnAndFocus("Bảng Lô & hạn sử dụng phải có ít nhất 1 dòng.", btnLotAdd); return false; }
             if (!validateLotRows(0)) return false;
 
             return true;
         }
 
-        // === Chỉnh sửa SP hiện có ===
-        // Chỉ kiểm tra các dòng mới được thêm (>= editableRowStart)
         if (!validateUomRows(uomModel.getEditableRowStart())) return false;
         if (!validateLotRows(lotModel.getEditableRowStart())) return false;
 
@@ -1111,16 +1229,13 @@ public class TAB_Product {
         productModel.setValueAt(valStr(String.valueOf(cbStatusDetail.getSelectedItem())), row, 5);
     }
 
-    // ==== Editing helpers ====
     private void stopAllTableEditing() { stopEditing(tblUom); stopEditing(tblLot); }
     private void stopEditing(JTable t) { if (t != null && t.isEditing()) { TableCellEditor ed = t.getCellEditor(); if (ed != null) ed.stopCellEditing(); } }
 
-    // ==== Parsers ====
     private Integer parsePositiveInt(Object v)      { try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return null; s = s.replace(".", "").replace(",", ""); int x = Integer.parseInt(s); return x > 0 ? x : null; } catch (Exception e) { return null; } }
     private Integer parseNonNegativeInt(Object v)   { try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return null; s = s.replace(".", "").replace(",", ""); int x = Integer.parseInt(s); return x >= 0 ? x : null; } catch (Exception e) { return null; } }
     private Double  parseNonNegativeDouble(Object v){ try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return null; if (s.contains(",") && !s.contains(".")) s = s.replace(",", "."); s = s.replaceAll("(?<=\\d)[,\\.](?=\\d{3}(\\D|$))", ""); double d = Double.parseDouble(s); return d >= 0 ? d : null; } catch (Exception e) { return null; } }
 
-    // Strict dd/MM/yy | dd/MM/yyyy
     private boolean isValidDateDMY(String s) {
         if (s == null || (s = s.trim()).isEmpty()) return false;
         String[] ps = {"dd/MM/yy", "d/M/yy", "dd/MM/yyyy", "d/M/yyyy"};
@@ -1128,21 +1243,16 @@ public class TAB_Product {
         return false;
     }
 
-    // NEW: xử lý bấm Tìm kiếm
     private void onSearch() {
         try {
-            stopAllTableEditing(); // đảm bảo commit editor nếu có
+            stopAllTableEditing();
 
             String keyword = (txtSearch.getText() == null) ? "" : txtSearch.getText().trim();
-
-            // Map filter từ combobox (VN -> code DB)
             String catLabel  = (String) cbCategory.getSelectedItem();
             String formLabel = (String) cbForm.getSelectedItem();
 
-            String categoryCode = mapCategoryVNToCode(catLabel); // null nếu "Tất cả"
-            String formCode     = mapFormVNToCode(formLabel);     // null nếu "Tất cả"
-
-            // Trạng thái (cbStatus) tạm thời không áp dụng (isActive) theo yêu cầu
+            String categoryCode = mapCategoryVNToCode(catLabel);
+            String formCode     = mapFormVNToCode(formLabel);
 
             var products = productBUS.searchProducts(keyword, categoryCode, formCode);
 
@@ -1157,20 +1267,18 @@ public class TAB_Product {
         }
     }
 
-    // NEW: đổ danh sách vào bảng trái (giữ nguyên 6 cột như UI)
     private void bindProductsToTable(java.util.List<Product> list) {
         productModel.setRowCount(0);
         for (Product p : list) {
             productModel.addRow(new Object[]{
                     safe(p.getId()),
                     safe(p.getName()),
-                    mapCategoryCodeToVN(p.getCategory().toString()),   // hiển thị tiếng Việt
+                    mapCategoryCodeToVN(p.getCategory().toString()),
                     safe(p.getActiveIngredient()),
                     safe(p.getManufacturer()),
-                    "—" // tạm thời không dùng isActive -> hiển thị placeholder
+                    "—"
             });
         }
-        // Sau khi bind, bỏ select & clear form chi tiết để tránh hiểu nhầm
         currentSelectedRow = -1;
         tblProducts.clearSelection();
         clearProductDetails();
@@ -1179,31 +1287,26 @@ public class TAB_Product {
 
     private String safe(String s) { return (s == null) ? "" : s; }
 
-    // NEW: Category VN -> Code
     private String mapCategoryVNToCode(String label) {
         if (label == null || label.equalsIgnoreCase("Tất cả")) return null;
         switch (label.trim().toLowerCase()) {
             case "thuốc không kê đơn": return "OTC";
             case "thuốc kê đơn":       return "ETC";
             case "sản phẩm chức năng": return "SUPPLEMENT";
-            default: return null; // không rõ -> không filter
+            default: return null;
         }
     }
 
-    // NEW: Form VN -> Code (gom nhóm theo dữ liệu đang có)
     private String mapFormVNToCode(String label) {
         if (label == null || label.equalsIgnoreCase("Tất cả")) return null;
         String l = label.trim().toLowerCase();
-        // Gom tất cả dạng viên/viên nang/bột/kẹo ngậm vào SOLID
         if (l.contains("viên") || l.contains("bột") || l.contains("kẹo"))
             return "SOLID";
-        // Gom si rô/nhỏ giọt/súc miệng vào LIQUID_DOSAGE
         if (l.contains("si rô") || l.contains("siro") || l.contains("nhỏ giọt") || l.contains("súc miệng"))
             return "LIQUID_DOSAGE";
         return null;
     }
 
-    // NEW: hiển thị Category code -> nhãn VN trên bảng
     private String mapCategoryCodeToVN(String code) {
         if (code == null) return "";
         switch (code) {
