@@ -3,8 +3,11 @@ package com.utils;
 import com.entities.*;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
@@ -27,12 +30,44 @@ import java.util.Date;
 public class InvoicePDFGenerator {
 
     private static final DecimalFormat CURRENCY_FORMAT;
+    private static PdfFont vietnameseFont;
 
     static {
         DecimalFormatSymbols dfs = new DecimalFormatSymbols();
         dfs.setGroupingSeparator('.');
         dfs.setDecimalSeparator(',');
         CURRENCY_FORMAT = new DecimalFormat("#,##0", dfs);
+
+        // Initialize Vietnamese font
+        try {
+            // Try to use Arial font from Windows fonts directory
+            String[] fontPaths = {
+                "C:/Windows/Fonts/arial.ttf",
+                "C:/Windows/Fonts/times.ttf",
+                "C:/Windows/Fonts/verdana.ttf"
+            };
+
+            boolean fontLoaded = false;
+            for (String fontPath : fontPaths) {
+                try {
+                    vietnameseFont = PdfFontFactory.createFont(fontPath, PdfEncodings.IDENTITY_H);
+                    fontLoaded = true;
+                    System.out.println("Successfully loaded font: " + fontPath);
+                    break;
+                } catch (Exception e) {
+                    // Try next font
+                }
+            }
+
+            if (!fontLoaded) {
+                // Fallback to Helvetica (may not display Vietnamese correctly)
+                System.err.println("Warning: Could not load Vietnamese font. Vietnamese characters may not display correctly.");
+                vietnameseFont = PdfFontFactory.createFont("Helvetica", PdfEncodings.IDENTITY_H);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Error loading font: " + e.getMessage());
+        }
     }
 
     /**
@@ -48,6 +83,11 @@ public class InvoicePDFGenerator {
         PdfWriter writer = new PdfWriter(outputPath);
         PdfDocument pdfDoc = new PdfDocument(writer);
         Document document = new Document(pdfDoc);
+
+        // Set default font for the document
+        if (vietnameseFont != null) {
+            document.setFont(vietnameseFont);
+        }
 
         // Add header
         addHeader(document, invoice);
@@ -82,6 +122,7 @@ public class InvoicePDFGenerator {
     private static void addHeader(Document document, Invoice invoice) {
         // Company name
         Paragraph companyName = new Paragraph("MEDIWOW PHARMACY")
+                .setFont(vietnameseFont)
                 .setFontSize(20)
                 .setBold()
                 .setTextAlignment(TextAlignment.CENTER);
@@ -90,12 +131,14 @@ public class InvoicePDFGenerator {
         // Company details
         Paragraph companyDetails = new Paragraph("Địa chỉ: 12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP.HCM\n" +
                 "Điện thoại: (028) 3894 2345 | Email: info@mediwow.com")
+                .setFont(vietnameseFont)
                 .setFontSize(10)
                 .setTextAlignment(TextAlignment.CENTER);
         document.add(companyDetails);
 
         // Invoice title
         Paragraph invoiceTitle = new Paragraph("HÓA ĐƠN BÁN HÀNG")
+                .setFont(vietnameseFont)
                 .setFontSize(16)
                 .setBold()
                 .setTextAlignment(TextAlignment.CENTER)
@@ -113,19 +156,19 @@ public class InvoicePDFGenerator {
         // Left column
         Cell leftCell = new Cell()
                 .setBorder(Border.NO_BORDER)
-                .add(new Paragraph("Mã hóa đơn: " + invoice.getId()).setFontSize(10))
-                .add(new Paragraph("Ngày lập: " + dateFormat.format(new Date())).setFontSize(10))
-                .add(new Paragraph("Nhân viên: " + invoice.getCreator().getFullName()).setFontSize(10));
+                .add(new Paragraph("Mã hóa đơn: " + invoice.getId()).setFont(vietnameseFont).setFontSize(10))
+                .add(new Paragraph("Ngày lập: " + dateFormat.format(new Date())).setFont(vietnameseFont).setFontSize(10))
+                .add(new Paragraph("Nhân viên: " + invoice.getCreator().getFullName()).setFont(vietnameseFont).setFontSize(10));
 
         // Right column
         Cell rightCell = new Cell()
                 .setBorder(Border.NO_BORDER)
-                .add(new Paragraph("Loại hóa đơn: " + invoice.getType().toString()).setFontSize(10))
-                .add(new Paragraph("Phương thức: " + getPaymentMethodText(invoice.getPaymentMethod())).setFontSize(10));
+                .add(new Paragraph("Loại hóa đơn: " + invoice.getType().toString()).setFont(vietnameseFont).setFontSize(10))
+                .add(new Paragraph("Phương thức: " + getPaymentMethodText(invoice.getPaymentMethod())).setFont(vietnameseFont).setFontSize(10));
 
         // Add prescription code if exists
         if (invoice.getPrescriptionCode() != null && !invoice.getPrescriptionCode().isEmpty()) {
-            rightCell.add(new Paragraph("Mã đơn thuốc: " + invoice.getPrescriptionCode()).setFontSize(10));
+            rightCell.add(new Paragraph("Mã đơn thuốc: " + invoice.getPrescriptionCode()).setFont(vietnameseFont).setFontSize(10));
         }
 
         infoTable.addCell(leftCell);
@@ -201,6 +244,7 @@ public class InvoicePDFGenerator {
 
         // Thank you message
         Paragraph thankYou = new Paragraph("Cảm ơn quý khách đã mua hàng!")
+                .setFont(vietnameseFont)
                 .setFontSize(12)
                 .setBold()
                 .setTextAlignment(TextAlignment.CENTER);
@@ -208,6 +252,7 @@ public class InvoicePDFGenerator {
 
         // Footer note
         Paragraph note = new Paragraph("Vui lòng giữ hóa đơn để đổi trả hàng trong vòng 7 ngày.")
+                .setFont(vietnameseFont)
                 .setFontSize(9)
                 .setTextAlignment(TextAlignment.CENTER)
                 .setItalic();
@@ -220,16 +265,16 @@ public class InvoicePDFGenerator {
 
         Cell customerSign = new Cell()
                 .setBorder(Border.NO_BORDER)
-                .add(new Paragraph("Khách hàng").setTextAlignment(TextAlignment.CENTER).setFontSize(10).setBold())
-                .add(new Paragraph("(Ký và ghi rõ họ tên)").setTextAlignment(TextAlignment.CENTER).setFontSize(8).setItalic())
+                .add(new Paragraph("Khách hàng").setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(10).setBold())
+                .add(new Paragraph("(Ký và ghi rõ họ tên)").setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(8).setItalic())
                 .add(new Paragraph("\n\n\n"));
 
         Cell staffSign = new Cell()
                 .setBorder(Border.NO_BORDER)
-                .add(new Paragraph("Nhân viên").setTextAlignment(TextAlignment.CENTER).setFontSize(10).setBold())
-                .add(new Paragraph("(Ký và ghi rõ họ tên)").setTextAlignment(TextAlignment.CENTER).setFontSize(8).setItalic())
+                .add(new Paragraph("Nhân viên").setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(10).setBold())
+                .add(new Paragraph("(Ký và ghi rõ họ tên)").setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(8).setItalic())
                 .add(new Paragraph("\n\n\n"))
-                .add(new Paragraph(invoice.getCreator().getFullName()).setTextAlignment(TextAlignment.CENTER).setFontSize(10));
+                .add(new Paragraph(invoice.getCreator().getFullName()).setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(10));
 
         signatureTable.addCell(customerSign);
         signatureTable.addCell(staffSign);
@@ -239,7 +284,7 @@ public class InvoicePDFGenerator {
 
     private static Cell createHeaderCell(String text, DeviceRgb color) {
         return new Cell()
-                .add(new Paragraph(text).setBold().setFontColor(ColorConstants.WHITE))
+                .add(new Paragraph(text).setFont(vietnameseFont).setBold().setFontColor(ColorConstants.WHITE))
                 .setBackgroundColor(color)
                 .setTextAlignment(TextAlignment.CENTER)
                 .setFontSize(10)
@@ -248,22 +293,24 @@ public class InvoicePDFGenerator {
 
     private static Cell createCell(String text, TextAlignment alignment) {
         return new Cell()
-                .add(new Paragraph(text))
+                .add(new Paragraph(text).setFont(vietnameseFont))
                 .setTextAlignment(alignment)
                 .setFontSize(9)
                 .setPadding(5);
     }
 
     private static Cell createTotalCell(String text, boolean isBold) {
+        Paragraph para = new Paragraph(text).setFont(vietnameseFont);
+
         Cell cell = new Cell()
-                .add(new Paragraph(text))
+                .add(para)
                 .setTextAlignment(TextAlignment.RIGHT)
                 .setFontSize(11)
                 .setBorder(Border.NO_BORDER)
                 .setPadding(3);
 
         if (isBold) {
-            cell.setBold();
+            para.setBold();
             cell.setFontSize(13);
             cell.setBorderTop(new SolidBorder(1));
         }
