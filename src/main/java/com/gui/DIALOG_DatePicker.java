@@ -9,6 +9,12 @@ import java.awt.event.*;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+//Parse linh hoạt khi Enter / rời ô (có dialog cảnh báo nếu sai):
+import java.text.ParseException;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+
+//---------------------------------------------------------------
 
 /**
  * Lớp hiển thị lịch
@@ -42,7 +48,11 @@ public class DIALOG_DatePicker extends JPanel {
         // Nút calendar icon
         calendarButton = new JButton("📅");
         calendarButton.setPreferredSize(new Dimension(35, 25));
-        calendarButton.setFocusPainted(false);
+        //CHO NHẬP TAY---
+        textField.setEditable(true);
+        textField.setToolTipText("Định dạng: dd/MM/yy hoặc dd/MM/yyyy");
+        textField.setBackground(Color.WHITE);
+        //---------------
         calendarButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         add(textField, BorderLayout.CENTER);
@@ -53,12 +63,12 @@ public class DIALOG_DatePicker extends JPanel {
 
         // Sự kiện click vào nút calendar
         calendarButton.addActionListener(e -> showCalendarPopup());
-        textField.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                showCalendarPopup();
-            }
-        });
+//        textField.addMouseListener(new MouseAdapter() {
+//            @Override
+//            public void mouseClicked(MouseEvent e) {
+//                showCalendarPopup();
+//            }
+//        });
     }
 
     private void createCalendarPopup() {
@@ -291,10 +301,77 @@ public class DIALOG_DatePicker extends JPanel {
         return maxDate;
     }
 
+    //b) Thêm 2 getter/setter để lấy/đặt text thô (phục vụ TableCellEditor đọc đúng người dùng đã gõ):
+    public String getTextValue() {
+        return textField.getText();
+    }
+    public void setTextValue(String s) {
+        textField.setText(s == null ? "" : s);
+    }
+
     @Override
     public void setEnabled(boolean enabled) {
         super.setEnabled(enabled);
         textField.setEnabled(enabled);
         calendarButton.setEnabled(enabled);
     }
+
+    // Parse "linh hoạt" dd/MM/yy hoặc dd/MM/yyyy (không nới lỏng ngày-tháng)
+    private Date parseFlexibleDate(String s) {
+        if (s == null) return null;
+        s = s.trim();
+        if (s.isEmpty()) return null;
+
+        String[] patterns = {"dd/MM/yy", "d/M/yy", "dd/MM/yyyy", "d/M/yyyy"};
+        for (String p : patterns) {
+            try {
+                SimpleDateFormat f = new SimpleDateFormat(p);
+                f.setLenient(false);
+                Date d = f.parse(s);
+                // Ép năm 2 chữ số -> 2000..2099 (nếu SDF parse ra < 2000)
+                if (p.endsWith("yy")) {
+                    Calendar c = Calendar.getInstance();
+                    c.setTime(d);
+                    int y = c.get(Calendar.YEAR);
+                    if (y < 2000) c.set(Calendar.YEAR, 2000 + (y % 100));
+                    d = c.getTime();
+                }
+                return d;
+            } catch (ParseException ignore) { }
+        }
+        return null;
+    }
+
+    /** Thử commit text hiện tại thành ngày (có check min/max). Sai -> hiện dialog và giữ focus. */
+    public boolean tryCommitManualText(Component parentForDialog) {
+        String s = textField.getText();
+        Date d = parseFlexibleDate(s);
+        if (d == null) {
+            JOptionPane.showMessageDialog(parentForDialog,
+                    "Ngày không hợp lệ.\nVui lòng nhập theo định dạng: dd/MM/yy hoặc dd/MM/yyyy.",
+                    "Sai định dạng ngày", JOptionPane.WARNING_MESSAGE);
+            SwingUtilities.invokeLater(() -> textField.requestFocusInWindow());
+            return false;
+        }
+        if (minDate != null && d.before(minDate)) {
+            JOptionPane.showMessageDialog(parentForDialog,
+                    "Ngày chọn sớm hơn ngày tối thiểu cho phép.",
+                    "Ngày không hợp lệ", JOptionPane.WARNING_MESSAGE);
+            SwingUtilities.invokeLater(() -> textField.requestFocusInWindow());
+            return false;
+        }
+        if (maxDate != null && d.after(maxDate)) {
+            JOptionPane.showMessageDialog(parentForDialog,
+                    "Ngày chọn trễ hơn ngày tối đa cho phép.",
+                    "Ngày không hợp lệ", JOptionPane.WARNING_MESSAGE);
+            SwingUtilities.invokeLater(() -> textField.requestFocusInWindow());
+            return false;
+        }
+
+        selectedDate = d;
+        textField.setText(dateFormat.format(selectedDate));
+        firePropertyChange("date", null, selectedDate); // báo cho listener (bảng/ô) biết đã đổi
+        return true;
+    }
+
 }
