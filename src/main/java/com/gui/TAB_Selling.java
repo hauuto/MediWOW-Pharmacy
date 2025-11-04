@@ -12,6 +12,7 @@ import com.utils.AppColors;
 import com.utils.InvoicePDFGenerator;
 
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -33,6 +34,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
@@ -304,7 +306,7 @@ public class TAB_Selling extends JFrame {
             @Override
             public void focusLost(FocusEvent e) {
                 // Delay to allow click on list
-                javax.swing.Timer timer = new javax.swing.Timer(150, evt -> searchWindow.setVisible(false));
+                Timer timer = new Timer(150, evt -> searchWindow.setVisible(false));
                 timer.setRepeats(false);
                 timer.start();
             }
@@ -411,13 +413,13 @@ public class TAB_Selling extends JFrame {
 
         // Setup autocomplete with generalized method
         setupAutocomplete(
-            txtPromotionSearch,
-            promotionSearchWindow,
-            promotionSearchResultsList,
-            promotionSearchResultsModel,
-            "Điền mã hoặc tên khuyến mãi (nếu có)...",
-            this::performPromotionSearch,
-            this::selectPromotion
+                txtPromotionSearch,
+                promotionSearchWindow,
+                promotionSearchResultsList,
+                promotionSearchResultsModel,
+                "Điền mã hoặc tên khuyến mãi (nếu có)...",
+                this::performPromotionSearch,
+                this::selectPromotion
         );
     }
 
@@ -431,7 +433,7 @@ public class TAB_Selling extends JFrame {
             DefaultListModel<String> resultsModel,
             String placeholder,
             Runnable searchAction,
-            java.util.function.Consumer<Integer> selectionAction) {
+            Consumer<Integer> selectionAction) {
 
         // Add document listener to search as user types
         textField.getDocument().addDocumentListener(new DocumentListener() {
@@ -502,7 +504,7 @@ public class TAB_Selling extends JFrame {
             @Override
             public void focusLost(FocusEvent e) {
                 // Delay to allow click on list
-                javax.swing.Timer timer = new javax.swing.Timer(150, evt -> window.setVisible(false));
+                Timer timer = new Timer(150, evt -> window.setVisible(false));
                 timer.setRepeats(false);
                 timer.start();
             }
@@ -1158,18 +1160,18 @@ public class TAB_Selling extends JFrame {
             txtSearchInput.requestFocusInWindow();
 
             JOptionPane.showMessageDialog(pnlSelling,
-                "Chế độ quét mã vạch đã BẬT!\n" +
-                "Sử dụng máy quét để thêm sản phẩm vào hóa đơn.",
-                "Quét mã vạch",
-                JOptionPane.INFORMATION_MESSAGE);
+                    "Chế độ quét mã vạch đã BẬT!\n" +
+                            "Sử dụng máy quét để thêm sản phẩm vào hóa đơn.",
+                    "Quét mã vạch",
+                    JOptionPane.INFORMATION_MESSAGE);
 
             // Restore focus after dialog
             SwingUtilities.invokeLater(() -> txtSearchInput.requestFocusInWindow());
         } else {
             JOptionPane.showMessageDialog(pnlSelling,
-                "Chế độ quét mã vạch đã TẮT!",
-                "Quét mã vạch",
-                JOptionPane.INFORMATION_MESSAGE);
+                    "Chế độ quét mã vạch đã TẮT!",
+                    "Quét mã vạch",
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -1212,9 +1214,9 @@ public class TAB_Selling extends JFrame {
             // Product not found - play beep and show brief message
             Toolkit.getDefaultToolkit().beep();
             JOptionPane.showMessageDialog(pnlSelling,
-                "Không tìm thấy sản phẩm với mã vạch: " + barcode,
-                "Lỗi",
-                JOptionPane.ERROR_MESSAGE);
+                    "Không tìm thấy sản phẩm với mã vạch: " + barcode,
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
 
             // Restore focus to search field
             SwingUtilities.invokeLater(() -> {
@@ -1679,10 +1681,10 @@ public class TAB_Selling extends JFrame {
             // Validate invoice line list is not empty
             if (invoice.getInvoiceLineList() == null || invoice.getInvoiceLineList().isEmpty()) {
                 JOptionPane.showMessageDialog(pnlSelling,
-                    "Danh sách sản phẩm trống!\n" +
-                    "Vui lòng thêm sản phẩm vào hóa đơn trước khi thanh toán.",
-                    "Không thể thanh toán",
-                    JOptionPane.WARNING_MESSAGE);
+                        "Danh sách sản phẩm trống!\n" +
+                                "Vui lòng thêm sản phẩm vào hóa đơn trước khi thanh toán.",
+                        "Không thể thanh toán",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -1698,11 +1700,11 @@ public class TAB_Selling extends JFrame {
 
                 if (customerPayment < total) {
                     JOptionPane.showMessageDialog(pnlSelling,
-                        "Số tiền khách đưa không đủ!\n" +
-                        "Tổng tiền: " + String.format("%,d", total).replace(',', '.') + " Đ\n" +
-                        "Khách đưa: " + String.format("%,d", customerPayment).replace(',', '.') + " Đ",
-                        "Không thể thanh toán",
-                        JOptionPane.WARNING_MESSAGE);
+                            "Số tiền khách đưa không đủ!\n" +
+                                    "Tổng tiền: " + String.format("%,d", total).replace(',', '.') + " Đ\n" +
+                                    "Khách đưa: " + String.format("%,d", customerPayment).replace(',', '.') + " Đ",
+                            "Không thể thanh toán",
+                            JOptionPane.WARNING_MESSAGE);
                     return;
                 }
             }
@@ -1725,12 +1727,12 @@ public class TAB_Selling extends JFrame {
 
                 // Show success dialog with option to open PDF
                 int option = JOptionPane.showConfirmDialog(pnlSelling,
-                    "Thanh toán thành công!\n" +
-                    "Hóa đơn đã được lưu tại: " + pdfFile.getAbsolutePath() + "\n\n" +
-                    "Bạn có muốn mở hóa đơn không?",
-                    "Thành công",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.INFORMATION_MESSAGE);
+                        "Thanh toán thành công!\n" +
+                                "Hóa đơn đã được lưu tại: " + pdfFile.getAbsolutePath() + "\n\n" +
+                                "Bạn có muốn mở hóa đơn không?",
+                        "Thành công",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.INFORMATION_MESSAGE);
 
                 // Open PDF if user chooses Yes
                 if (option == JOptionPane.YES_OPTION) {
@@ -1739,8 +1741,20 @@ public class TAB_Selling extends JFrame {
                     }
                 }
 
-                // TODO: Save invoice to database here
-                // busInvoice.addInvoice(invoice);
+                // Save invoice to database
+                try {
+                    busInvoice.saveInvoice(invoice);
+                    System.out.println("========== INVOICE SAVED TO DATABASE ==========");
+                    System.out.println("Invoice ID: " + invoice.getId());
+                    System.out.println("=============================================");
+                } catch (Exception dbEx) {
+                    dbEx.printStackTrace();
+                    JOptionPane.showMessageDialog(pnlSelling,
+                            "Cảnh báo: Hóa đơn PDF đã được tạo nhưng không lưu được vào cơ sở dữ liệu!\n" +
+                                    "Lỗi: " + dbEx.getMessage(),
+                            "Lỗi lưu database",
+                            JOptionPane.WARNING_MESSAGE);
+                }
 
                 System.out.println("========== INVOICE PDF GENERATED ==========");
                 System.out.println("File: " + pdfFile.getAbsolutePath());
@@ -1751,9 +1765,9 @@ public class TAB_Selling extends JFrame {
             } catch (Exception ex) {
                 ex.printStackTrace();
                 JOptionPane.showMessageDialog(pnlSelling,
-                    "Lỗi khi tạo hóa đơn PDF:\n" + ex.getMessage(),
-                    "Lỗi",
-                    JOptionPane.ERROR_MESSAGE);
+                        "Lỗi khi tạo hóa đơn PDF:\n" + ex.getMessage(),
+                        "Lỗi",
+                        JOptionPane.ERROR_MESSAGE);
             }
         });
 
@@ -2105,6 +2119,7 @@ public class TAB_Selling extends JFrame {
 
     /**
      * Create a DecimalFormat for Vietnamese currency formatting
+     *
      * @return DecimalFormat configured with Vietnamese currency settings
      */
     private DecimalFormat createCurrencyFormat() {
@@ -2178,3 +2193,4 @@ public class TAB_Selling extends JFrame {
      * @noinspection ALL
      */
 }
+
