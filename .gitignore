@@ -38,3 +38,8 @@ build/
 
 ### .env files ###
 .env
+
+
+
+## temp invoices folder ##
+invoices/

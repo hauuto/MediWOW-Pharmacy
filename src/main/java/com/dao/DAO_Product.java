@@ -18,7 +18,7 @@ public class DAO_Product implements IProduct {
 
     public DAO_Product() { this.sessionFactory = HibernateUtil.getSessionFactory(); }
 
-     // <-- add
+    // <-- add
 
     @Override
     public Product getProductById(String id) {
