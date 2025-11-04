@@ -59,10 +59,11 @@ public class Invoice {
     protected Invoice() {}
 
     public Invoice(InvoiceType type, Staff creator) {
-        this.id = "placeholder-id"; // Placeholder ID, should be replaced with actual ID generation logic
+        // Don't set id manually - let Hibernate's @UuidGenerator handle it
         this.type = type;
         this.creationDate = LocalDateTime.now();
         this.creator = creator;
+        this.invoiceLineList = new ArrayList<>();
     }
 
     public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
@@ -100,6 +101,10 @@ public class Invoice {
 
     public Staff getCreator() {
         return creator;
+    }
+
+    public void setCreator(Staff creator) {
+        this.creator = creator;
     }
 
     public String getPrescriptionCode() {

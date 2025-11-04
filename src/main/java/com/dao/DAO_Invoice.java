@@ -27,13 +27,61 @@ public class DAO_Invoice implements IInvoice {
         try {
             session = sessionFactory.openSession();
             transaction = session.beginTransaction();
+
+            // Log invoice details before saving
+            System.out.println("========== ATTEMPTING TO SAVE INVOICE ==========");
+            System.out.println("Invoice Type: " + invoice.getType());
+            System.out.println("Creator: " + (invoice.getCreator() != null ? invoice.getCreator().getId() : "NULL"));
+            System.out.println("Payment Method: " + invoice.getPaymentMethod());
+            System.out.println("Invoice Lines: " + (invoice.getInvoiceLineList() != null ? invoice.getInvoiceLineList().size() : 0));
+            System.out.println("Prescription Code: " + invoice.getPrescriptionCode());
+
+            // Merge the creator (Staff) to attach to current session
+            if (invoice.getCreator() != null) {
+                invoice.setCreator(session.merge(invoice.getCreator()));
+            }
+
+            // Merge promotion if exists
+            if (invoice.getPromotion() != null) {
+                invoice.setPromotion(session.merge(invoice.getPromotion()));
+            }
+
+            // Merge referenced invoice if exists
+            if (invoice.getReferencedInvoice() != null) {
+                invoice.setReferencedInvoice(session.merge(invoice.getReferencedInvoice()));
+            }
+
+            // Process each invoice line to merge related entities
+            if (invoice.getInvoiceLineList() != null) {
+                for (InvoiceLine line : invoice.getInvoiceLineList()) {
+                    // Merge product and unit of measure to attach to current session
+                    if (line.getProduct() != null) {
+                        line.setProduct(session.merge(line.getProduct()));
+                    }
+                    if (line.getUnitOfMeasure() != null) {
+                        line.setUnitOfMeasure(session.merge(line.getUnitOfMeasure()));
+                    }
+                }
+            }
+
+            // Now persist the invoice (with merged entities)
             session.persist(invoice);
             transaction.commit();
+
+            System.out.println("========== INVOICE SAVED SUCCESSFULLY ==========");
+            System.out.println("Generated Invoice ID: " + invoice.getId());
+            System.out.println("===============================================");
+
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
             }
+            System.err.println("========== ERROR SAVING INVOICE ==========");
+            System.err.println("Error message: " + e.getMessage());
+            System.err.println("Error type: " + e.getClass().getName());
             e.printStackTrace();
+            System.err.println("==========================================");
+            throw new RuntimeException("Failed to save invoice: " + e.getMessage(), e);
         } finally {
             if (session != null && session.isOpen()) {
                 session.close();

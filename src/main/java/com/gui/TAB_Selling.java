@@ -9,8 +9,10 @@ import com.enums.LineType;
 import com.enums.PaymentMethod;
 import com.enums.ProductCategory;
 import com.utils.AppColors;
+import com.utils.InvoicePDFGenerator;
 
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -25,13 +27,14 @@ import javax.swing.text.DefaultFormatterFactory;
 import javax.swing.text.NumberFormatter;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Consumer;
 
 public class TAB_Selling extends JFrame {
     JPanel pnlSelling;
@@ -410,13 +413,13 @@ public class TAB_Selling extends JFrame {
 
         // Setup autocomplete with generalized method
         setupAutocomplete(
-            txtPromotionSearch,
-            promotionSearchWindow,
-            promotionSearchResultsList,
-            promotionSearchResultsModel,
-            "Điền mã hoặc tên khuyến mãi (nếu có)...",
-            this::performPromotionSearch,
-            this::selectPromotion
+                txtPromotionSearch,
+                promotionSearchWindow,
+                promotionSearchResultsList,
+                promotionSearchResultsModel,
+                "Điền mã hoặc tên khuyến mãi (nếu có)...",
+                this::performPromotionSearch,
+                this::selectPromotion
         );
     }
 
@@ -430,7 +433,7 @@ public class TAB_Selling extends JFrame {
             DefaultListModel<String> resultsModel,
             String placeholder,
             Runnable searchAction,
-            java.util.function.Consumer<Integer> selectionAction) {
+            Consumer<Integer> selectionAction) {
 
         // Add document listener to search as user types
         textField.getDocument().addDocumentListener(new DocumentListener() {
@@ -1157,18 +1160,18 @@ public class TAB_Selling extends JFrame {
             txtSearchInput.requestFocusInWindow();
 
             JOptionPane.showMessageDialog(pnlSelling,
-                "Chế độ quét mã vạch đã BẬT!\n" +
-                "Sử dụng máy quét để thêm sản phẩm vào hóa đơn.",
-                "Quét mã vạch",
-                JOptionPane.INFORMATION_MESSAGE);
+                    "Chế độ quét mã vạch đã BẬT!\n" +
+                            "Sử dụng máy quét để thêm sản phẩm vào hóa đơn.",
+                    "Quét mã vạch",
+                    JOptionPane.INFORMATION_MESSAGE);
 
             // Restore focus after dialog
             SwingUtilities.invokeLater(() -> txtSearchInput.requestFocusInWindow());
         } else {
             JOptionPane.showMessageDialog(pnlSelling,
-                "Chế độ quét mã vạch đã TẮT!",
-                "Quét mã vạch",
-                JOptionPane.INFORMATION_MESSAGE);
+                    "Chế độ quét mã vạch đã TẮT!",
+                    "Quét mã vạch",
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -1211,9 +1214,9 @@ public class TAB_Selling extends JFrame {
             // Product not found - play beep and show brief message
             Toolkit.getDefaultToolkit().beep();
             JOptionPane.showMessageDialog(pnlSelling,
-                "Không tìm thấy sản phẩm với mã vạch: " + barcode,
-                "Lỗi",
-                JOptionPane.ERROR_MESSAGE);
+                    "Không tìm thấy sản phẩm với mã vạch: " + barcode,
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
 
             // Restore focus to search field
             SwingUtilities.invokeLater(() -> {
@@ -1678,10 +1681,10 @@ public class TAB_Selling extends JFrame {
             // Validate invoice line list is not empty
             if (invoice.getInvoiceLineList() == null || invoice.getInvoiceLineList().isEmpty()) {
                 JOptionPane.showMessageDialog(pnlSelling,
-                    "Danh sách sản phẩm trống!\n" +
-                    "Vui lòng thêm sản phẩm vào hóa đơn trước khi thanh toán.",
-                    "Không thể thanh toán",
-                    JOptionPane.WARNING_MESSAGE);
+                        "Danh sách sản phẩm trống!\n" +
+                                "Vui lòng thêm sản phẩm vào hóa đơn trước khi thanh toán.",
+                        "Không thể thanh toán",
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -1697,42 +1700,75 @@ public class TAB_Selling extends JFrame {
 
                 if (customerPayment < total) {
                     JOptionPane.showMessageDialog(pnlSelling,
-                        "Số tiền khách đưa không đủ!\n" +
-                        "Tổng tiền: " + String.format("%,d", total).replace(',', '.') + " Đ\n" +
-                        "Khách đưa: " + String.format("%,d", customerPayment).replace(',', '.') + " Đ",
-                        "Không thể thanh toán",
-                        JOptionPane.WARNING_MESSAGE);
+                            "Số tiền khách đưa không đủ!\n" +
+                                    "Tổng tiền: " + String.format("%,d", total).replace(',', '.') + " Đ\n" +
+                                    "Khách đưa: " + String.format("%,d", customerPayment).replace(',', '.') + " Đ",
+                            "Không thể thanh toán",
+                            JOptionPane.WARNING_MESSAGE);
                     return;
                 }
             }
 
-            // If all validations pass, print invoice details (placeholder for actual processing)
-            System.out.println("========== INVOICE LINES ==========");
-            System.out.println("Creator: " + invoice.getCreator().getFullName());
-            System.out.println("Prescription Code: " + invoice.getPrescriptionCode());
-            System.out.println("Total invoice lines: " + invoice.getInvoiceLineList().size());
-            System.out.println();
+            // Generate PDF invoice
+            try {
+                // Create invoices directory if it doesn't exist
+                File invoicesDir = new File("invoices");
+                if (!invoicesDir.exists()) {
+                    invoicesDir.mkdirs();
+                }
 
-            int lineNumber = 1;
-            for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                System.out.println("Line " + lineNumber + ":");
-                System.out.println("  Product Name: " + line.getProduct().getName());
-                System.out.println("  Quantity: " + line.getQuantity());
-                System.out.println("  UOM Name: " + line.getUnitOfMeasure().getName());
-                System.out.println("  Unit Price: " + line.getUnitPrice());
-                System.out.println();
-                lineNumber++;
+                // Generate filename with timestamp
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+                String timestamp = dateFormat.format(new Date());
+                String filename = "invoices/Invoice_" + timestamp + ".pdf";
+
+                // Generate PDF
+                File pdfFile = InvoicePDFGenerator.generateInvoicePDF(invoice, filename);
+
+                // Show success dialog with option to open PDF
+                int option = JOptionPane.showConfirmDialog(pnlSelling,
+                        "Thanh toán thành công!\n" +
+                                "Hóa đơn đã được lưu tại: " + pdfFile.getAbsolutePath() + "\n\n" +
+                                "Bạn có muốn mở hóa đơn không?",
+                        "Thành công",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.INFORMATION_MESSAGE);
+
+                // Open PDF if user chooses Yes
+                if (option == JOptionPane.YES_OPTION) {
+                    if (Desktop.isDesktopSupported()) {
+                        Desktop.getDesktop().open(pdfFile);
+                    }
+                }
+
+                // Save invoice to database
+                try {
+                    busInvoice.saveInvoice(invoice);
+                    System.out.println("========== INVOICE SAVED TO DATABASE ==========");
+                    System.out.println("Invoice ID: " + invoice.getId());
+                    System.out.println("=============================================");
+                } catch (Exception dbEx) {
+                    dbEx.printStackTrace();
+                    JOptionPane.showMessageDialog(pnlSelling,
+                            "Cảnh báo: Hóa đơn PDF đã được tạo nhưng không lưu được vào cơ sở dữ liệu!\n" +
+                                    "Lỗi: " + dbEx.getMessage(),
+                            "Lỗi lưu database",
+                            JOptionPane.WARNING_MESSAGE);
+                }
+
+                System.out.println("========== INVOICE PDF GENERATED ==========");
+                System.out.println("File: " + pdfFile.getAbsolutePath());
+                System.out.println("Invoice ID: " + invoice.getId());
+                System.out.println("Total: " + invoice.calculateTotal());
+                System.out.println("==========================================");
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(pnlSelling,
+                        "Lỗi khi tạo hóa đơn PDF:\n" + ex.getMessage(),
+                        "Lỗi",
+                        JOptionPane.ERROR_MESSAGE);
             }
-
-            System.out.println("Payment method: " + invoice.getPaymentMethod());
-            System.out.println("Total: " + invoice.calculateTotal());
-            System.out.println("===================================");
-
-            // TODO: Add actual invoice processing logic here (save to database, print receipt, etc.)
-            JOptionPane.showMessageDialog(pnlSelling,
-                "Thanh toán thành công!",
-                "Thành công",
-                JOptionPane.INFORMATION_MESSAGE);
         });
 
         boxPaymentButton.add(btnProcessPayment);
@@ -2083,6 +2119,7 @@ public class TAB_Selling extends JFrame {
 
     /**
      * Create a DecimalFormat for Vietnamese currency formatting
+     *
      * @return DecimalFormat configured with Vietnamese currency settings
      */
     private DecimalFormat createCurrencyFormat() {
@@ -2156,3 +2193,4 @@ public class TAB_Selling extends JFrame {
      * @noinspection ALL
      */
 }
+

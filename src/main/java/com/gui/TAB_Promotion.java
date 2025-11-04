@@ -131,10 +131,6 @@ public class TAB_Promotion extends JPanel {
         top.add(lblSearch);
         top.add(txtSearch);
         top.add(btnSearch);
-        top.add(new JLabel("Hình thức:"));
-        top.add(cbTypeSearch);
-        top.add(new JLabel("Trạng thái:"));
-        top.add(cbStatusSearch);
         top.add(btnRefresh);
 
         return top;
