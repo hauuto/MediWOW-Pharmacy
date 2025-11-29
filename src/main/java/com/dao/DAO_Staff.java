@@ -6,6 +6,7 @@ import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.query.NativeQuery;
 import org.hibernate.query.Query;
 
 import java.util.List;
@@ -336,4 +337,78 @@ public class DAO_Staff implements IStaff {
             }
         }
     }
+
+    @Override
+    public boolean isFirstLogin(Staff staff) {
+        if (staff == null || staff.getId()==null){
+            return false;
+        }
+        Session session = null;
+        try{
+            session = sessionFactory.openSession();
+            NativeQuery<Boolean> query = session.createNativeQuery(
+                    "SELECT isFirstLogin from Staff WHERE id = :staffId",
+                    Boolean.class
+            );
+            query.setParameter("staffId", staff.getId());
+            Boolean result = query.uniqueResult();
+            return Boolean.TRUE.equals(result);
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isMustChangePassword(Staff staff) {
+        if (staff == null || staff.getId()==null){
+            return false;
+        }
+        Session session = null;
+        try{
+            session = sessionFactory.openSession();
+            NativeQuery<Boolean> query = session.createNativeQuery(
+                    "SELECT mustChangePassword from Staff WHERE id = :staffId",
+                    Boolean.class
+            );
+            query.setParameter("staffId", staff.getId());
+            Boolean result = query.uniqueResult();
+            return Boolean.TRUE.equals(result);
+        }catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public boolean updateChangePasswordFlag(Staff staff, boolean flag) {
+        if (staff == null || staff.getId()==null){
+            return false;
+        }
+        Transaction transaction = null;
+        Session session = null;
+        try{
+            session = sessionFactory.openSession();
+            transaction = session.beginTransaction();
+
+            NativeQuery query = session.createNativeQuery(
+                    "UPDATE Staff SET mustChangePassword = :flag, isFirstLogin = 0 WHERE id = :staffId");
+            query.setParameter("staffId", staff.getId());
+            query.setParameter("flag", flag);
+            int updatedRows = query.executeUpdate();
+            transaction.commit();
+            return updatedRows > 0;
+        }catch (Exception e){
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+            return false;
+        }finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
 }

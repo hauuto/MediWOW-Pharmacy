@@ -9,7 +9,6 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
  */
 public class PasswordUtil {
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-    private static final String TEMP_PASSWORD_PREFIX = "Tmp";
     private static final SecureRandom random = new SecureRandom();
     private static final int BCRYPT_LOG_ROUNDS = 12;
 
@@ -20,21 +19,13 @@ public class PasswordUtil {
 
 
     public static String generateTemporaryPassword() {
-        StringBuilder password = new StringBuilder(TEMP_PASSWORD_PREFIX);
-        for (int i = 0; i < 5; i++) {
+        StringBuilder password = new StringBuilder();
+        for (int i = 0; i < 7; i++) {
             password.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
         }
         return password.toString();
     }
 
-
-
-    public static boolean isTemporaryPassword(String plainPassword) {
-        if (plainPassword == null || plainPassword.length() != 8) {
-            return false;
-        }
-        return plainPassword.startsWith(TEMP_PASSWORD_PREFIX);
-    }
 
     public static String hashPassword(String password) {
         if (password == null) throw new IllegalArgumentException("password cannot be null");

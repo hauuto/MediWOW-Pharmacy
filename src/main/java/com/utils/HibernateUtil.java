@@ -14,11 +14,11 @@ public class HibernateUtil {
         try {
             // Create the SessionFactory from hibernate.cfg.xml
             Configuration configuration = new Configuration();
-            configuration.configure("hibernate.cfg.xml");
+            configuration.configure("db/hibernate.cfg.xml");
 
             sessionFactory = configuration.buildSessionFactory();
 
-            System.out.println("✅ Hibernate SessionFactory created successfully!");
+            System.out.println("Hibernate SessionFactory created successfully!");
 
             // Add shutdown hook to close SessionFactory when application exits
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -42,7 +42,7 @@ public class HibernateUtil {
     public static void shutdown() {
         if (sessionFactory != null && !sessionFactory.isClosed()) {
             sessionFactory.close();
-            System.out.println("✅ Hibernate SessionFactory closed.");
+            System.out.println("Hibernate SessionFactory closed.");
         }
     }
 

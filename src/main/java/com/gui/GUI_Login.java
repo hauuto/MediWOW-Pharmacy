@@ -114,24 +114,20 @@ public class GUI_Login implements ActionListener {
                     currentStaff = get();
 
                     if (currentStaff != null) {
-                        // Login successful
                         JOptionPane.showMessageDialog(pnlLogin,
                                 "Đăng nhập thành công!\nXin chào, " + currentStaff.getFullName(),
                                 "Thành công",
                                 JOptionPane.INFORMATION_MESSAGE);
                         openMainMenu(loginPassword);
                     } else {
-                        // Login failed
                         JOptionPane.showMessageDialog(pnlLogin,
                                 errorMessage != null ? errorMessage : "Đăng nhập thất bại",
                                 "Lỗi đăng nhập",
                                 JOptionPane.ERROR_MESSAGE);
 
-                        // Clear password field
                         txtPassword.setText("");
                         txtPassword.requestFocus();
 
-                        // Re-enable login button
                         btnLogin.setEnabled(true);
                         btnLogin.setText("Đăng nhập");
                     }
@@ -156,7 +152,7 @@ public class GUI_Login implements ActionListener {
 
         // Check if staff is using temporary password (first login)
         // This checks the password pattern without needing a database column
-        if (BUSStaff.isUsingTemporaryPassword(currentStaff, plainPassword)) {
+        if (BUSStaff.isFirstLogin(currentStaff)) {
             // Show mandatory password change dialog
             DIALOG_ChangePassword changePasswordDialog = new DIALOG_ChangePassword(loginFrame, currentStaff, true);
             changePasswordDialog.setVisible(true);
@@ -171,6 +167,28 @@ public class GUI_Login implements ActionListener {
                         JOptionPane.WARNING_MESSAGE
                 );
                 return;
+            } else {
+                // Update must change password flag in database
+                BUSStaff.updateChangePasswordFlag(currentStaff, false);
+            }
+        } else if (BUSStaff.isMustChangePassword(currentStaff)) {
+            // Show mandatory password change dialog
+            DIALOG_ChangePassword changePasswordDialog = new DIALOG_ChangePassword(loginFrame, currentStaff, false);
+            changePasswordDialog.setVisible(true);
+
+            // Check if password was actually changed using the dialog's flag
+            if (!changePasswordDialog.isPasswordChanged()) {
+                // User closed dialog without changing password
+                JOptionPane.showMessageDialog(
+                        pnlLogin,
+                        "Bạn phải đổi mật khẩu để tiếp tục sử dụng hệ thống!",
+                        "Yêu cầu đổi mật khẩu",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            } else {
+                // Update must change password flag in database
+                BUSStaff.updateChangePasswordFlag(currentStaff, false);
             }
         }
 
@@ -186,7 +204,6 @@ public class GUI_Login implements ActionListener {
         mainMenuFrame.setVisible(true);
         mainMenuFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
-
 
 
     {

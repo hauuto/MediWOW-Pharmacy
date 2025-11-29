@@ -169,6 +169,22 @@ public class BUS_Staff implements IStaff {
         return DAOStaff.existsByLicenseNumberExcludingId(licenseNumber, excludeId);
     }
 
+    @Override
+    public boolean isFirstLogin(Staff staff) {
+        return DAOStaff.isFirstLogin(staff);
+    }
+
+    @Override
+    public boolean isMustChangePassword(Staff staff) {
+        return DAOStaff.isMustChangePassword(staff);
+    }
+
+    @Override
+    public boolean updateChangePasswordFlag(Staff staff, boolean flag) {
+        return DAOStaff.updateChangePasswordFlag(staff, flag);
+    }
+
+
     private void checkDuplicates(Staff s) {
         // Check duplicate username
         if (existsByUsername(s.getUsername())) {
@@ -291,14 +307,7 @@ public class BUS_Staff implements IStaff {
     }
 
 
-    public boolean isUsingTemporaryPassword(Staff staff, String plainPassword) {
-        // Only non-MANAGER staff need to change password on first login
-        if (staff.getRole() == com.enums.Role.MANAGER) {
-            return false;
-        }
 
-        // Use PasswordUtil to check if password matches temporary password format
-        return PasswordUtil.isTemporaryPassword(plainPassword);
-    }
 
 }
+
