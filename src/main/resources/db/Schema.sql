@@ -6,16 +6,18 @@ USE MediWOW
 
 -- Staff Table
 CREATE TABLE Staff (
-                       id NVARCHAR(50) PRIMARY KEY,
-                       username NVARCHAR(255) NOT NULL UNIQUE,
-                       password NVARCHAR(255) NOT NULL,
-                       fullName NVARCHAR(255) NOT NULL,
-                       licenseNumber NVARCHAR(100),
-                       phoneNumber NVARCHAR(20),
-                       email NVARCHAR(255),
-                       hireDate DATE NOT NULL,
-                       isActive BIT NOT NULL DEFAULT 1,
-                       role NVARCHAR(50) NOT NULL CHECK (role IN ('MANAGER', 'PHARMACIST'))
+    id NVARCHAR(50) PRIMARY KEY,
+    username NVARCHAR(255) NOT NULL UNIQUE,
+    password NVARCHAR(255) NOT NULL,
+    fullName NVARCHAR(255) NOT NULL,
+    licenseNumber NVARCHAR(100),
+    phoneNumber NVARCHAR(20),
+    email NVARCHAR(255),
+    hireDate DATE NOT NULL,
+    isActive BIT NOT NULL DEFAULT 1,
+    role NVARCHAR(50) NOT NULL CHECK (role IN ('MANAGER', 'PHARMACIST')),
+    isFirstLogin BIT NOT NULL DEFAULT 1,
+    mustChangePassword BIT NOT NULL DEFAULT 1
 );
 
 -- PrescribedCustomer Table

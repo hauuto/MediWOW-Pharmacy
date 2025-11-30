@@ -24,4 +24,8 @@ public interface IStaff {
     public boolean existsByEmailExcludingId(String email, String excludeId);
     public boolean existsByPhoneNumberExcludingId(String phoneNumber, String excludeId);
     public boolean existsByLicenseNumberExcludingId(String licenseNumber, String excludeId);
+    public boolean isFirstLogin(Staff staff);
+    public boolean isMustChangePassword(Staff staff);
+    public boolean updateChangePasswordFlag(Staff staff, boolean flag);
 }
+

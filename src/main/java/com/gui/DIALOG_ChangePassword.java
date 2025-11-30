@@ -275,6 +275,7 @@ public class DIALOG_ChangePassword extends JDialog implements ActionListener {
                         "Thành công",
                         JOptionPane.INFORMATION_MESSAGE
                 );
+
                 dispose();
             }
 

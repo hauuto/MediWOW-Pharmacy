@@ -115,10 +115,13 @@ public class Staff {
         return licenseNumber;
     }
 
+
     public void setLicenseNumber(String licenseNumber) {
+        if (!licenseNumber.matches("^[0-9]{3,4}/CCHN-D-SYT-[A-Z]{3,4}$")) {
+            throw new IllegalArgumentException("Số giấy phép không hợp lệ");
+        }
         this.licenseNumber = licenseNumber;
     }
-
     public String getPhoneNumber() {
         return phoneNumber;
     }
