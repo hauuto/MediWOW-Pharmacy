@@ -306,8 +306,85 @@ public class BUS_Staff implements IStaff {
         return true;
     }
 
+    /**
+     * Reset password with full verification (username, email, and phone number)
+     * All three fields must match the staff record
+     * @param username Username of staff
+     * @param email Email of staff
+     * @param phoneNumber Phone number of staff
+     * @return true if password reset successfully
+     */
+    public boolean resetPasswordWithVerification(String username, String email, String phoneNumber) {
+        // Validate inputs
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập tên đăng nhập");
+        }
+
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập email");
+        }
+
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng nhập số điện thoại");
+        }
+
+        // Validate email format
+        if (!email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
+            throw new IllegalArgumentException("Email không hợp lệ");
+        }
+
+        // Validate phone number format
+        if (!phoneNumber.matches("^(0[9|3|7|8|5|2])+([0-9]{8})$")) {
+            throw new IllegalArgumentException("Số điện thoại không hợp lệ");
+        }
+
+        // Find staff by username
+        Staff staff = getStaffByUsername(username);
+        if (staff == null) {
+            throw new IllegalArgumentException("Tên đăng nhập không chính xác. Vui lòng kiểm tra lại.");
+        }
+
+        // Verify all fields match
+        if (staff.getEmail() == null || !staff.getEmail().equalsIgnoreCase(email)) {
+            throw new IllegalArgumentException("Email không chính xác. Vui lòng kiểm tra lại.");
+        }
+
+        if (staff.getPhoneNumber() == null || !staff.getPhoneNumber().equals(phoneNumber)) {
+            throw new IllegalArgumentException("Số điện thoại không chính xác. Vui lòng kiểm tra lại.");
+        }
+
+        // Check if staff is active
+        if (!staff.isActive()) {
+            throw new IllegalArgumentException("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên");
+        }
+
+        // Generate new password
+        String newPassword = PasswordUtil.generatePassword();
+        String hashedPassword = PasswordUtil.hashPassword(newPassword);
+
+        // Update password in database
+        staff.setPassword(hashedPassword);
+        boolean updated = DAOStaff.updateStaff(staff) && DAOStaff.updateChangePasswordFlag(staff, true);
+
+        if (updated) {
+            // Send new password to email
+            try {
+                emailUltil.sendPasswordEmail(
+                    staff.getEmail(),
+                    staff.getFullName(),
+                    staff.getUsername(),
+                    newPassword
+                );
+                return true;
+            } catch (Exception e) {
+                throw new RuntimeException("Đã đặt lại mật khẩu nhưng không thể gửi email. Vui lòng liên hệ quản trị viên");
+            }
+        }
+
+        return false;
+    }
+
 
 
 
 }
-

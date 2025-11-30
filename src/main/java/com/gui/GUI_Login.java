@@ -402,11 +402,13 @@ public class GUI_Login implements ActionListener {
         if (o == btnLogin || o == txtPassword) {
             handleLogin();
         } else if (o == btnForgotPassword) {
-            JOptionPane.showMessageDialog(pnlLogin,
-                    "Chức năng đang được phát triển",
-                    "Thông báo",
-                    JOptionPane.INFORMATION_MESSAGE);
+            handleForgotPassword();
         }
     }
-}
 
+    private void handleForgotPassword() {
+        JFrame loginFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlLogin);
+        DIALOG_ForgotPassword forgotPasswordDialog = new DIALOG_ForgotPassword(loginFrame);
+        forgotPasswordDialog.setVisible(true);
+    }
+}
