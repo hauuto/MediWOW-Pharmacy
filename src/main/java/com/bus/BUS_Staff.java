@@ -315,7 +315,6 @@ public class BUS_Staff implements IStaff {
      * @return true if password reset successfully
      */
     public boolean resetPasswordWithVerification(String username, String email, String phoneNumber) {
-        // Validate inputs
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Vui lòng nhập tên đăng nhập");
         }
@@ -328,23 +327,19 @@ public class BUS_Staff implements IStaff {
             throw new IllegalArgumentException("Vui lòng nhập số điện thoại");
         }
 
-        // Validate email format
         if (!email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
             throw new IllegalArgumentException("Email không hợp lệ");
         }
 
-        // Validate phone number format
         if (!phoneNumber.matches("^(0[9|3|7|8|5|2])+([0-9]{8})$")) {
             throw new IllegalArgumentException("Số điện thoại không hợp lệ");
         }
 
-        // Find staff by username
         Staff staff = getStaffByUsername(username);
         if (staff == null) {
             throw new IllegalArgumentException("Tên đăng nhập không chính xác. Vui lòng kiểm tra lại.");
         }
 
-        // Verify all fields match
         if (staff.getEmail() == null || !staff.getEmail().equalsIgnoreCase(email)) {
             throw new IllegalArgumentException("Email không chính xác. Vui lòng kiểm tra lại.");
         }
@@ -353,7 +348,6 @@ public class BUS_Staff implements IStaff {
             throw new IllegalArgumentException("Số điện thoại không chính xác. Vui lòng kiểm tra lại.");
         }
 
-        // Check if staff is active
         if (!staff.isActive()) {
             throw new IllegalArgumentException("Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên");
         }
