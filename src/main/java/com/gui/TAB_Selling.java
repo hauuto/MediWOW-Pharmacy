@@ -62,7 +62,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         v.add(Box.createVerticalStrut(5)); v.add(h); v.add(Box.createVerticalStrut(5));
         h.add(Box.createHorizontalStrut(5));
         txtSearchInput = new JTextField();
-        h.add(generateLabelAndTextField(new JLabel("Tìm kiếm thuốc:"), txtSearchInput, "Nhập mã/tên/tên rút gọn của thuốc...", "Nhập mã/tên/tên rút gọn của thuốc", 10));
+        h.add(generateLabelAndTextField(new JLabel("Tìm kiếm thuốc:"), txtSearchInput, "Nhập mã/tên/tên rút gọn của thuốc...", "Nhập mã/tên/tên rút gọn của thuốc", 0));
         h.add(Box.createHorizontalStrut(5));
         btnBarcodeScan = new JButton(new ImageIcon("src/main/resources/icons/png_scanner.png"));
         btnBarcodeScan.setMargin(new Insets(10,10,10,10)); btnBarcodeScan.setBorderPainted(false);
@@ -241,13 +241,12 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         right.setBackground(AppColors.WHITE); right.setMinimumSize(new Dimension(RIGHT_MIN, 0));
         left.add(createProductSearchBar(), BorderLayout.NORTH);
         JPanel cont = new JPanel(new BorderLayout()); cont.setBackground(Color.WHITE);
-        Box v = Box.createVerticalBox(), h = Box.createHorizontalBox();
-        h.add(Box.createHorizontalStrut(10)); h.add(v); h.add(Box.createHorizontalStrut(10));
+        Box tv = Box.createVerticalBox(), th = Box.createHorizontalBox();
         JLabel title = new JLabel("CHI TIẾT HÓA ĐƠN BÁN HÀNG");
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
-        Box th = Box.createHorizontalBox(); th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
-        v.add(Box.createVerticalStrut(20)); v.add(th); v.add(Box.createVerticalStrut(20));
-        cont.add(h, BorderLayout.NORTH); createInvoiceLineTable(); cont.add(scrInvoiceLine, BorderLayout.CENTER);
+        th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
+        tv.add(Box.createVerticalStrut(20)); tv.add(th); tv.add(Box.createVerticalStrut(20));
+        cont.add(tv, BorderLayout.NORTH); createInvoiceLineTable(); cont.add(scrInvoiceLine, BorderLayout.CENTER);
         left.add(cont, BorderLayout.CENTER); left.add(createInvoiceLineTableButtons(), BorderLayout.SOUTH);
         right.add(createInvoice(), BorderLayout.NORTH);
         pnlSelling.add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right), BorderLayout.CENTER);
@@ -311,12 +310,11 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         String code = txtSearchInput.getText().trim(); txtSearchInput.setText("");
         if (code.isEmpty()) return;
         Product p = products.stream().filter(pr -> code.equals(pr.getBarcode())).findFirst().orElse(null);
-        if (p == null) {
-            Toolkit.getDefaultToolkit().beep();
+        Toolkit.getDefaultToolkit().beep();
+        if (p == null)
             JOptionPane.showMessageDialog(pnlSelling, "Không tìm thấy sản phẩm với mã vạch: " + code, "Lỗi", JOptionPane.ERROR_MESSAGE);
-        } else {
-            addProductToInvoice(p); Toolkit.getDefaultToolkit().beep();
-        }
+        else
+            addProductToInvoice(p);
         SwingUtilities.invokeLater(() -> { if (barcodeScanningEnabled) txtSearchInput.requestFocusInWindow(); });
     }
 
@@ -366,7 +364,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         JLabel title = new JLabel("HÓA ĐƠN BÁN HÀNG");
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
         Box th = Box.createHorizontalBox(); th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
-        v.add(Box.createVerticalStrut(57)); v.add(th); v.add(Box.createVerticalStrut(15));
+        v.add(Box.createVerticalStrut(80)); v.add(th); v.add(Box.createVerticalStrut(15));
         
         Box presc = Box.createHorizontalBox();
         TitledBorder pb = BorderFactory.createTitledBorder("Thông tin kê đơn thuốc");
@@ -442,11 +440,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     private void updateCashButtons() {
         if (pnlCashOptions == null || txtTotal == null || invoice == null) return;
         pnlCashOptions.removeAll();
-        long min = ((long) Math.ceil(invoice.calculateTotal() / 1000)) * 1000;
-        for (long inc : new long[]{0, 10000, 20000, 50000, 100000, 200000}) {
-            JButton b = createCashButton(min + inc);
-            pnlCashOptions.add(b);
-        }
+        for (long inc : new long[]{((long) Math.ceil(invoice.calculateTotal() / 1000)) * 1000, 10000, 20000, 50000, 100000, 200000})
+            pnlCashOptions.add(createCashButton(inc));
         pnlCashOptions.revalidate(); pnlCashOptions.repaint();
     }
 
@@ -730,8 +725,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     private void handleNav(KeyEvent e, JList<String> l, DefaultListModel<String> m, boolean isProd) {
         int i = l.getSelectedIndex();
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_DOWN: l.setSelectedIndex(i < m.getSize() - 1 ? i + 1 : 0); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
-            case KeyEvent.VK_UP: l.setSelectedIndex(i > 0 ? i - 1 : m.getSize() - 1); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
+            case KeyEvent.VK_DOWN: l.setSelectedIndex((i + 1) % m.getSize()); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
+            case KeyEvent.VK_UP: l.setSelectedIndex((i + m.getSize() - 1) % m.getSize()); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
             case KeyEvent.VK_ENTER: if (i != -1) { if (isProd) selectProduct(i, txtSearchInput); else selectPromotion(i); } e.consume(); break;
             case KeyEvent.VK_ESCAPE: (isProd ? searchWindow : promotionSearchWindow).setVisible(false); e.consume(); break;
         }
