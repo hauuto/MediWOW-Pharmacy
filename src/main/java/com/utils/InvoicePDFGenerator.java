@@ -199,7 +199,7 @@ public class InvoicePDFGenerator {
         for (InvoiceLine line : invoice.getInvoiceLineList()) {
             table.addCell(createCell(String.valueOf(index++), TextAlignment.CENTER));
             table.addCell(createCell(line.getProduct().getName(), TextAlignment.LEFT));
-            table.addCell(createCell(line.getUnitOfMeasure().getName(), TextAlignment.CENTER));
+            table.addCell(createCell(line.getUnitOfMeasure(), TextAlignment.CENTER)); // unitOfMeasure is now String
             table.addCell(createCell(String.valueOf(line.getQuantity()), TextAlignment.CENTER));
             table.addCell(createCell(CURRENCY_FORMAT.format(line.getUnitPrice()) + " đ", TextAlignment.RIGHT));
             table.addCell(createCell(CURRENCY_FORMAT.format(line.getUnitPrice() * line.getQuantity()) + " đ", TextAlignment.RIGHT));

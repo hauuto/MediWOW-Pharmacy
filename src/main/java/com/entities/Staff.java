@@ -33,7 +33,7 @@ public class Staff {
     @Column(name = "licenseNumber", length = 100)
     private String licenseNumber;
 
-    @Column(name = "phoneNumber", length = 20)
+    @Column(name = "phoneNumber", length = 10)
     private String phoneNumber;
 
     @Column(name = "email")
@@ -117,7 +117,7 @@ public class Staff {
 
 
     public void setLicenseNumber(String licenseNumber) {
-        if (!licenseNumber.matches("^[0-9]{3,4}/CCHN-D-SYT-[A-Z]{3,4}$")) {
+        if (!licenseNumber.matches("^[0-9]{3,5}/CCHN-D-SYT-[A-Z]{3,4}$")) {
             throw new IllegalArgumentException("Số giấy phép không hợp lệ");
         }
         this.licenseNumber = licenseNumber;

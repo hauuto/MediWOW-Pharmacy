@@ -12,9 +12,10 @@ public interface IProduct {
     Product getProductByBarcode(String barcode);
 
     Lot getLotByBatchNumber(String batchNumber);
+    Lot getLotById(String id);
     List<Lot> getAllLots();
 
-    UnitOfMeasure getUnitOfMeasureById(String id);
+    UnitOfMeasure getUnitOfMeasureById(String productId, String name);
     List<UnitOfMeasure> getAllUnitOfMeasures();
 
     boolean addProduct(Product p);
