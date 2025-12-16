@@ -1,8 +1,9 @@
 package com.gui;
 
 import com.entities.Staff;
+import com.gui.invoice_options.TAB_ExchangeInvoice;
+import com.gui.invoice_options.TAB_SalesInvoice;
 import com.utils.AppColors;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -24,11 +25,12 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
     private JPanel createContentPanel() {
         cardLayout = new CardLayout(); pnlContent = new JPanel(cardLayout);
         pnlContent.setBackground(AppColors.WHITE);
-        TAB_Selling tabSelling = new TAB_Selling(currentStaff);
-        pnlContent.add(tabSelling.pnlSelling, "selling");
-        JPanel pnlExchange = new JPanel(); pnlExchange.setBackground(AppColors.WHITE);
+        TAB_SalesInvoice tabSelling = new TAB_SalesInvoice(currentStaff);
+        pnlContent.add(tabSelling.pnlSalesInvoice, "selling");
+        TAB_ExchangeInvoice tabExchange = new TAB_ExchangeInvoice(currentStaff);
+        pnlContent.add(tabExchange.pnlExchangeInvoice, "exchange");
         JPanel pnlReturn = new JPanel(); pnlReturn.setBackground(AppColors.WHITE);
-        pnlContent.add(pnlExchange, "exchange"); pnlContent.add(pnlReturn, "return");
+        pnlContent.add(pnlReturn, "return");
         cardLayout.show(pnlContent, "selling");
         setActiveButton(btnSalesInvoice);
         return pnlContent;
