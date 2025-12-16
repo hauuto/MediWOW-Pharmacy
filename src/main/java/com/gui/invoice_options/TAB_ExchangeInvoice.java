@@ -78,7 +78,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private void performInvoiceSearch() {
         String search = txtInvoiceSearch.getText().trim().toLowerCase();
-        if (search.isEmpty() || search.equals("nhập mã hóa đơn cần đổi...") || txtInvoiceSearch.getForeground().equals(Color.GRAY)) {
+        if (search.isEmpty() || search.equals("nhập mã hóa đơn cần đổi...") || txtInvoiceSearch.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             invoiceSearchWindow.setVisible(false); return;
         }
         invoiceSearchResultsModel.clear(); currentInvoiceSearchResults.clear();
@@ -98,7 +98,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         Invoice invoice = currentInvoiceSearchResults.get(idx);
         loadOriginalInvoiceLines(invoice);
         txtInvoiceSearch.setText(invoice.getId());
-        txtInvoiceSearch.setForeground(Color.BLACK);
+        txtInvoiceSearch.setForeground(AppColors.TEXT);
         invoiceSearchWindow.setVisible(false);
     }
 
@@ -109,6 +109,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private JSplitPane createSplitPane() {
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createLeftPanel(), createRightPanel());
+        splitPane.setBackground(AppColors.WHITE);
         splitPane.setDividerLocation(LEFT_MIN);
         return splitPane;
     }
@@ -117,6 +118,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         JPanel left = new JPanel(new BorderLayout());
         left.setBackground(Color.WHITE); left.setMinimumSize(new Dimension(LEFT_MIN, 0));
         JSplitPane verticalSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, createUpperSection(), createLowerSection());
+        verticalSplit.setBackground(AppColors.WHITE);
         verticalSplit.setDividerLocation(300); verticalSplit.setResizeWeight(0.5);
         left.add(verticalSplit, BorderLayout.CENTER);
         return left;
@@ -189,7 +191,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private void performProductSearch() {
         String search = txtProductSearch.getText().trim().toLowerCase();
-        if (search.isEmpty() || search.equals("nhập mã/tên/tên rút gọn của thuốc...") || txtProductSearch.getForeground().equals(Color.GRAY)) {
+        if (search.isEmpty() || search.equals("nhập mã/tên/tên rút gọn của thuốc...") || txtProductSearch.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             productSearchWindow.setVisible(false); return;
         }
         productSearchResultsModel.clear(); currentProductSearchResults.clear();
@@ -208,7 +210,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         if (idx < 0 || idx >= currentProductSearchResults.size()) return;
         Product product = currentProductSearchResults.get(idx);
         addProductToExchangeTable(product);
-        txtProductSearch.setText(""); txtProductSearch.setForeground(Color.BLACK);
+        txtProductSearch.setText(""); txtProductSearch.setForeground(AppColors.TEXT);
         productSearchWindow.setVisible(false);
     }
 
@@ -355,7 +357,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private JPanel createCashOptionsPanel() {
         JPanel p = new JPanel(new GridLayout(0, 3, 10, 10));
         p.setBackground(Color.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
-        for (long inc : new long[]{0, 10000, 20000, 50000, 100000, 200000}) p.add(createCashButton(inc));
+        for (long inc : new long[]{1000L, 2000L, 5000L, 10000L, 20000L, 50000L, 100000L, 200000L, 500000L}) p.add(createCashButton(inc));
         return p;
     }
 
@@ -384,7 +386,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     }
 
     private void setPlaceholderAndTooltip(JTextField txt, String placeholder, String tooltip) {
-        txt.setText(placeholder); txt.setForeground(Color.GRAY);
+        txt.setText(placeholder); txt.setForeground(AppColors.PLACEHOLDER_TEXT);
         txt.setName("placeholder_" + placeholder);
         txt.addFocusListener(this); txt.setToolTipText(tooltip);
     }
@@ -433,7 +435,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         if (txtCustomerPayment != null) {
             Object v = txtCustomerPayment.getValue();
             long c = v instanceof Number ? ((Number) v).longValue() : 0;
-            txtCustomerPayment.setValue(c + amt); txtCustomerPayment.setForeground(Color.BLACK); txtCustomerPayment.requestFocusInWindow();
+            txtCustomerPayment.setValue(c + amt); txtCustomerPayment.setForeground(AppColors.TEXT); txtCustomerPayment.requestFocusInWindow();
         }
     }
 
@@ -485,8 +487,8 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     @Override public void focusGained(FocusEvent e) {
         if (e.getSource() instanceof JTextField) {
             JTextField t = (JTextField) e.getSource();
-            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getForeground().equals(Color.GRAY)) {
-                t.setText(""); t.setForeground(Color.BLACK);
+            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
+                t.setText(""); t.setForeground(AppColors.TEXT);
             }
         }
     }
@@ -502,7 +504,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             new javax.swing.Timer(150, evt -> productSearchWindow.setVisible(false)) {{ setRepeats(false); start(); }};
         } else if (src instanceof JTextField) {
             JTextField t = (JTextField) src;
-            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getText().isEmpty()) { t.setText(t.getToolTipText()); t.setForeground(Color.GRAY); }
+            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getText().isEmpty()) { t.setText(t.getToolTipText()); t.setForeground(AppColors.PLACEHOLDER_TEXT); }
         }
     }
 
