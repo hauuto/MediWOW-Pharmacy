@@ -177,7 +177,11 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
                 mdlInvoiceLine.setValueAt(qty, i, 3);
                 double price = parseCurrencyValue(mdlInvoiceLine.getValueAt(i, 4).toString());
                 mdlInvoiceLine.setValueAt(qty * price, i, 5);
-                invoice.updateInvoiceLine(product.getId(), baseUOM.getId(), new InvoiceLine(product, invoice, baseUOM, LineType.SALE, qty));
+                // Calculate unit price
+                Lot lot = product.getOldestLotAvailable();
+                double unitPrice = lot != null ? lot.getRawPrice() * (baseUOM != null ? baseUOM.getBasePriceConversionRate() : 1) : 0.0;
+                invoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(),
+                    new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice));
                 updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice(); return;
             }
         }
@@ -187,8 +191,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         productMap.put(product.getId(), product);
         int row = mdlInvoiceLine.getRowCount() - 1;
         previousUOMMap.put(row, product.getBaseUnitOfMeasure());
-        oldUOMIdMap.put(row, baseUOM.getId());
-        invoice.addInvoiceLine(new InvoiceLine(product, invoice, baseUOM, LineType.SALE, 1));
+        oldUOMIdMap.put(row, product.getBaseUnitOfMeasure());
+        invoice.addInvoiceLine(new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price));
         updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
     }
 
@@ -222,9 +226,10 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         double price = lot != null ? lot.getRawPrice() * (uom != null ? uom.getBasePriceConversionRate() : 1) : 0.0;
         mdlInvoiceLine.setValueAt(price, row, 4);
         mdlInvoiceLine.setValueAt(price * quantity, row, 5);
-        String oldUomId = oldUOMIdMap.getOrDefault(row, uom.getId());
-        invoice.updateInvoiceLine(productId, oldUomId, new InvoiceLine(product, invoice, uom, LineType.SALE, quantity));
-        oldUOMIdMap.put(row, uom.getId());
+        String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
+        invoice.updateInvoiceLine(productId, oldUomName,
+            new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, uomName, LineType.SALE, quantity, price));
+        oldUOMIdMap.put(row, uomName);
         previousUOMMap.put(row, uomName);
         updateVatDisplay(); updateTotalDisplay();
     }
@@ -327,8 +332,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
             String id = (String) mdlInvoiceLine.getValueAt(row, 0);
             Product p = productMap.get(id);
             if (p != null) {
-                UnitOfMeasure u = findUnitOfMeasure(p, (String) mdlInvoiceLine.getValueAt(row, 2));
-                invoice.removeInvoiceLine(id, u.getId());
+                String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+                invoice.removeInvoiceLine(id, uomName);
             }
             mdlInvoiceLine.removeRow(row);
         }
@@ -342,7 +347,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         for (int i = mdlInvoiceLine.getRowCount() - 1; i >= 0; i--) {
             String id = (String) mdlInvoiceLine.getValueAt(i, 0);
             Product p = productMap.get(id);
-            if (p != null) invoice.removeInvoiceLine(id, findUnitOfMeasure(p, (String) mdlInvoiceLine.getValueAt(i, 2)).getId());
+            String uomName = (String) mdlInvoiceLine.getValueAt(i, 2);
+            if (p != null) invoice.removeInvoiceLine(id, uomName);
         }
         mdlInvoiceLine.setRowCount(0);
         previousUOMMap.clear(); oldUOMIdMap.clear(); productMap.clear();

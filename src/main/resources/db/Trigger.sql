@@ -21,10 +21,13 @@ INSTEAD OF INSERT
             email NVARCHAR(255),
             hireDate DATE,
             isActive BIT,
-            role NVARCHAR(50)
+            role NVARCHAR(50),
+            isFirstLogin BIT,
+            mustChangePassword BIT
+
                                      );
 
-        INSERT INTO @StaffToInsert(username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role)
+        INSERT INTO @StaffToInsert(username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role, isFirstLogin, mustChangePassword)
         SELECT
             username,
             password,
@@ -34,7 +37,10 @@ INSTEAD OF INSERT
             email,
             hireDate,
             isActive,
-            role
+            role,
+            isFirstLogin,
+            mustChangePassword
+
         FROM inserted;
 
         DECLARE @CurrenYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
@@ -58,7 +64,7 @@ INSTEAD OF INSERT
         END
         WHERE username IS NULL OR username = '';
 
-        INSERT INTO Staff (id, username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role)
+        INSERT INTO Staff (id, username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role, isFirstLogin, mustChangePassword)
         SELECT
             id,
             username,
@@ -69,7 +75,9 @@ INSTEAD OF INSERT
             email,
             hireDate,
             isActive,
-            role
+            role,
+            isFirstLogin,
+            mustChangePassword
         FROM @StaffToInsert;
     END
 GO

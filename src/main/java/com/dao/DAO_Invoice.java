@@ -51,16 +51,19 @@ public class DAO_Invoice implements IInvoice {
                 invoice.setReferencedInvoice(session.merge(invoice.getReferencedInvoice()));
             }
 
+            // Merge prescribed customer if exists
+            if (invoice.getPrescribedCustomer() != null) {
+                invoice.setPrescribedCustomer(session.merge(invoice.getPrescribedCustomer()));
+            }
+
             // Process each invoice line to merge related entities
             if (invoice.getInvoiceLineList() != null) {
                 for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    // Merge product and unit of measure to attach to current session
+                    // Merge product to attach to current session
                     if (line.getProduct() != null) {
                         line.setProduct(session.merge(line.getProduct()));
                     }
-                    if (line.getUnitOfMeasure() != null) {
-                        line.setUnitOfMeasure(session.merge(line.getUnitOfMeasure()));
-                    }
+                    // unitOfMeasure is now just a String, no need to merge
                 }
             }
 
@@ -178,10 +181,10 @@ public class DAO_Invoice implements IInvoice {
                     InvoiceLine.class
                 ).setParameter("id", id).list();
 
-                // Fetch unitOfMeasure for invoice lines
+                // Fetch lotAllocations for invoice lines
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.unitOfMeasure " +
+                    "LEFT JOIN FETCH il.lotAllocations " +
                     "WHERE il.invoice.id = :id",
                     InvoiceLine.class
                 ).setParameter("id", id).list();
@@ -293,10 +296,10 @@ public class DAO_Invoice implements IInvoice {
                     InvoiceLine.class
                 ).setParameter("invoices", invoices).list();
 
-                // Fetch unitOfMeasure for invoice lines
+                // Fetch lotAllocations for invoice lines
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.unitOfMeasure " +
+                    "LEFT JOIN FETCH il.lotAllocations " +
                     "WHERE il.invoice IN :invoices",
                     InvoiceLine.class
                 ).setParameter("invoices", invoices).list();
@@ -336,10 +339,10 @@ public class DAO_Invoice implements IInvoice {
                     InvoiceLine.class
                 ).setParameter("invoiceId", invoiceId).list();
 
-                // Fetch unitOfMeasure
+                // Fetch lotAllocations
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.unitOfMeasure " +
+                    "LEFT JOIN FETCH il.lotAllocations " +
                     "WHERE il.invoice.id = :invoiceId",
                     InvoiceLine.class
                 ).setParameter("invoiceId", invoiceId).list();
@@ -386,10 +389,10 @@ public class DAO_Invoice implements IInvoice {
                     InvoiceLine.class
                 ).setParameter("invoiceLines", invoiceLines).list();
 
-                // Fetch unitOfMeasure
+                // Fetch lotAllocations
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.unitOfMeasure " +
+                    "LEFT JOIN FETCH il.lotAllocations " +
                     "WHERE il IN :invoiceLines",
                     InvoiceLine.class
                 ).setParameter("invoiceLines", invoiceLines).list();

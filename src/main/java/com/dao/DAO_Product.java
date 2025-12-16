@@ -92,11 +92,24 @@ public class DAO_Product implements IProduct {
     }
 
     @Override
-    public UnitOfMeasure getUnitOfMeasureById(String id) {
+    public UnitOfMeasure getUnitOfMeasureById(String productId, String name) {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            return session.createQuery("FROM UnitOfMeasure u WHERE u.id = :id", UnitOfMeasure.class)
+            return session.createQuery("FROM UnitOfMeasure u WHERE u.product.id = :productId AND u.name = :name", UnitOfMeasure.class)
+                    .setParameter("productId", productId)
+                    .setParameter("name", name)
+                    .uniqueResult();
+        } catch (Exception e) { e.printStackTrace(); return null; }
+        finally { if (session != null && session.isOpen()) session.close(); }
+    }
+
+    @Override
+    public Lot getLotById(String id) {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.createQuery("FROM Lot l WHERE l.id = :id", Lot.class)
                     .setParameter("id", id).uniqueResult();
         } catch (Exception e) { e.printStackTrace(); return null; }
         finally { if (session != null && session.isOpen()) session.close(); }

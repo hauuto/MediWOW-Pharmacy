@@ -52,5 +52,9 @@
         <mapping class="com.entities.PromotionAction"/>
         <mapping class="com.entities.PromotionCondition"/>
         <mapping class="com.entities.UnitOfMeasure"/>
+        <mapping class="com.entities.LotAllocation"/>
+        <mapping class="com.entities.MeasurementName"/>
+        <mapping class="com.entities.PrescribedCustomer"/>
     </session-factory>
 </hibernate-configuration>
+
