@@ -7,6 +7,7 @@ import com.entities.Promotion;
 import com.entities.PromotionAction;
 import com.entities.PromotionCondition;
 import com.entities.Product;
+import com.dao.DAO_Product;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -27,11 +28,12 @@ import java.util.List;
  * - SplitPane tổng: 60/40
  * - SplitPane bên trong: 40/60
  * - Bảng điều kiện & hành động có thể nhập trực tiếp
- * - Dưới cùng: 3 nút chính (Thêm mới, Cập nhật, Xóa)
+ * - Dưới cùng: 2 nút chính (context-aware)
  */
 public class TAB_Promotion extends JPanel {
 
     private final BUS_Promotion busPromotion = new BUS_Promotion();
+    private final DAO_Product daoProduct = new DAO_Product();
 
     private DefaultTableModel tableModel;
     private DefaultTableModel condModel;
@@ -52,9 +54,17 @@ public class TAB_Promotion extends JPanel {
     private JTable table;
     private final List<Promotion> promotionCache = new ArrayList<>();
 
-    // Biến để theo dõi chế độ (thêm mới hay cập nhật)
-    private boolean isEditMode = false;
+    // Các table editable trong phần điều kiện/hành động (lưu tham chiếu để enable/disable)
+    private JTable condTable;
+    private JTable actTable;
+
+    // Biến để theo dõi chế độ
+    private boolean isViewing = false;       // true khi đang xem 1 promotion đã chọn
+    private boolean isAdding = false;        // true khi đang ở chế độ thêm mới
+    private boolean isEditingFields = false; // true khi các trường đang bật để sửa
     private String currentEditingId = null;
+    // Flag để yêu cầu nhấn lần 2 để xác nhận lưu khi thêm mới
+    private boolean addConfirmPending = false;
 
     // Components cho filter
     private ButtonGroup statusFilterGroup;
@@ -62,6 +72,16 @@ public class TAB_Promotion extends JPanel {
     private JTextField txtSearch;
     private JComboBox<String> cbTypeSearch;
     private JComboBox<String> cbStatusSearch;
+
+    // UI controls cần truy cập từ các method khác
+    private JPanel detailCards; // CardLayout container
+    private final String CARD_PLACEHOLDER = "placeholder";
+    private final String CARD_DETAIL = "detail";
+    private JLabel placeholderLabel;
+
+    private JButton topAddButton;
+    private JButton bottomPrimaryButton;   // Cập nhật / Thêm mới
+    private JButton bottomSecondaryButton; // Hủy
 
     public TAB_Promotion() {
         setLayout(new BorderLayout());
@@ -85,7 +105,7 @@ public class TAB_Promotion extends JPanel {
         // LEFT: Danh sách
         JPanel mainLeft = createListPanel();
 
-        // RIGHT: Chi tiết
+        // RIGHT: Chi tiết (card layout so we can show placeholder)
         JPanel mainRight = createMainDetailPanel();
 
         mainSplit.setLeftComponent(mainLeft);
@@ -94,6 +114,9 @@ public class TAB_Promotion extends JPanel {
 
         // Load dữ liệu Promotion vào bảng
         loadPromotions();
+
+        // Start with placeholder visible
+        showPlaceholder();
     }
 
     /** Tạo panel tìm kiếm */
@@ -108,11 +131,15 @@ public class TAB_Promotion extends JPanel {
         top.setBackground(new Color(245, 250, 250));
 
         JLabel lblSearch = new JLabel("Tìm kiếm:");
-        txtSearch = new JTextField(25);
+        txtSearch = new JTextField(20);
         JButton btnSearch = new JButton("Tìm");
         cbTypeSearch = new JComboBox<>(new String[]{"Tất cả", "Giảm giá", "Tặng phẩm"});
         cbStatusSearch = new JComboBox<>(new String[]{"Tất cả", "Kích hoạt", "Chưa áp dụng"});
         JButton btnRefresh = new JButton("Làm mới");
+
+        // Thêm nút Thêm mới lên top theo yêu cầu
+        topAddButton = new JButton("Thêm mới");
+        styleButton(topAddButton, new Color(40, 167, 69), Color.WHITE);
 
         styleButton(btnSearch, AppColors.PRIMARY, Color.WHITE);
         styleButton(btnRefresh, AppColors.PRIMARY, Color.WHITE);
@@ -126,12 +153,17 @@ public class TAB_Promotion extends JPanel {
             cbStatusSearch.setSelectedIndex(0);
             resetFilters();
             loadPromotions();
+            // reset UI
+            handleCancelAll();
         });
+
+        topAddButton.addActionListener(e -> startAddMode());
 
         top.add(lblSearch);
         top.add(txtSearch);
         top.add(btnSearch);
         top.add(btnRefresh);
+        top.add(topAddButton);
 
         return top;
     }
@@ -192,8 +224,19 @@ public class TAB_Promotion extends JPanel {
         return mainLeft;
     }
 
-    /** Panel chi tiết bên phải */
+    /** Panel chi tiết bên phải - chuyển sang CardLayout để hỗ trợ placeholder */
     private JPanel createMainDetailPanel() {
+        detailCards = new JPanel(new CardLayout());
+
+        // Placeholder card
+        JPanel placeholderCard = new JPanel(new BorderLayout());
+        placeholderCard.setBackground(new Color(245, 250, 250));
+        placeholderLabel = new JLabel("Bấm vào 1 khuyến mãi bất kỳ để xem chi tiết", SwingConstants.CENTER);
+        placeholderLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        placeholderLabel.setForeground(new Color(180, 180, 180));
+        placeholderCard.add(placeholderLabel, BorderLayout.CENTER);
+
+        // Real detail card
         JPanel mainPanel = new JPanel(new BorderLayout(0, 10));
         mainPanel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(new Color(200, 230, 240)),
@@ -220,28 +263,68 @@ public class TAB_Promotion extends JPanel {
         verticalSplit.setBottomComponent(tablesPanel);
         verticalSplit.setBorder(null);
 
-        // --- Nút chức năng ---
+        // --- Nút chức năng (hai nút) ---
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         buttonPanel.setBackground(new Color(245, 250, 250));
 
-        JButton btnAdd = new JButton("Thêm mới");
-        styleButton(btnAdd, new Color(40, 167, 69), Color.WHITE);
-        JButton btnUpdate = new JButton("Cập nhật");
-        styleButton(btnUpdate, new Color(255, 193, 7), Color.WHITE);
-        JButton btnClear = new JButton("Xóa trắng");
-        styleButton(btnClear, AppColors.PRIMARY, Color.WHITE);
+        bottomPrimaryButton = new JButton("Cập nhật");
+        styleButton(bottomPrimaryButton, new Color(255, 193, 7), Color.WHITE);
+        bottomSecondaryButton = new JButton("Hủy");
+        styleButton(bottomSecondaryButton, AppColors.PRIMARY, Color.WHITE);
 
-        btnAdd.addActionListener(e -> handleAdd());
-        btnUpdate.addActionListener(e -> handleUpdate());
-        btnClear.addActionListener(e -> handleClearMainPanel());
+        // Default listeners will be replaced dynamically in flows
+        bottomPrimaryButton.addActionListener(e -> {
+            // If adding mode -> confirm add
+            if (isAdding) {
+                // Two-step: first click arms confirmation, second click will perform confirmation dialog
+                if (!addConfirmPending) {
+                    addConfirmPending = true;
+                    bottomPrimaryButton.setText("Xác nhận");
+                    styleButton(bottomPrimaryButton, new Color(255, 87, 34), Color.WHITE);
+                    return;
+                }
 
-        buttonPanel.add(btnAdd);
-        buttonPanel.add(btnUpdate);
-        buttonPanel.add(btnClear);
+                // second click -> show confirmation dialog and save
+                int confirm = JOptionPane.showConfirmDialog(this,
+                        "Bạn có chắc muốn thêm khuyến mãi này?",
+                        "Xác nhận", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    handleAdd();
+                } else {
+                    // user cancelled -> revert the confirm pending state
+                    addConfirmPending = false;
+                    bottomPrimaryButton.setText("Thêm mới");
+                    styleButton(bottomPrimaryButton, new Color(40, 167, 69), Color.WHITE);
+                }
+            } else if (isViewing) {
+                // Update flow: if fields not editable -> enable editing; else perform update (handleUpdate already asks confirm)
+                if (!isEditingFields) {
+                    setFormEditable(true);
+                    isEditingFields = true;
+                    // keep label as "Cập nhật" (user will press again to save)
+                } else {
+                    handleUpdate();
+                }
+            }
+        });
+
+        bottomSecondaryButton.addActionListener(e -> {
+            // Cancel for both add and update flows
+            handleCancelAll();
+        });
+
+        buttonPanel.add(bottomPrimaryButton);
+        buttonPanel.add(bottomSecondaryButton);
 
         mainPanel.add(verticalSplit, BorderLayout.CENTER);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-        return mainPanel;
+
+        // Compose cards
+        detailCards.add(placeholderCard, CARD_PLACEHOLDER);
+        detailCards.add(mainPanel, CARD_DETAIL);
+
+        // Initially show placeholder
+        return detailCards;
     }
 
     /** Panel thông tin khuyến mãi */
@@ -315,6 +398,10 @@ public class TAB_Promotion extends JPanel {
         ));
 
         JTable table = createEditableTable(model);
+
+        // Keep references to editable tables for enable/disable
+        if (model == condModel) condTable = table;
+        else if (model == actModel) actTable = table;
 
         // Set combo box cell editors cho các cột enum
         if (model == condModel) {
@@ -394,8 +481,32 @@ public class TAB_Promotion extends JPanel {
         return table;
     }
 
-    /** Xử lý thêm mới */
+    /** Bắt đầu chế độ thêm mới khi bấm nút Thêm mới trên top */
+    private void startAddMode() {
+        isAdding = true;
+        isViewing = false;
+        isEditingFields = true; // allow editing fields immediately
+        currentEditingId = null;
+        addConfirmPending = false;
+
+        // Clear form and enable editing
+        clearFormFields();
+        setFormEditable(true);
+
+        // Show detail card
+        showDetailCard();
+
+        // Update bottom buttons
+        bottomPrimaryButton.setText("Thêm mới");
+        styleButton(bottomPrimaryButton, new Color(40, 167, 69), Color.WHITE);
+        bottomSecondaryButton.setText("Hủy");
+        styleButton(bottomSecondaryButton, AppColors.PRIMARY, Color.WHITE);
+    }
+
+    /** Xử lý thêm mới (thực tế lưu vào DB) */
     private void handleAdd() {
+        // reset pending flag regardless of outcome
+        addConfirmPending = false;
         // Validation
         String name = txtNameField.getText().trim();
         if (name.isEmpty()) {
@@ -420,6 +531,8 @@ public class TAB_Promotion extends JPanel {
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 handleClearMainPanel();
                 loadPromotions(); // Reload danh sách
+                // After save, go back to placeholder
+                handleCancelAll();
             } else {
                 JOptionPane.showMessageDialog(this,
                     "❌ Không thể thêm khuyến mãi. Vui lòng kiểm tra lại thông tin hoặc xem console!",
@@ -443,6 +556,14 @@ public class TAB_Promotion extends JPanel {
             return;
         }
 
+        // If fields are not in edit mode, enable them and return (first click)
+        if (!isEditingFields) {
+            setFormEditable(true);
+            isEditingFields = true;
+            return;
+        }
+
+        // When fields already editable, validate and confirm then save
         // Validation
         String name = txtNameField.getText().trim();
         if (name.isEmpty()) {
@@ -474,6 +595,8 @@ public class TAB_Promotion extends JPanel {
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 handleClearMainPanel();
                 loadPromotions();
+                // after update, go back to placeholder
+                handleCancelAll();
             } else {
                 JOptionPane.showMessageDialog(this,
                     "❌ Không thể cập nhật khuyến mãi!",
@@ -487,7 +610,6 @@ public class TAB_Promotion extends JPanel {
                 "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
-
 
     /** Xây dựng object Promotion từ form */
     private Promotion buildPromotionFromForm(boolean isNew) {
@@ -539,7 +661,7 @@ public class TAB_Promotion extends JPanel {
             Product product = null;
             if (prodIdObj != null && !prodIdObj.toString().trim().isEmpty()) {
                 String productId = prodIdObj.toString().trim();
-                product = new Product(productId, null, null, null, null, null, null, null, 0, null, null, null, null, null, null);
+                product = daoProduct.getProductById(productId);
             }
 
             PromotionCondition cond = new PromotionCondition(
@@ -585,7 +707,7 @@ public class TAB_Promotion extends JPanel {
             Product product = null;
             if (prodIdObj != null && !prodIdObj.toString().trim().isEmpty()) {
                 String productId = prodIdObj.toString().trim();
-                product = new Product(productId, null, null, null, null, null, null, null, 0, null, null, null, null, null, null);
+                product = daoProduct.getProductById(productId);
             }
 
             PromotionAction action = new PromotionAction(
@@ -781,7 +903,12 @@ public class TAB_Promotion extends JPanel {
     private void showPromotionDetails(Promotion promo) {
         if (promo == null) return;
 
-        isEditMode = true;
+        // cancel any pending add confirmation
+        addConfirmPending = false;
+
+        isViewing = true;
+        isAdding = false;
+        isEditingFields = false;
         currentEditingId = promo.getId();
 
         // Điền thông tin cơ bản
@@ -798,7 +925,7 @@ public class TAB_Promotion extends JPanel {
         cbStatusField.setSelectedIndex(promo.getIsActive() ? 0 : 1);
 
         // Load conditions
-        condModel.removeTableModelListener(condListener);
+        if (condListener != null) condModel.removeTableModelListener(condListener);
         condModel.setRowCount(0);
 
         if (promo.getConditions() != null) {
@@ -813,10 +940,10 @@ public class TAB_Promotion extends JPanel {
             }
         }
         condModel.addRow(new Object[condModel.getColumnCount()]);
-        condModel.addTableModelListener(condListener);
+        if (condListener != null) condModel.addTableModelListener(condListener);
 
         // Load actions
-        actModel.removeTableModelListener(actListener);
+        if (actListener != null) actModel.removeTableModelListener(actListener);
         actModel.setRowCount(0);
 
         if (promo.getActions() != null) {
@@ -831,17 +958,27 @@ public class TAB_Promotion extends JPanel {
             }
         }
         actModel.addRow(new Object[actModel.getColumnCount()]);
-        actModel.addTableModelListener(actListener);
+        if (actListener != null) actModel.addTableModelListener(actListener);
+
+        // show detail card and set buttons to update/cancel
+        showDetailCard();
+        bottomPrimaryButton.setText("Cập nhật");
+        styleButton(bottomPrimaryButton, new Color(255, 193, 7), Color.WHITE);
+        bottomSecondaryButton.setText("Hủy");
+        styleButton(bottomSecondaryButton, AppColors.PRIMARY, Color.WHITE);
+
+        // Disable editing until user clicks cập nhật
+        setFormEditable(false);
     }
 
     /** Xóa trắng form */
     private void handleClearMainPanel() {
-        isEditMode = false;
+        isViewing = false;
+        isAdding = false;
+        isEditingFields = false;
         currentEditingId = null;
 
-        txtCodeField.setText("");
-        txtNameField.setText("");
-        txtDescField.setText("");
+        clearFormFields();
 
         Date today = new Date();
         Calendar cal = Calendar.getInstance();
@@ -867,6 +1004,69 @@ public class TAB_Promotion extends JPanel {
 
         // Clear selection
         table.clearSelection();
+    }
+
+    /** Cancel current mode and show placeholder */
+    private void handleCancelAll() {
+        // Reset states
+        isAdding = false;
+        isViewing = false;
+        isEditingFields = false;
+        currentEditingId = null;
+        addConfirmPending = false;
+
+        // Clear and disable form
+        handleClearMainPanel();
+        setFormEditable(false);
+
+        // Show placeholder card
+        showPlaceholder();
+
+        // Reset bottom buttons text (not visible in placeholder but keep default)
+        bottomPrimaryButton.setText("Cập nhật");
+        styleButton(bottomPrimaryButton, new Color(255, 193, 7), Color.WHITE);
+        bottomSecondaryButton.setText("Hủy");
+        styleButton(bottomSecondaryButton, AppColors.PRIMARY, Color.WHITE);
+    }
+
+    /** Enable or disable form fields and editable tables */
+    private void setFormEditable(boolean editable) {
+        txtNameField.setEditable(editable);
+        txtDescField.setEditable(editable);
+        dpStartDate.setEnabled(editable);
+        dpEndDate.setEnabled(editable);
+        cbTypeField.setEnabled(editable);
+        cbStatusField.setEnabled(editable);
+        // cond and act tables: enabling/disabling editing via setEnabled
+        if (condTable != null) condTable.setEnabled(editable);
+        if (actTable != null) actTable.setEnabled(editable);
+    }
+
+    private void clearFormFields() {
+        txtCodeField.setText("");
+        txtNameField.setText("");
+        txtDescField.setText("");
+
+        // Clear conditions/actions data (but keep 1 empty row)
+        if (condListener != null) condModel.removeTableModelListener(condListener);
+        condModel.setRowCount(0);
+        condModel.addRow(new Object[condModel.getColumnCount()]);
+        if (condListener != null) condModel.addTableModelListener(condListener);
+
+        if (actListener != null) actModel.removeTableModelListener(actListener);
+        actModel.setRowCount(0);
+        actModel.addRow(new Object[actModel.getColumnCount()]);
+        if (actListener != null) actModel.addTableModelListener(actListener);
+    }
+
+    private void showPlaceholder() {
+        CardLayout cl = (CardLayout) detailCards.getLayout();
+        cl.show(detailCards, CARD_PLACEHOLDER);
+    }
+
+    private void showDetailCard() {
+        CardLayout cl = (CardLayout) detailCards.getLayout();
+        cl.show(detailCards, CARD_DETAIL);
     }
 
     /** Style button */
