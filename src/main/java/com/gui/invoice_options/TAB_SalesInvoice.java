@@ -367,7 +367,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
         Box th = Box.createHorizontalBox(); th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
         v.add(Box.createVerticalStrut(82)); v.add(th); v.add(Box.createVerticalStrut(20));
-        
+
         Box presc = Box.createHorizontalBox();
         TitledBorder pb = BorderFactory.createTitledBorder("Thông tin kê đơn thuốc");
         pb.setTitleFont(new Font("Arial", Font.BOLD, 16)); pb.setTitleColor(AppColors.PRIMARY);
@@ -377,7 +377,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         txtPrescriptionCode = new JTextField(); txtPrescriptionCode.setName("txtPrescriptionCode"); txtPrescriptionCode.addFocusListener(this);
         pv.add(generateLabelAndTextField(new JLabel("Mã đơn kê thuốc:"), txtPrescriptionCode, "Điền mã đơn kê thuốc (nếu có)...", "Điền mã đơn kê thuốc", 39));
         pv.add(Box.createVerticalStrut(10));
-        
+
         Box pay = Box.createHorizontalBox();
         TitledBorder payb = BorderFactory.createTitledBorder("Thông tin thanh toán");
         payb.setTitleFont(new Font("Arial", Font.BOLD, 16)); payb.setTitleColor(AppColors.PRIMARY);
@@ -388,26 +388,26 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         payv.add(generateLabelAndTextField(new JLabel("Tìm kiếm khuyến mãi:"), txtPromotionSearch, "Điền mã hoặc tên khuyến mãi...", "Điền mã hoặc tên khuyến mãi", 10));
         setupPromotionSearchAutocomplete(txtPromotionSearch);
         payv.add(Box.createVerticalStrut(10));
-        
+
         txtVat = new JTextField(); txtVat.setEditable(false); txtVat.setFocusable(false);
         payv.add(generateLabelAndTextField(new JLabel("VAT:"), txtVat, "", "Thuế hóa đơn", 124));
         payv.add(Box.createVerticalStrut(10));
-        
+
         JTextField txtDiscount = new JTextField(); txtDiscount.setEditable(false); txtDiscount.setFocusable(false);
         payv.add(generateLabelAndTextField(new JLabel("Tiền giảm giá:"), txtDiscount, "", "Tiền giảm giá", 60));
         payv.add(Box.createVerticalStrut(10));
-        
+
         txtTotal = new JTextField(); txtTotal.setEditable(false); txtTotal.setFocusable(false);
         payv.add(generateLabelAndTextField(new JLabel("Tổng tiền:"), txtTotal, "", "Tổng tiền", 91));
         payv.add(Box.createVerticalStrut(10));
-        
+
         NumberFormatter fmt = new NumberFormatter(createCurrencyFormat());
         fmt.setValueClass(Long.class); fmt.setMinimum(0L); fmt.setAllowsInvalid(false); fmt.setCommitsOnValidEdit(true);
         txtCustomerPayment = new JFormattedTextField(fmt);
         payv.add(generateLabelAndTextField(new JLabel("Tiền khách đưa:"), txtCustomerPayment, "Nhập số tiền...", "Nhập số tiền", 47));
         txtCustomerPayment.setValue(0L);
         payv.add(Box.createVerticalStrut(10));
-        
+
         Box pm = Box.createHorizontalBox();
         JLabel lpm = new JLabel("Phương thức thanh toán:"); lpm.setFont(new Font("Arial", Font.PLAIN, 16));
         pm.add(lpm); pm.add(Box.createHorizontalStrut(29));
@@ -418,11 +418,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         bg.add(cash); bg.add(bank);
         pm.add(cash); pm.add(Box.createHorizontalStrut(10)); pm.add(bank); pm.add(Box.createHorizontalGlue());
         payv.add(pm); payv.add(Box.createVerticalStrut(10));
-        
+
         Box co = Box.createHorizontalBox(); co.add(Box.createHorizontalStrut(203));
         pnlCashOptions = createCashOptionsPanel(); co.add(pnlCashOptions);
         payv.add(co);
-        
+
         v.add(Box.createVerticalStrut(20));
         Box pb1 = Box.createHorizontalBox(); pb1.add(Box.createHorizontalGlue());
         btnProcessPayment = createStyledButton("Thanh toán");
@@ -442,8 +442,15 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private void updateCashButtons() {
         if (pnlCashOptions == null || txtTotal == null || invoice == null) return;
         pnlCashOptions.removeAll();
-        for (long inc : new long[]{((long) Math.ceil(invoice.calculateTotal() / 1000)) * 1000, 10000, 20000, 50000, 100000, 200000})
+        long[] amounts = {
+            1000L, 2000L, 5000L, 10000L, 20000L, 50000L, 100000L, 200000L, 500000L,
+            ((long) Math.ceil(invoice.calculateTotal() / 1000) * 1000)
+        };
+        for (long inc : amounts) {
             pnlCashOptions.add(createCashButton(inc));
+            if (inc == 500000L)
+                pnlCashOptions.add(new JPanel()); // Placeholder for alignment
+        }
         pnlCashOptions.revalidate(); pnlCashOptions.repaint();
     }
 

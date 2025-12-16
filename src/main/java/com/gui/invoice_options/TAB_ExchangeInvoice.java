@@ -355,7 +355,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private JPanel createCashOptionsPanel() {
         JPanel p = new JPanel(new GridLayout(0, 3, 10, 10));
         p.setBackground(Color.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
-        for (long inc : new long[]{0, 10000, 20000, 50000, 100000, 200000}) p.add(createCashButton(inc));
+        for (long inc : new long[]{1000L, 2000L, 5000L, 10000L, 20000L, 50000L, 100000L, 200000L, 500000L}) p.add(createCashButton(inc));
         return p;
     }
 
