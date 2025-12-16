@@ -86,14 +86,218 @@ GO
 
 
 
--- Trigger/Function to auto-generate Product ID --
--- Trigger/Function to auto-generate Unit ID --
--- Trigger/Function to auto-generate Lot ID --
--- Trigger/Function to auto-generate Promotion ID --
--- Trigger/Function to auto-generate PromotionCondition ID --
--- Trigger/Function to auto-generate PromotionAction ID --
--- Trigger/Function to auto-generate Invoice ID --
+-- Trigger to auto-generate Product ID --
+-- Author: To Thanh Hau --
+CREATE SEQUENCE dbo.ProductSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
+
+CREATE TRIGGER trg_Product_AutoID ON Product
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO Product (id, barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, creationDate, updateDate)
+    SELECT
+        'PRO' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.ProductSeg AS NVARCHAR(4)), 4),
+        barcode,
+        category,
+        form,
+        name,
+        shortName,
+        manufacturer,
+        activeIngredient,
+        vat,
+        strength,
+        description,
+        baseUnitOfMeasure,
+        creationDate,
+        updateDate
+    FROM inserted;
+END
+GO
 
 
+-- Trigger to auto-generate Lot ID --
+-- Author: To Thanh Hau --
+CREATE SEQUENCE dbo.LotSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
 
---
+CREATE TRIGGER trg_Lot_AutoID ON Lot
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+    SELECT
+        'LOT' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.LotSeg AS NVARCHAR(4)), 4),
+        batchNumber,
+        product,
+        quantity,
+        rawPrice,
+        expiryDate,
+        status
+    FROM inserted;
+END
+GO
+
+
+-- Trigger to auto-generate Promotion ID --
+-- Author: To Thanh Hau --
+CREATE SEQUENCE dbo.PromotionSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
+
+CREATE TRIGGER trg_Promotion_AutoID ON Promotion
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO Promotion (id, name, description, creationDate, effectiveDate, endDate, isActive)
+    SELECT
+        'PMO' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.PromotionSeg AS NVARCHAR(4)), 4),
+        name,
+        description,
+        creationDate,
+        effectiveDate,
+        endDate,
+        isActive
+    FROM inserted;
+END
+GO
+
+
+-- Trigger to auto-generate PromotionCondition ID --
+-- Author: To Thanh Hau --
+CREATE SEQUENCE dbo.PromotionConditionSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
+
+CREATE TRIGGER trg_PromotionCondition_AutoID ON PromotionCondition
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
+    SELECT
+        'PCO' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.PromotionConditionSeg AS NVARCHAR(4)), 4),
+        promotion,
+        type,
+        comparator,
+        target,
+        primaryValue,
+        secondaryValue,
+        product
+    FROM inserted;
+END
+GO
+
+
+-- Trigger to auto-generate PromotionAction ID --
+-- Author: To Thanh Hau --
+CREATE SEQUENCE dbo.PromotionActionSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
+
+CREATE TRIGGER trg_PromotionAction_AutoID ON PromotionAction
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
+    SELECT
+        'PAC' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.PromotionActionSeg AS NVARCHAR(4)), 4),
+        promotion,
+        actionOrder,
+        type,
+        target,
+        primaryValue,
+        secondaryValue,
+        product
+    FROM inserted;
+END
+GO
+
+
+-- Trigger to auto-generate Invoice ID --
+-- Author: To Thanh Hau --
+CREATE SEQUENCE dbo.InvoiceSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
+
+CREATE TRIGGER trg_Invoice_AutoID ON Invoice
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
+    SELECT
+        'INV' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.InvoiceSeg AS NVARCHAR(4)), 4),
+        type,
+        creationDate,
+        creator,
+        prescribedCustomer,
+        prescriptionCode,
+        referencedInvoice,
+        promotion,
+        paymentMethod,
+        notes
+    FROM inserted;
+END
+GO
+
+
+-- Trigger to auto-generate InvoiceLine ID --
+-- Author: To Thanh Hau --
+CREATE SEQUENCE dbo.InvoiceLineSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
+
+CREATE TRIGGER trg_InvoiceLine_AutoID ON InvoiceLine
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+    SELECT
+        'ILN' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.InvoiceLineSeg AS NVARCHAR(4)), 4),
+        invoice,
+        product,
+        unitOfMeasure,
+        quantity,
+        unitPrice,
+        lineType
+    FROM inserted;
+END
+GO
+
+
+-- Trigger to auto-generate LotAllocation ID --
+-- Author: To Thanh Hau --
+CREATE SEQUENCE dbo.LotAllocationSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
+
+CREATE TRIGGER trg_LotAllocation_AutoID ON LotAllocation
+INSTEAD OF INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO LotAllocation (id, invoiceLine, lot, quantity)
+    SELECT
+        'LAL' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.LotAllocationSeg AS NVARCHAR(4)), 4),
+        invoiceLine,
+        lot,
+        quantity
+    FROM inserted;
+END
+GO
