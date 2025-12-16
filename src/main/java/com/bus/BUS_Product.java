@@ -23,8 +23,19 @@ public class BUS_Product implements IProduct {
     @Override public Product getProductById(String id) { return (id == null || id.isBlank()) ? null : dao.getProductById(id); }
     @Override public Product getProductByBarcode(String barcode) { return dao.getProductByBarcode(barcode); }
     @Override public Lot getLotByBatchNumber(String batchNumber) { return (batchNumber == null || batchNumber.isBlank()) ? null : dao.getLotByBatchNumber(batchNumber); }
+
+    @Override
+    public Lot getLotById(String id) {
+        return null;
+    }
+
     @Override public List<Lot> getAllLots() { return dao.getAllLots(); }
-    @Override public UnitOfMeasure getUnitOfMeasureById(String id) { return (id == null || id.isBlank()) ? null : dao.getUnitOfMeasureById(id); }
+
+    @Override
+    public UnitOfMeasure getUnitOfMeasureById(String productId, String name) {
+        return null;
+    }
+
     @Override public List<UnitOfMeasure> getAllUnitOfMeasures() { return dao.getAllUnitOfMeasures(); }
 
     @Override

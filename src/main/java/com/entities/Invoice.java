@@ -38,6 +38,10 @@ public class Invoice {
     @JoinColumn(name = "creator", nullable = false)
     private Staff creator;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prescribedCustomer")
+    private PrescribedCustomer prescribedCustomer;
+
     @Column(name = "prescriptionCode", length = 100)
     private String prescriptionCode;
 
@@ -66,11 +70,12 @@ public class Invoice {
         this.invoiceLineList = new ArrayList<>();
     }
 
-    public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
+    public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator, PrescribedCustomer prescribedCustomer, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
         this.id = id;
         this.type = type;
         this.creationDate = creationDate;
         this.creator = creator;
+        this.prescribedCustomer = prescribedCustomer;
         this.notes = notes;
         this.prescriptionCode = prescriptionCode;
         this.invoiceLineList = invoiceLineList != null ? invoiceLineList : new ArrayList<>();
@@ -105,6 +110,14 @@ public class Invoice {
 
     public void setCreator(Staff creator) {
         this.creator = creator;
+    }
+
+    public PrescribedCustomer getPrescribedCustomer() {
+        return prescribedCustomer;
+    }
+
+    public void setPrescribedCustomer(PrescribedCustomer prescribedCustomer) {
+        this.prescribedCustomer = prescribedCustomer;
     }
 
     public String getPrescriptionCode() {
@@ -175,11 +188,11 @@ public class Invoice {
      * If only quantity changes, updates the existing line.
      *
      * @param oldProductId The product ID of the line to update
-     * @param oldUomId The old UOM ID
+     * @param oldUomName The old UOM name
      * @param newInvoiceLine The new InvoiceLine with updated values
      * @return true if the InvoiceLine was found and updated, false otherwise.
      */
-    public boolean updateInvoiceLine(String oldProductId, String oldUomId, InvoiceLine newInvoiceLine) {
+    public boolean updateInvoiceLine(String oldProductId, String oldUomName, InvoiceLine newInvoiceLine) {
         if (newInvoiceLine == null)
             return false;
 
@@ -187,7 +200,7 @@ public class Invoice {
         InvoiceLine oldLine = null;
         for (InvoiceLine line : invoiceLineList) {
             if (line.getProduct().getId().equals(oldProductId) &&
-                line.getUnitOfMeasure().getId().equals(oldUomId)) {
+                line.getUnitOfMeasure().equals(oldUomName)) {
                 oldLine = line;
                 break;
             }
@@ -200,7 +213,7 @@ public class Invoice {
             boolean exists = false;
             for (InvoiceLine existingLine : invoiceLineList) {
                 if (existingLine.getProduct().getId().equals(newInvoiceLine.getProduct().getId()) &&
-                    existingLine.getUnitOfMeasure().getId().equals(newInvoiceLine.getUnitOfMeasure().getId())) {
+                    existingLine.getUnitOfMeasure().equals(newInvoiceLine.getUnitOfMeasure())) {
                     // Merge quantities
                     existingLine.setQuantity(existingLine.getQuantity() + newInvoiceLine.getQuantity());
                     exists = true;
@@ -223,13 +236,13 @@ public class Invoice {
      * Removes an InvoiceLine from the invoice.
      *
      * @param productId The ID of the product in the InvoiceLine to be removed.
-     * @param unitOfMeasureId The ID of the unit of measure in the InvoiceLine to be removed.
+     * @param unitOfMeasureName The name of the unit of measure in the InvoiceLine to be removed.
      * @return true if the InvoiceLine was found and removed, false otherwise
      */
-    public boolean removeInvoiceLine(String productId, String unitOfMeasureId) {
+    public boolean removeInvoiceLine(String productId, String unitOfMeasureName) {
         return invoiceLineList.removeIf(line ->
                 line.getProduct().getId().equals(productId) &&
-                line.getUnitOfMeasure().getId().equals(unitOfMeasureId)
+                line.getUnitOfMeasure().equals(unitOfMeasureName)
         );
     }
 
