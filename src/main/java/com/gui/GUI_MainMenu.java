@@ -45,12 +45,6 @@ public class GUI_MainMenu implements ActionListener {
     /**
      * @author Tô Thanh Hậu
      */
-    private void createUIComponents() {
-        // TODO: place custom component creation code here
-
-
-    }
-
 
     public GUI_MainMenu(Staff staff) {
         this.currentStaff = staff;
@@ -298,7 +292,7 @@ public class GUI_MainMenu implements ActionListener {
         btnSales.setPreferredSize(new Dimension(150, 50));
         btnSales.setRolloverEnabled(true);
         btnSales.setSelected(false);
-        btnSales.setText("Hóa đơn");
+        btnSales.setText("Đơn hàng");
         btnSales.setToolTipText("Nhấp vào để bắt đầu bán hàng");
         btnSales.putClientProperty("hideActionText", Boolean.FALSE);
         btnSales.putClientProperty("html.disable", Boolean.FALSE);
