@@ -37,7 +37,7 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
     }
 
     private JPanel createInvoiceButtonNavBar() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(AppColors.WHITE);
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(AppColors.LIGHT);
         btnSalesInvoice = createStyledButton("Hóa đơn mua"); btnExchangeInvoice = createStyledButton("Hóa đơn đổi"); btnReturnInvoice = createStyledButton("Hóa đơn trả");
         btnSalesInvoice.addActionListener(this); btnExchangeInvoice.addActionListener(this); btnReturnInvoice.addActionListener(this);
         p.add(btnSalesInvoice); p.add(btnExchangeInvoice); p.add(btnReturnInvoice);
@@ -65,15 +65,15 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
     }
 
     private void setActiveButton(JButton activeButton) {
-        btnSalesInvoice.setBackground(AppColors.WHITE);  btnExchangeInvoice.setBackground(AppColors.WHITE); btnReturnInvoice.setBackground(AppColors.WHITE);
-        activeButton.setBackground(AppColors.LIGHT);
+        btnSalesInvoice.setBackground(AppColors.LIGHT);  btnExchangeInvoice.setBackground(AppColors.LIGHT); btnReturnInvoice.setBackground(AppColors.LIGHT);
+        activeButton.setBackground(AppColors.PRIMARY);
     }
 
     public JComponent $$$getRootComponent$$$() { return pnlInvoiceMenu; }
 
     private JButton createStyledButton(String text) {
         int arc = 12; // Corner radius
-        Color pressedColor = AppColors.LIGHT, rolloverColor = AppColors.BACKGROUND;
+        Color pressedColor = AppColors.PRIMARY, rolloverColor = AppColors.SECONDARY;
         JButton btnStyled = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -89,8 +89,8 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
         btnStyled.setContentAreaFilled(false); btnStyled.setOpaque(false); btnStyled.setBorderPainted(false);
         btnStyled.setFocusPainted(false);  btnStyled.setRolloverEnabled(true);
         btnStyled.setMargin(new Insets(10, 10, 10, 10)); btnStyled.setFont(new Font("Arial", Font.BOLD, 16));
-        btnStyled.setForeground(AppColors.DARK); btnStyled.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); btnStyled.setName(text);
-        btnStyled.setBackground(AppColors.WHITE);
+        btnStyled.setForeground(AppColors.TEXT); btnStyled.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); btnStyled.setName(text);
+        btnStyled.setBackground(AppColors.LIGHT);
         return btnStyled;
     }
 }

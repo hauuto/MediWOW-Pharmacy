@@ -60,7 +60,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     private Box createProductSearchBar() {
         Box v = Box.createVerticalBox(), h = Box.createHorizontalBox();
-        v.setOpaque(true); v.setBackground(Color.WHITE);
+        v.setOpaque(true); v.setBackground(AppColors.WHITE);
         v.add(Box.createVerticalStrut(5)); v.add(h); v.add(Box.createVerticalStrut(5));
         h.add(Box.createHorizontalStrut(5));
         txtSearchInput = new JTextField();
@@ -92,7 +92,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     private void performSearch(JTextField txt) {
         String search = txt.getText().trim().toLowerCase();
-        if (search.isEmpty() || search.equals("nhập mã/tên/tên rút gọn của thuốc...") || txt.getForeground().equals(Color.GRAY)) {
+        if (search.isEmpty() || search.equals("nhập mã/tên/tên rút gọn của thuốc...") || txt.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             searchWindow.setVisible(false); return;
         }
         searchResultsModel.clear(); currentSearchResults.clear();
@@ -117,7 +117,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private void selectProduct(int idx, JTextField txt) {
         if (idx < 0 || idx >= currentSearchResults.size()) return;
         addProductToInvoice(currentSearchResults.get(idx));
-        txt.setText(""); txt.setForeground(Color.BLACK);
+        txt.setText(""); txt.setForeground(AppColors.TEXT);
         searchWindow.setVisible(false);
     }
 
@@ -137,7 +137,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     private void performPromotionSearch() {
         String search = txtPromotionSearch.getText().trim().toLowerCase();
-        if (search.isEmpty() || txtPromotionSearch.getForeground().equals(Color.GRAY)) {
+        if (search.isEmpty() || txtPromotionSearch.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             promotionSearchWindow.setVisible(false); return;
         }
         promotionSearchResultsModel.clear(); currentPromotionSearchResults.clear();
@@ -163,7 +163,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         Promotion p = currentPromotionSearchResults.get(idx);
         invoice.setPromotion(p);
         txtPromotionSearch.setText(p.getId() + " - " + p.getName());
-        txtPromotionSearch.setForeground(Color.BLACK);
+        txtPromotionSearch.setForeground(AppColors.TEXT);
         promotionSearchWindow.setVisible(false);
     }
 
@@ -237,17 +237,17 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private void setPlaceholderAndTooltip(JTextField txt, String placeholder, String tooltip) {
-        txt.setText(placeholder); txt.setForeground(Color.GRAY);
+        txt.setText(placeholder); txt.setForeground(AppColors.PLACEHOLDER_TEXT);
         txt.setName("placeholder_" + placeholder);
         txt.addFocusListener(this); txt.setToolTipText(tooltip);
     }
 
     private void createSplitPane() {
         JPanel left = new JPanel(new BorderLayout()), right = new JPanel(new BorderLayout());
-        left.setBackground(Color.WHITE); left.setMinimumSize(new Dimension(LEFT_MIN, 0));
-        right.setBackground(AppColors.WHITE); right.setMinimumSize(new Dimension(RIGHT_MIN, 0));
+        left.setBackground(AppColors.WHITE); left.setMinimumSize(new Dimension(LEFT_MIN, 0));
+        right.setBackground(AppColors.BACKGROUND); right.setMinimumSize(new Dimension(RIGHT_MIN, 0));
         left.add(createProductSearchBar(), BorderLayout.NORTH);
-        JPanel cont = new JPanel(new BorderLayout()); cont.setBackground(Color.WHITE);
+        JPanel cont = new JPanel(new BorderLayout()); cont.setBackground(AppColors.WHITE);
         Box tv = Box.createVerticalBox(), th = Box.createHorizontalBox();
         JLabel title = new JLabel("CHI TIẾT HÓA ĐƠN BÁN HÀNG");
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
@@ -256,7 +256,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         cont.add(tv, BorderLayout.NORTH); createInvoiceLineTable(); cont.add(scrInvoiceLine, BorderLayout.CENTER);
         left.add(cont, BorderLayout.CENTER); left.add(createInvoiceLineTableButtons(), BorderLayout.SOUTH);
         right.add(createInvoice(), BorderLayout.NORTH);
-        pnlSalesInvoice.add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right), BorderLayout.CENTER);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
+        splitPane.setBackground(AppColors.WHITE);
+        pnlSalesInvoice.add(splitPane, BorderLayout.CENTER);
     }
 
     private void createInvoiceLineTable() {
@@ -264,12 +266,13 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             public boolean isCellEditable(int r, int c) { return c == 2 || c == 3; }
         };
         tblInvoiceLine = new JTable(mdlInvoiceLine);
+        tblInvoiceLine.setBackground(AppColors.WHITE);
         tblInvoiceLine.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         tblInvoiceLine.setFont(new Font("Arial", Font.PLAIN, 16));
         tblInvoiceLine.getTableHeader().setReorderingAllowed(false);
         tblInvoiceLine.setRowHeight(35);
         tblInvoiceLine.getTableHeader().setBackground(AppColors.PRIMARY);
-        tblInvoiceLine.getTableHeader().setForeground(Color.WHITE);
+        tblInvoiceLine.getTableHeader().setForeground(AppColors.WHITE);
         tblInvoiceLine.getTableHeader().setFont(new Font("Arial", Font.BOLD, 16));
         tblInvoiceLine.getColumnModel().getColumn(2).setCellEditor(new UnitOfMeasureCellEditor());
         tblInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
@@ -283,7 +286,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         DefaultTableCellRenderer r = new DefaultTableCellRenderer() {
             public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int row, int col) {
                 Component c = super.getTableCellRendererComponent(t, v, s, f, row, col);
-                c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(240, 240, 240));
+                c.setBackground(row % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
                 if (s) c.setBackground(t.getSelectionBackground());
                 return c;
             }
@@ -293,7 +296,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private JPanel createInvoiceLineTableButtons() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(Color.WHITE);
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(AppColors.WHITE);
         JButton removeAll = createStyledButton("Xóa tất cả"), remove = createStyledButton("Xóa sản phẩm");
         removeAll.setName("btnRemoveAllItems"); removeAll.addActionListener(this);
         remove.setName("btnRemoveItem"); remove.addActionListener(this);
@@ -310,7 +313,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private void updateBarcodeScanButtonAppearance() {
-        btnBarcodeScan.setBackground(barcodeScanningEnabled ? new Color(46, 204, 113) : Color.WHITE);
+        btnBarcodeScan.setBackground(barcodeScanningEnabled ? new Color(46, 204, 113) : AppColors.WHITE);
     }
 
     private void processBarcodeInput() {
@@ -361,7 +364,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         JButton b = new JButton(text);
         b.setMargin(new Insets(10,10,10,10)); b.setBorderPainted(false);
         b.setFont(new Font("Arial", Font.BOLD, 16)); b.setForeground(new Color(11, 110, 217));
-        b.setOpaque(true); b.setBackground(text.equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
+        b.setOpaque(true); b.setBackground(text.equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
         b.setCursor(new Cursor(Cursor.HAND_CURSOR)); b.setName(text); b.addMouseListener(this);
         return b;
     }
@@ -440,7 +443,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     private JPanel createCashOptionsPanel() {
         JPanel p = new JPanel(new GridLayout(0, 3, 10, 10));
-        p.setBackground(Color.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
+        p.setBackground(AppColors.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
         updateCashButtons();
         return p;
     }
@@ -593,7 +596,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     private void validatePrescriptionCode() {
         String txt = txtPrescriptionCode.getText().trim();
-        if (txt.isEmpty() || txt.equals("Điền mã đơn kê thuốc (nếu có)...") || txtPrescriptionCode.getForeground().equals(Color.GRAY)) {
+        if (txt.isEmpty() || txt.equals("Điền mã đơn kê thuốc (nếu có)...") || txtPrescriptionCode.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             boolean hasETC = invoice.getInvoiceLineList().stream().anyMatch(l -> l.getProduct().getCategory() == ProductCategory.ETC);
             if (hasETC) {
                 JOptionPane.showMessageDialog(parentWindow, "Hóa đơn có thuốc ETC. Vui lòng nhập mã đơn thuốc!", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
@@ -664,7 +667,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (e.getSource() instanceof JButton) {
             JButton b = (JButton) e.getSource();
             if ("btnBarcodeScan".equals(b.getName())) updateBarcodeScanButtonAppearance();
-            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
+            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
         }
     }
 
@@ -672,7 +675,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (e.getSource() instanceof JButton) {
             JButton b = (JButton) e.getSource();
             if (!"btnBarcodeScan".equals(b.getName()) || !barcodeScanningEnabled)
-                b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? Color.WHITE : AppColors.WHITE);
+                b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : AppColors.BACKGROUND);
         }
     }
 
@@ -680,15 +683,15 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (e.getSource() instanceof JButton) {
             JButton b = (JButton) e.getSource();
             if ("btnBarcodeScan".equals(b.getName())) updateBarcodeScanButtonAppearance();
-            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
+            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
         }
     }
 
     @Override public void focusGained(FocusEvent e) {
         if (e.getSource() instanceof JTextField) {
             JTextField t = (JTextField) e.getSource();
-            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getForeground().equals(Color.GRAY)) {
-                t.setText(""); t.setForeground(Color.BLACK);
+            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
+                t.setText(""); t.setForeground(AppColors.TEXT);
             }
         }
     }
@@ -702,7 +705,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         else if (src == txtPromotionSearch) new javax.swing.Timer(150, evt -> promotionSearchWindow.setVisible(false)) {{ setRepeats(false); start(); }};
         else if (src instanceof JTextField) {
             JTextField t = (JTextField) src;
-            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getText().isEmpty()) { t.setText(t.getToolTipText()); t.setForeground(Color.GRAY); }
+            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getText().isEmpty()) { t.setText(t.getToolTipText()); t.setForeground(AppColors.PLACEHOLDER_TEXT); }
         }
     }
 
@@ -751,7 +754,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (txtCustomerPayment != null) {
             Object v = txtCustomerPayment.getValue();
             long c = v instanceof Number ? ((Number) v).longValue() : 0;
-            txtCustomerPayment.setValue(c + amt); txtCustomerPayment.setForeground(Color.BLACK); txtCustomerPayment.requestFocusInWindow();
+            txtCustomerPayment.setValue(c + amt); txtCustomerPayment.setForeground(AppColors.TEXT); txtCustomerPayment.requestFocusInWindow();
         }
     }
 
