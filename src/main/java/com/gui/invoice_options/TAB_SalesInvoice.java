@@ -1,4 +1,4 @@
-package com.gui;
+package com.gui.invoice_options;
 
 import com.bus.*;
 import com.entities.*;
@@ -18,8 +18,8 @@ import java.text.*;
 import java.util.*;
 import java.util.List;
 
-public class TAB_Selling extends JFrame implements ActionListener, MouseListener, FocusListener, KeyListener, DocumentListener, PropertyChangeListener, TableModelListener {
-    JPanel pnlSelling;
+public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseListener, FocusListener, KeyListener, DocumentListener, PropertyChangeListener, TableModelListener {
+    public JPanel pnlSalesInvoice;
     private static final int LEFT_MIN = 750, RIGHT_MIN = 530;
     private final BUS_Product busProduct = new BUS_Product();
     private final BUS_Invoice busInvoice = new BUS_Invoice();
@@ -47,14 +47,14 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     private static final String PRESCRIPTION_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
     private final Window parentWindow;
 
-    public TAB_Selling(Staff creator) {
+    public TAB_SalesInvoice(Staff creator) {
         $$$setupUI$$$();
         invoice = new Invoice(InvoiceType.SALES, creator);
         invoice.setPaymentMethod(PaymentMethod.CASH);
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         promotions = busPromotion.getAllPromotions().stream().filter(Promotion::getIsActive).toList();
-        parentWindow = SwingUtilities.getWindowAncestor(pnlSelling);
+        parentWindow = SwingUtilities.getWindowAncestor(pnlSalesInvoice);
         createSplitPane();
     }
 
@@ -82,7 +82,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         searchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
         searchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         searchResultsList.setName("searchResultsList");
-        searchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
+        searchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSalesInvoice));
         searchWindow.add(new JScrollPane(searchResultsList));
         searchWindow.setFocusableWindowState(false);
         txt.getDocument().addDocumentListener(this);
@@ -127,7 +127,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         promotionSearchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
         promotionSearchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         promotionSearchResultsList.setName("promotionSearchResultsList");
-        promotionSearchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
+        promotionSearchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSalesInvoice));
         promotionSearchWindow.add(new JScrollPane(promotionSearchResultsList));
         promotionSearchWindow.setFocusableWindowState(false);
         txt.getDocument().addDocumentListener(this);
@@ -251,7 +251,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         cont.add(tv, BorderLayout.NORTH); createInvoiceLineTable(); cont.add(scrInvoiceLine, BorderLayout.CENTER);
         left.add(cont, BorderLayout.CENTER); left.add(createInvoiceLineTableButtons(), BorderLayout.SOUTH);
         right.add(createInvoice(), BorderLayout.NORTH);
-        pnlSelling.add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right), BorderLayout.CENTER);
+        pnlSalesInvoice.add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right), BorderLayout.CENTER);
     }
 
     private void createInvoiceLineTable() {
@@ -366,7 +366,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         JLabel title = new JLabel("HÓA ĐƠN BÁN HÀNG");
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
         Box th = Box.createHorizontalBox(); th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
-        v.add(Box.createVerticalStrut(80)); v.add(th); v.add(Box.createVerticalStrut(15));
+        v.add(Box.createVerticalStrut(82)); v.add(th); v.add(Box.createVerticalStrut(20));
         
         Box presc = Box.createHorizontalBox();
         TitledBorder pb = BorderFactory.createTitledBorder("Thông tin kê đơn thuốc");
@@ -454,11 +454,11 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     }
 
     private void $$$setupUI$$$() {
-        pnlSelling = new JPanel(); pnlSelling.setLayout(new BorderLayout(0, 0));
-        pnlSelling.setBackground(new Color(-16777216));
+        pnlSalesInvoice = new JPanel(); pnlSalesInvoice.setLayout(new BorderLayout(0, 0));
+        pnlSalesInvoice.setBackground(AppColors.WHITE);
     }
 
-    public JComponent $$$getRootComponent$$$() { return pnlSelling; }
+    public JComponent $$$getRootComponent$$$() { return pnlSalesInvoice; }
 
     private class UnitOfMeasureCellEditor extends DefaultCellEditor {
         private JComboBox<String> comboBox;
