@@ -45,14 +45,16 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     private List<Product> currentSearchResults = new ArrayList<>();
     private List<Promotion> currentPromotionSearchResults = new ArrayList<>();
     private static final String PRESCRIPTION_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
+    private final Window parentWindow;
 
     public TAB_Selling(Staff creator) {
+        $$$setupUI$$$();
         invoice = new Invoice(InvoiceType.SALES, creator);
         invoice.setPaymentMethod(PaymentMethod.CASH);
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         promotions = busPromotion.getAllPromotions().stream().filter(Promotion::getIsActive).toList();
-        $$$setupUI$$$();
+        parentWindow = SwingUtilities.getWindowAncestor(pnlSelling);
         createSplitPane();
     }
 
@@ -167,7 +169,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
 
     private void addProductToInvoice(Product product) {
         if (product.getCategory() == ProductCategory.ETC && !isValidPrescriptionCode()) {
-            JOptionPane.showMessageDialog(pnlSelling, "Sản phẩm '" + product.getName() + "' là thuốc ETC.\nVui lòng nhập mã đơn thuốc hợp lệ.", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' là thuốc ETC.\nVui lòng nhập mã đơn thuốc hợp lệ.", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
             txtPrescriptionCode.requestFocusInWindow(); return;
         }
         UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
@@ -211,7 +213,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         if (product == null) return;
         for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
             if (i != row && mdlInvoiceLine.getValueAt(i, 0).equals(productId) && mdlInvoiceLine.getValueAt(i, 2).equals(uomName)) {
-                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(pnlSelling, "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại!", "Cảnh báo trùng lặp", JOptionPane.WARNING_MESSAGE));
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại!", "Cảnh báo trùng lặp", JOptionPane.WARNING_MESSAGE));
                 String prev = previousUOMMap.get(row);
                 mdlInvoiceLine.setValueAt(prev != null ? prev : product.getBaseUnitOfMeasure(), row, 2);
                 return;
@@ -298,7 +300,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         barcodeScanningEnabled = !barcodeScanningEnabled;
         updateBarcodeScanButtonAppearance();
         txtSearchInput.setText(""); txtSearchInput.requestFocusInWindow();
-        JOptionPane.showMessageDialog(pnlSelling, "Chế độ quét mã vạch đã " + (barcodeScanningEnabled ? "BẬT" : "TẮT") + "!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã " + (barcodeScanningEnabled ? "BẬT" : "TẮT") + "!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
         SwingUtilities.invokeLater(() -> txtSearchInput.requestFocusInWindow());
     }
 
@@ -312,7 +314,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         Product p = products.stream().filter(pr -> code.equals(pr.getBarcode())).findFirst().orElse(null);
         Toolkit.getDefaultToolkit().beep();
         if (p == null)
-            JOptionPane.showMessageDialog(pnlSelling, "Không tìm thấy sản phẩm với mã vạch: " + code, "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parentWindow, "Không tìm thấy sản phẩm với mã vạch: " + code, "Lỗi", JOptionPane.ERROR_MESSAGE);
         else
             addProductToInvoice(p);
         SwingUtilities.invokeLater(() -> { if (barcodeScanningEnabled) txtSearchInput.requestFocusInWindow(); });
@@ -320,8 +322,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
 
     private void removeSelectedItems() {
         int[] rows = tblInvoiceLine.getSelectedRows();
-        if (rows.length == 0) { JOptionPane.showMessageDialog(pnlSelling, "Vui lòng chọn sản phẩm cần xóa!", "Thông báo", JOptionPane.WARNING_MESSAGE); return; }
-        if (JOptionPane.showConfirmDialog(pnlSelling, "Bạn có chắc chắn muốn xóa " + rows.length + " sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+        if (rows.length == 0) { JOptionPane.showMessageDialog(parentWindow, "Vui lòng chọn sản phẩm cần xóa!", "Thông báo", JOptionPane.WARNING_MESSAGE); return; }
+        if (JOptionPane.showConfirmDialog(parentWindow, "Bạn có chắc chắn muốn xóa " + rows.length + " sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
         for (int i = rows.length - 1; i >= 0; i--) {
             int row = rows[i];
             String id = (String) mdlInvoiceLine.getValueAt(row, 0);
@@ -337,8 +339,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     }
 
     private void removeAllItems() {
-        if (mdlInvoiceLine.getRowCount() == 0) { JOptionPane.showMessageDialog(pnlSelling, "Không có sản phẩm nào để xóa!", "Thông báo", JOptionPane.INFORMATION_MESSAGE); return; }
-        if (JOptionPane.showConfirmDialog(pnlSelling, "Bạn có chắc chắn muốn xóa tất cả sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+        if (mdlInvoiceLine.getRowCount() == 0) { JOptionPane.showMessageDialog(parentWindow, "Không có sản phẩm nào để xóa!", "Thông báo", JOptionPane.INFORMATION_MESSAGE); return; }
+        if (JOptionPane.showConfirmDialog(parentWindow, "Bạn có chắc chắn muốn xóa tất cả sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
         for (int i = mdlInvoiceLine.getRowCount() - 1; i >= 0; i--) {
             String id = (String) mdlInvoiceLine.getValueAt(i, 0);
             Product p = productMap.get(id);
@@ -581,7 +583,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         if (txt.isEmpty() || txt.equals("Điền mã đơn kê thuốc (nếu có)...") || txtPrescriptionCode.getForeground().equals(Color.GRAY)) {
             boolean hasETC = invoice.getInvoiceLineList().stream().anyMatch(l -> l.getProduct().getCategory() == ProductCategory.ETC);
             if (hasETC) {
-                JOptionPane.showMessageDialog(pnlSelling, "Hóa đơn có thuốc ETC. Vui lòng nhập mã đơn thuốc!", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(parentWindow, "Hóa đơn có thuốc ETC. Vui lòng nhập mã đơn thuốc!", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
                 txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
             } else {
                 invoice.setPrescriptionCode(null); btnProcessPayment.setEnabled(true);
@@ -589,12 +591,12 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
             return;
         }
         if (!txt.matches(PRESCRIPTION_PATTERN)) {
-            JOptionPane.showMessageDialog(pnlSelling, "Mã đơn thuốc không hợp lệ!\n\nĐịnh dạng: xxxxxyyyyyyy-z\n- 5 ký tự đầu: mã cơ sở\n- 7 ký tự tiếp: mã đơn thuốc\n- 1 ký tự cuối: loại (N/H/C)", "Mã đơn thuốc không hợp lệ", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parentWindow, "Mã đơn thuốc không hợp lệ!\n\nĐịnh dạng: xxxxxyyyyyyy-z\n- 5 ký tự đầu: mã cơ sở\n- 7 ký tự tiếp: mã đơn thuốc\n- 1 ký tự cuối: loại (N/H/C)", "Mã đơn thuốc không hợp lệ", JOptionPane.ERROR_MESSAGE);
             txtPrescriptionCode.selectAll(); txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
             return;
         }
         if (previousPrescriptionCodes.contains(txt.toLowerCase())) {
-            JOptionPane.showMessageDialog(pnlSelling, "Mã đơn thuốc đã được sử dụng!", "Mã trùng lặp", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parentWindow, "Mã đơn thuốc đã được sử dụng!", "Mã trùng lặp", JOptionPane.ERROR_MESSAGE);
             txtPrescriptionCode.selectAll(); txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
             return;
         }
@@ -756,22 +758,22 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
 
     private void processPayment() {
         if (invoice.getInvoiceLineList() == null || invoice.getInvoiceLineList().isEmpty()) {
-            JOptionPane.showMessageDialog(pnlSelling, "Danh sách sản phẩm trống!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
+            JOptionPane.showMessageDialog(parentWindow, "Danh sách sản phẩm trống!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
         }
         if (invoice.getPaymentMethod() == PaymentMethod.CASH && txtCustomerPayment != null) {
             long pay = txtCustomerPayment.getValue() instanceof Number ? ((Number) txtCustomerPayment.getValue()).longValue() : 0;
             long tot = (long) invoice.calculateTotal();
             if (pay < tot) {
-                JOptionPane.showMessageDialog(pnlSelling, "Số tiền không đủ!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
+                JOptionPane.showMessageDialog(parentWindow, "Số tiền không đủ!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
             }
         }
         try {
             File d = new File("invoices"); if (!d.exists()) d.mkdirs();
             String fn = "invoices/Invoice_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".pdf";
             File f = InvoicePDFGenerator.generateInvoicePDF(invoice, fn);
-            int o = JOptionPane.showConfirmDialog(pnlSelling, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
+            int o = JOptionPane.showConfirmDialog(parentWindow, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
             if (o == JOptionPane.YES_OPTION && Desktop.isDesktopSupported()) Desktop.getDesktop().open(f);
-        } catch (Exception ex) { JOptionPane.showMessageDialog(pnlSelling, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE); }
+        } catch (Exception ex) { JOptionPane.showMessageDialog(parentWindow, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE); }
     }
 }
 
