@@ -112,24 +112,48 @@ public class DAO_Shift {
 
             BigDecimal startCash = shift.getStartCash() != null ? shift.getStartCash() : BigDecimal.ZERO;
 
-            // Calculate total cash from invoices in this shift
-            String hql = "SELECT COALESCE(SUM(CASE " +
-                        "WHEN i.type = 'SALES' AND i.paymentMethod = 'CASH' THEN " +
-                        "  (SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) FROM InvoiceLine il WHERE il.invoice.id = i.id) " +
-                        "WHEN i.type = 'RETURN' AND i.paymentMethod = 'CASH' THEN " +
-                        "  -(SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) FROM InvoiceLine il WHERE il.invoice.id = i.id) " +
-                        "WHEN i.type = 'EXCHANGE' AND i.paymentMethod = 'CASH' THEN " +
-                        "  (SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) FROM InvoiceLine il WHERE il.invoice.id = i.id) " +
-                        "ELSE 0 END), 0) " +
-                        "FROM Invoice i WHERE i.shift.id = :shiftId";
+            // Calculate cash from SALES invoices (add to cash)
+            String hqlSales = "SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) " +
+                            "FROM InvoiceLine il " +
+                            "WHERE il.invoice.shift.id = :shiftId " +
+                            "AND il.invoice.type = 'SALES' " +
+                            "AND il.invoice.paymentMethod = 'CASH'";
 
-            BigDecimal cashFromInvoices = session.createQuery(hql, BigDecimal.class)
+            Double salesCashDouble = session.createQuery(hqlSales, Double.class)
                 .setParameter("shiftId", shiftId)
                 .uniqueResult();
 
-            if (cashFromInvoices == null) cashFromInvoices = BigDecimal.ZERO;
+            BigDecimal salesCash = salesCashDouble != null ? BigDecimal.valueOf(salesCashDouble) : BigDecimal.ZERO;
 
-            return startCash.add(cashFromInvoices);
+            // Calculate cash from RETURN invoices (subtract from cash)
+            String hqlReturn = "SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) " +
+                             "FROM InvoiceLine il " +
+                             "WHERE il.invoice.shift.id = :shiftId " +
+                             "AND il.invoice.type = 'RETURN' " +
+                             "AND il.invoice.paymentMethod = 'CASH'";
+
+            Double returnCashDouble = session.createQuery(hqlReturn, Double.class)
+                .setParameter("shiftId", shiftId)
+                .uniqueResult();
+
+            BigDecimal returnCash = returnCashDouble != null ? BigDecimal.valueOf(returnCashDouble) : BigDecimal.ZERO;
+
+            // Calculate cash from EXCHANGE invoices (add to cash)
+            String hqlExchange = "SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) " +
+                               "FROM InvoiceLine il " +
+                               "WHERE il.invoice.shift.id = :shiftId " +
+                               "AND il.invoice.type = 'EXCHANGE' " +
+                               "AND il.invoice.paymentMethod = 'CASH'";
+
+            Double exchangeCashDouble = session.createQuery(hqlExchange, Double.class)
+                .setParameter("shiftId", shiftId)
+                .uniqueResult();
+
+            BigDecimal exchangeCash = exchangeCashDouble != null ? BigDecimal.valueOf(exchangeCashDouble) : BigDecimal.ZERO;
+
+            // Calculate total: startCash + sales - return + exchange
+            return startCash.add(salesCash).subtract(returnCash).add(exchangeCash);
+
         } finally {
             if (session != null && session.isOpen()) {
                 session.close();
