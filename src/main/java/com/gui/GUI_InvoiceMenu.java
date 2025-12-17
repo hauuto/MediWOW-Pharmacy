@@ -3,6 +3,7 @@ package com.gui;
 import com.entities.Staff;
 import com.gui.invoice_options.TAB_ExchangeInvoice;
 import com.gui.invoice_options.TAB_SalesInvoice;
+import com.interfaces.ShiftChangeListener;
 import com.utils.AppColors;
 import javax.swing.*;
 import java.awt.*;
@@ -14,6 +15,11 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
     private CardLayout cardLayout;
     private JButton btnSalesInvoice, btnExchangeInvoice, btnReturnInvoice;
     private Staff currentStaff;
+    private TAB_SalesInvoice tabSelling;
+    private TAB_ExchangeInvoice tabExchange;
+    private boolean salesInvoiceInitialized = false;
+    private boolean exchangeInvoiceInitialized = false;
+    private ShiftChangeListener shiftChangeListener;
 
     public GUI_InvoiceMenu(Staff staff) {
         $$$setupUI$$$();
@@ -22,18 +28,78 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
         pnlInvoiceMenu.add(createContentPanel(), BorderLayout.CENTER);
     }
 
+    public void setShiftChangeListener(ShiftChangeListener listener) {
+        this.shiftChangeListener = listener;
+    }
+
     private JPanel createContentPanel() {
-        cardLayout = new CardLayout(); pnlContent = new JPanel(cardLayout);
+        cardLayout = new CardLayout();
+        pnlContent = new JPanel(cardLayout);
         pnlContent.setBackground(AppColors.WHITE);
-        TAB_SalesInvoice tabSelling = new TAB_SalesInvoice(currentStaff);
-        pnlContent.add(tabSelling.pnlSalesInvoice, "selling");
-        TAB_ExchangeInvoice tabExchange = new TAB_ExchangeInvoice(currentStaff);
-        pnlContent.add(tabExchange.pnlExchangeInvoice, "exchange");
-        JPanel pnlReturn = new JPanel(); pnlReturn.setBackground(AppColors.WHITE);
+
+        // Create placeholder panels - actual tabs will be initialized on demand
+        JPanel pnlSalesPlaceholder = new JPanel(new BorderLayout());
+        pnlSalesPlaceholder.setBackground(AppColors.WHITE);
+        JLabel lblSalesPlaceholder = new JLabel("Vui lòng chờ...", SwingConstants.CENTER);
+        lblSalesPlaceholder.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        lblSalesPlaceholder.setForeground(AppColors.TEXT);
+        pnlSalesPlaceholder.add(lblSalesPlaceholder, BorderLayout.CENTER);
+        pnlContent.add(pnlSalesPlaceholder, "selling");
+
+        JPanel pnlExchangePlaceholder = new JPanel(new BorderLayout());
+        pnlExchangePlaceholder.setBackground(AppColors.WHITE);
+        JLabel lblExchangePlaceholder = new JLabel("Vui lòng chờ...", SwingConstants.CENTER);
+        lblExchangePlaceholder.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        lblExchangePlaceholder.setForeground(AppColors.TEXT);
+        pnlExchangePlaceholder.add(lblExchangePlaceholder, BorderLayout.CENTER);
+        pnlContent.add(pnlExchangePlaceholder, "exchange");
+
+        JPanel pnlReturn = new JPanel();
+        pnlReturn.setBackground(AppColors.WHITE);
         pnlContent.add(pnlReturn, "return");
+
+        // Default to sales tab but don't initialize yet
         cardLayout.show(pnlContent, "selling");
         setActiveButton(btnSalesInvoice);
         return pnlContent;
+    }
+
+    private void initializeSalesInvoice() {
+        if (!salesInvoiceInitialized) {
+            try {
+                tabSelling = new TAB_SalesInvoice(currentStaff, shiftChangeListener);
+                pnlContent.add(tabSelling.pnlSalesInvoice, "selling");
+                salesInvoiceInitialized = true;
+            } catch (IllegalStateException e) {
+                // User cancelled shift opening - this is OK
+                // Keep the placeholder panel
+            }
+        }
+    }
+
+    private void initializeExchangeInvoice() {
+        if (!exchangeInvoiceInitialized) {
+            try {
+                tabExchange = new TAB_ExchangeInvoice(currentStaff);
+                pnlContent.add(tabExchange.pnlExchangeInvoice, "exchange");
+                exchangeInvoiceInitialized = true;
+            } catch (IllegalStateException e) {
+                // User cancelled shift opening - this is OK
+                // Keep the placeholder panel
+            }
+        }
+    }
+
+    /**
+     * Ensures the current visible tab is initialized.
+     * This should be called when the invoice menu becomes visible.
+     */
+    public void ensureCurrentTabInitialized() {
+        // By default, sales invoice tab is shown, so initialize it
+        initializeSalesInvoice();
+        if (salesInvoiceInitialized) {
+            cardLayout.show(pnlContent, "selling");
+        }
     }
 
     private JPanel createInvoiceButtonNavBar() {
@@ -53,11 +119,17 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         Object src = e.getSource();
         if (src == btnSalesInvoice) {
-            setActiveButton(btnSalesInvoice);
-            cardLayout.show(pnlContent, "selling");
+            initializeSalesInvoice();
+            if (salesInvoiceInitialized) {
+                setActiveButton(btnSalesInvoice);
+                cardLayout.show(pnlContent, "selling");
+            }
         } else if (src == btnExchangeInvoice) {
-            setActiveButton(btnExchangeInvoice);
-            cardLayout.show(pnlContent, "exchange");
+            initializeExchangeInvoice();
+            if (exchangeInvoiceInitialized) {
+                setActiveButton(btnExchangeInvoice);
+                cardLayout.show(pnlContent, "exchange");
+            }
         } else if (src == btnReturnInvoice) {
             setActiveButton(btnReturnInvoice);
             cardLayout.show(pnlContent, "return");

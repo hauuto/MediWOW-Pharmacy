@@ -6,6 +6,7 @@ import com.utils.AppColors;
 import com.entities.Staff;
 import com.entities.Shift;
 import com.bus.BUS_Shift;
+import com.interfaces.ShiftChangeListener;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-public class GUI_MainMenu implements ActionListener {
+public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     JPanel pnlMainMenu;
     private JPanel pnlLeftHeader;
     private JLabel lblLogo;
@@ -45,6 +46,7 @@ public class GUI_MainMenu implements ActionListener {
     private Staff currentStaff;
     private BUS_Shift busShift;
     private Shift currentShift;
+    private GUI_InvoiceMenu invoiceMenu;
 
 
     /**
@@ -82,7 +84,8 @@ public class GUI_MainMenu implements ActionListener {
 
 
         TAB_Dashboard dashboard = new TAB_Dashboard(currentStaff);
-        GUI_InvoiceMenu invoiceMenu = new GUI_InvoiceMenu(currentStaff);
+        invoiceMenu = new GUI_InvoiceMenu(currentStaff);
+        invoiceMenu.setShiftChangeListener(this); // Set listener để cập nhật trạng thái shift
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();
@@ -197,6 +200,8 @@ public class GUI_MainMenu implements ActionListener {
         } else if (src == btnSales) {
             setActiveButton(btnSales);
             cardLayout.show(pnlMain, "invoiceMenu");
+            // Ensure the current tab in invoice menu is initialized
+            invoiceMenu.ensureCurrentTabInitialized();
 
         } else if (src == btnProduct) {
             setActiveButton(btnProduct);
@@ -336,6 +341,21 @@ public class GUI_MainMenu implements ActionListener {
     private void setStyleButton(JButton button) {
         button.setBackground(AppColors.BACKGROUND);
         button.setBorderPainted(false);
+    }
+
+    // Implement ShiftChangeListener methods
+    @Override
+    public void onShiftOpened(Shift shift) {
+        currentShift = shift;
+        updateShiftButton();
+        // Don't show message here - DIALOG_OpenShift already shows success message
+    }
+
+    @Override
+    public void onShiftClosed(Shift shift) {
+        currentShift = null;
+        updateShiftButton();
+        // Don't show message here - DIALOG_CloseShift already shows success message
     }
 
 
