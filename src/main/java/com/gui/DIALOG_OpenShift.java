@@ -31,7 +31,7 @@ public class DIALOG_OpenShift extends JDialog {
 
         initComponents();
 
-        setSize(500, 450);
+        setSize(800, 600);
         setLocationRelativeTo(parent);
         setResizable(false);
     }
@@ -39,7 +39,6 @@ public class DIALOG_OpenShift extends JDialog {
     private void initComponents() {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
-        mainPanel.setBackground(AppColors.LIGHT);
 
         // Title
         JLabel lblTitle = new JLabel("MỞ CA LÀM VIỆC");
@@ -51,7 +50,6 @@ public class DIALOG_OpenShift extends JDialog {
         // Content panel
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-        contentPanel.setBackground(AppColors.LIGHT);
 
         // Staff info panel
         JPanel staffInfoPanel = createStaffInfoPanel();
@@ -141,7 +139,6 @@ public class DIALOG_OpenShift extends JDialog {
 
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        panel.setBackground(AppColors.LIGHT);
 
         btnCancel = new JButton("Hủy");
         btnCancel.setFont(new Font("Segoe UI", Font.PLAIN, 14));

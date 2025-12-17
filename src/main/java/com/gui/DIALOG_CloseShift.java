@@ -40,7 +40,7 @@ public class DIALOG_CloseShift extends JDialog {
         initComponents();
         loadShiftData();
 
-        setSize(550, 600);
+        setSize(800, 800);
         setLocationRelativeTo(parent);
         setResizable(false);
     }
@@ -48,7 +48,6 @@ public class DIALOG_CloseShift extends JDialog {
     private void initComponents() {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
-        mainPanel.setBackground(AppColors.LIGHT);
 
         // Title
         JLabel lblTitle = new JLabel("ĐÓNG CA LÀM VIỆC");
@@ -60,7 +59,6 @@ public class DIALOG_CloseShift extends JDialog {
         // Content panel
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-        contentPanel.setBackground(AppColors.LIGHT);
 
         // Shift info panel
         JPanel shiftInfoPanel = createShiftInfoPanel();
@@ -187,7 +185,6 @@ public class DIALOG_CloseShift extends JDialog {
 
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        panel.setBackground(AppColors.LIGHT);
 
         btnCancel = new JButton("Hủy");
         btnCancel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
