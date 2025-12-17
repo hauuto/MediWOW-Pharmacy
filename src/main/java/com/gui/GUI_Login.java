@@ -118,7 +118,7 @@ public class GUI_Login implements ActionListener {
                                 "Đăng nhập thành công!\nXin chào, " + currentStaff.getFullName(),
                                 "Thành công",
                                 JOptionPane.INFORMATION_MESSAGE);
-                        openMainMenu(loginPassword);
+                        openMainMenu();
                     } else {
                         JOptionPane.showMessageDialog(pnlLogin,
                                 errorMessage != null ? errorMessage : "Đăng nhập thất bại",
@@ -147,7 +147,7 @@ public class GUI_Login implements ActionListener {
         worker.execute();
     }
 
-    private void openMainMenu(String plainPassword) {
+    private void openMainMenu() {
         JFrame loginFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlLogin);
 
         // Check if staff is using temporary password (first login)
