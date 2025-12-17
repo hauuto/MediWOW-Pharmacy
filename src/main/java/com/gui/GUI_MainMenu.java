@@ -4,6 +4,8 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.utils.AppColors;
 import com.entities.Staff;
+import com.entities.Shift;
+import com.bus.BUS_Shift;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -38,8 +40,11 @@ public class GUI_MainMenu implements ActionListener {
     private JTextField txtSearch;
     private JLabel lblSearch;
     private JComboBox comboBox1;
+    private JButton btnShift;
     private CardLayout cardLayout;
     private Staff currentStaff;
+    private BUS_Shift busShift;
+    private Shift currentShift;
 
 
     /**
@@ -48,6 +53,7 @@ public class GUI_MainMenu implements ActionListener {
 
     public GUI_MainMenu(Staff staff) {
         this.currentStaff = staff;
+        this.busShift = new BUS_Shift();
 
         pnlSearch.setBackground(AppColors.LIGHT);
         pnlLeftHeader.setBackground(AppColors.LIGHT);
@@ -67,6 +73,10 @@ public class GUI_MainMenu implements ActionListener {
         btnGuideLine.addActionListener(this);
         btnLogout.addActionListener(this);
         btnCustomer.addActionListener(this);
+        btnShift.addActionListener(this);
+
+        // Check and update shift status
+        updateShiftButton();
 
         //testing rules
 
@@ -117,6 +127,63 @@ public class GUI_MainMenu implements ActionListener {
         timer.start();
 
 
+    }
+
+    private void updateShiftButton() {
+        // Get current shift status
+        currentShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+
+        // Set common properties
+        btnShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnShift.setForeground(Color.WHITE);
+        btnShift.setBorderPainted(false);
+        btnShift.setFocusPainted(false);
+        btnShift.setPreferredSize(new Dimension(100, 35));
+
+        if (currentShift != null) {
+            // Shift is open - show "Đóng ca"
+            btnShift.setText("Đóng ca");
+            btnShift.setToolTipText("Nhấn để đóng ca làm việc");
+            btnShift.setBackground(new Color(220, 53, 69)); // Red color for close
+        } else {
+            // No open shift - show "Mở ca"
+            btnShift.setText("Mở ca");
+            btnShift.setToolTipText("Nhấn để mở ca làm việc");
+            btnShift.setBackground(new Color(40, 167, 69)); // Green color for open
+        }
+    }
+
+    private void handleShiftButtonClick() {
+        if (currentShift != null) {
+            // Close shift
+            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+            DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(parentFrame, currentShift, currentStaff);
+            closeShiftDialog.setVisible(true);
+
+            // Update button if shift was closed
+            if (closeShiftDialog.isConfirmed()) {
+                updateShiftButton();
+                JOptionPane.showMessageDialog(pnlMainMenu,
+                        "Ca làm việc đã được đóng thành công!",
+                        "Thông báo",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        } else {
+            // Open shift
+            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+            DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(parentFrame, currentStaff);
+            openShiftDialog.setVisible(true);
+
+            // Update button if shift was opened
+            if (openShiftDialog.getOpenedShift() != null) {
+                currentShift = openShiftDialog.getOpenedShift();
+                updateShiftButton();
+                JOptionPane.showMessageDialog(pnlMainMenu,
+                        "Ca làm việc đã được mở thành công!",
+                        "Thông báo",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        }
     }
 
 
@@ -170,6 +237,9 @@ public class GUI_MainMenu implements ActionListener {
         } else if (src == btnCustomer) {
             setActiveButton(btnCustomer);
             cardLayout.show(pnlMain, "customer");
+
+        } else if (src == btnShift) {
+            handleShiftButtonClick();
 
         }
 
@@ -575,7 +645,7 @@ public class GUI_MainMenu implements ActionListener {
         lblTime.setText("");
         pnlRightHeader.add(lblTime, BorderLayout.CENTER);
         pnlSearch = new JPanel();
-        pnlSearch.setLayout(new GridLayoutManager(1, 3, new Insets(0, 300, 0, 0), -1, -1));
+        pnlSearch.setLayout(new GridLayoutManager(1, 4, new Insets(0, 300, 0, 0), -1, -1));
         pnlSearch.setAlignmentX(0.0f);
         pnlSearch.setBackground(new Color(-16724789));
         pnlRightHeader.add(pnlSearch, BorderLayout.WEST);
@@ -584,7 +654,7 @@ public class GUI_MainMenu implements ActionListener {
         Font txtSearchFont = this.$$$getFont$$$(null, -1, 18, txtSearch.getFont());
         if (txtSearchFont != null) txtSearch.setFont(txtSearchFont);
         txtSearch.setText("");
-        pnlSearch.add(txtSearch, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(500, 10), null, 0, false));
+        pnlSearch.add(txtSearch, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(500, 10), null, 0, false));
         lblSearch = new JLabel();
         lblSearch.setBackground(new Color(-16724789));
         Font lblSearchFont = this.$$$getFont$$$(null, -1, 18, lblSearch.getFont());
@@ -593,7 +663,7 @@ public class GUI_MainMenu implements ActionListener {
         lblSearch.setIcon(new ImageIcon(getClass().getResource("/icons/ico_search.png")));
         lblSearch.setName("");
         lblSearch.setText("Tra cứu");
-        pnlSearch.add(lblSearch, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        pnlSearch.add(lblSearch, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         comboBox1 = new JComboBox();
         comboBox1.setAlignmentX(0.0f);
         Font comboBox1Font = this.$$$getFont$$$(null, -1, 18, comboBox1.getFont());
@@ -606,7 +676,12 @@ public class GUI_MainMenu implements ActionListener {
         defaultComboBoxModel2.addElement("Nhân viên");
         defaultComboBoxModel2.addElement("Khách hàng");
         comboBox1.setModel(defaultComboBoxModel2);
-        pnlSearch.add(comboBox1, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
+        pnlSearch.add(comboBox1, new GridConstraints(0, 3, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
+        btnShift = new JButton();
+        btnShift.setEnabled(true);
+        btnShift.setMargin(new Insets(0, 0, 0, 0));
+        btnShift.setText("Mở ca");
+        pnlSearch.add(btnShift, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         lblSearch.setLabelFor(txtSearch);
     }
 
