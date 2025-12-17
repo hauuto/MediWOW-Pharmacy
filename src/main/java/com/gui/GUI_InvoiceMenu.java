@@ -37,7 +37,7 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
     }
 
     private JPanel createInvoiceButtonNavBar() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(AppColors.LIGHT);
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(AppColors.DARK);
         btnSalesInvoice = createStyledButton("Hóa đơn mua"); btnExchangeInvoice = createStyledButton("Hóa đơn đổi"); btnReturnInvoice = createStyledButton("Hóa đơn trả");
         btnSalesInvoice.addActionListener(this); btnExchangeInvoice.addActionListener(this); btnReturnInvoice.addActionListener(this);
         p.add(btnSalesInvoice); p.add(btnExchangeInvoice); p.add(btnReturnInvoice);
@@ -65,15 +65,15 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
     }
 
     private void setActiveButton(JButton activeButton) {
-        btnSalesInvoice.setBackground(AppColors.LIGHT);  btnExchangeInvoice.setBackground(AppColors.LIGHT); btnReturnInvoice.setBackground(AppColors.LIGHT);
-        activeButton.setBackground(AppColors.PRIMARY);
+        btnSalesInvoice.setBackground(AppColors.DARK);  btnExchangeInvoice.setBackground(AppColors.DARK); btnReturnInvoice.setBackground(AppColors.DARK);
+        activeButton.setBackground(AppColors.WHITE);
     }
 
     public JComponent $$$getRootComponent$$$() { return pnlInvoiceMenu; }
 
     private JButton createStyledButton(String text) {
         int arc = 12; // Corner radius
-        Color pressedColor = AppColors.PRIMARY, rolloverColor = AppColors.SECONDARY;
+        Color pressedColor = AppColors.WHITE, rolloverColor = AppColors.PRIMARY;
         JButton btnStyled = new JButton(text) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -90,7 +90,7 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
         btnStyled.setFocusPainted(false);  btnStyled.setRolloverEnabled(true);
         btnStyled.setMargin(new Insets(10, 10, 10, 10)); btnStyled.setFont(new Font("Arial", Font.BOLD, 16));
         btnStyled.setForeground(AppColors.TEXT); btnStyled.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); btnStyled.setName(text);
-        btnStyled.setBackground(AppColors.LIGHT);
+        btnStyled.setBackground(AppColors.DARK);
         return btnStyled;
     }
 }
