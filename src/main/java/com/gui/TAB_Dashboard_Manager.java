@@ -2,10 +2,8 @@ package com.gui;
 
 import com.bus.BUS_Invoice;
 import com.bus.BUS_Product;
-import com.entities.Invoice;
-import com.entities.InvoiceLine;
-import com.entities.LotAllocation;
-import com.entities.Product;
+import com.bus.BUS_Shift;
+import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LineType;
 import com.utils.AppColors;
@@ -20,6 +18,10 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,6 +42,11 @@ import java.util.stream.Collectors;
 public class TAB_Dashboard_Manager extends JPanel {
     private final BUS_Invoice busInvoice;
     private final BUS_Product busProduct;
+    private final BUS_Shift busShift;
+
+    // Current staff and shift
+    private Staff currentStaff;
+    private Shift currentShift;
 
     // Tables
     private JTable tblBestSellers;
@@ -55,8 +62,13 @@ public class TAB_Dashboard_Manager extends JPanel {
     private JLabel lblCashReconciliation;
     private JLabel lblReconInvoiceCount, lblReconSystemRevenue, lblReconCashStart, lblReconCashEnd, lblReconStatus;
 
+    // Shift management labels
+    private JLabel lblShiftId;
+    private JLabel lblCurrentCash;
+    private JLabel lblNotificationIcon;
 
     private JButton btnRefresh;
+    private JButton btnShift;
     private XYChart revenueChart;
     private XChartPanel<XYChart> revenueChartPanel;
 
@@ -64,12 +76,20 @@ public class TAB_Dashboard_Manager extends JPanel {
     private JComboBox<String> cboComparisonPeriod;
 
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
     public TAB_Dashboard_Manager() {
+        this(null);
+    }
+
+    public TAB_Dashboard_Manager(Staff staff) {
+        this.currentStaff = staff;
         this.busInvoice = new BUS_Invoice();
         this.busProduct = new BUS_Product();
+        this.busShift = new BUS_Shift();
         initComponents();
         loadData();
+        loadShiftData();
     }
 
     private void initComponents() {
@@ -119,6 +139,40 @@ public class TAB_Dashboard_Manager extends JPanel {
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitle.setForeground(AppColors.PRIMARY);
 
+        // Right section: Shift Widget + Notification + Shift Button + Controls
+        JPanel rightSection = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        rightSection.setBackground(AppColors.WHITE);
+
+        // Shift Info Widget
+        JPanel shiftWidget = createShiftWidget();
+        rightSection.add(shiftWidget);
+
+        // Notification Bell Icon
+        lblNotificationIcon = new JLabel("🔔");
+        lblNotificationIcon.setFont(new Font("Segoe UI", Font.PLAIN, 24));
+        lblNotificationIcon.setForeground(AppColors.WARNING);
+        lblNotificationIcon.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblNotificationIcon.setToolTipText("Thông báo hệ thống");
+        lblNotificationIcon.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                showNotifications();
+            }
+        });
+        rightSection.add(lblNotificationIcon);
+
+        // Shift Button (Mở ca / Đóng ca)
+        btnShift = new JButton("Mở ca");
+        btnShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnShift.setBackground(new Color(40, 167, 69));
+        btnShift.setForeground(Color.WHITE);
+        btnShift.setFocusPainted(false);
+        btnShift.setBorderPainted(false);
+        btnShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnShift.setPreferredSize(new Dimension(100, 35));
+        btnShift.addActionListener(e -> handleShiftButtonClick());
+        rightSection.add(btnShift);
+
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         controlPanel.setBackground(AppColors.WHITE);
 
@@ -139,16 +193,25 @@ public class TAB_Dashboard_Manager extends JPanel {
         btnRefresh.setBorderPainted(false);
         btnRefresh.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnRefresh.setPreferredSize(new Dimension(130, 35));
-        btnRefresh.addActionListener(e -> loadData());
+        btnRefresh.addActionListener(e -> {
+            loadData();
+            loadShiftData();
+        });
 
         controlPanel.add(lblPeriod);
         controlPanel.add(cboComparisonPeriod);
         controlPanel.add(btnRefresh);
 
+        // Combine shift section and control panel
+        JPanel combinedRight = new JPanel(new BorderLayout(10, 10));
+        combinedRight.setBackground(AppColors.WHITE);
+        combinedRight.add(rightSection, BorderLayout.NORTH);
+        combinedRight.add(controlPanel, BorderLayout.SOUTH);
+
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setBackground(AppColors.WHITE);
         topPanel.add(lblTitle, BorderLayout.WEST);
-        topPanel.add(controlPanel, BorderLayout.EAST);
+        topPanel.add(combinedRight, BorderLayout.EAST);
 
         JLabel lblDate = new JLabel("Ngày: " + LocalDate.now().format(dateFormatter));
         lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 16));
@@ -158,6 +221,141 @@ public class TAB_Dashboard_Manager extends JPanel {
         headerPanel.add(lblDate, BorderLayout.SOUTH);
 
         return headerPanel;
+    }
+
+    private JPanel createShiftWidget() {
+        JPanel widget = new JPanel();
+        widget.setLayout(new BoxLayout(widget, BoxLayout.Y_AXIS));
+        widget.setBackground(new Color(240, 248, 255)); // Light blue background
+        widget.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppColors.SECONDARY, 1),
+            new EmptyBorder(8, 12, 8, 12)
+        ));
+
+        // Shift ID
+        JPanel shiftIdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        shiftIdPanel.setBackground(new Color(240, 248, 255));
+        JLabel lblShiftIdLabel = new JLabel("Mã Ca:");
+        lblShiftIdLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblShiftIdLabel.setForeground(AppColors.DARK);
+        lblShiftId = new JLabel("---");
+        lblShiftId.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblShiftId.setForeground(AppColors.PRIMARY);
+        shiftIdPanel.add(lblShiftIdLabel);
+        shiftIdPanel.add(lblShiftId);
+
+        // Current Cash
+        JPanel cashPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        cashPanel.setBackground(new Color(240, 248, 255));
+        JLabel lblCashLabel = new JLabel("Tiền mặt:");
+        lblCashLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblCashLabel.setForeground(AppColors.DARK);
+        lblCurrentCash = new JLabel("0 ₫");
+        lblCurrentCash.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblCurrentCash.setForeground(AppColors.SUCCESS);
+        cashPanel.add(lblCashLabel);
+        cashPanel.add(lblCurrentCash);
+
+        widget.add(shiftIdPanel);
+        widget.add(cashPanel);
+
+        return widget;
+    }
+
+    private void loadShiftData() {
+        // Get current shift status
+        if (currentStaff != null) {
+            currentShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+        }
+
+        // Set common button properties
+        btnShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnShift.setForeground(Color.WHITE);
+        btnShift.setBorderPainted(false);
+        btnShift.setFocusPainted(false);
+        btnShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnShift.setPreferredSize(new Dimension(100, 35));
+
+        if (currentShift != null) {
+            // Shift is open - show shift info and "Đóng ca"
+            lblShiftId.setText(currentShift.getId());
+            BigDecimal currentCash = busShift.calculateSystemCashForShift(currentShift);
+            lblCurrentCash.setText(currencyFormat.format(currentCash));
+
+            btnShift.setText("Đóng ca");
+            btnShift.setToolTipText("Nhấn để đóng ca làm việc");
+            btnShift.setBackground(new Color(220, 53, 69)); // Red color for close
+            btnShift.setEnabled(true);
+        } else {
+            // No open shift - show "Mở ca"
+            lblShiftId.setText("Chưa mở ca");
+            lblCurrentCash.setText("---");
+
+            btnShift.setText("Mở ca");
+            btnShift.setToolTipText("Nhấn để mở ca làm việc");
+            btnShift.setBackground(new Color(40, 167, 69)); // Green color for open
+            btnShift.setEnabled(true);
+        }
+    }
+
+    private void handleShiftButtonClick() {
+        if (currentShift != null) {
+            // Close shift
+            DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(
+                (Frame) SwingUtilities.getWindowAncestor(this),
+                currentShift,
+                currentStaff
+            );
+            closeShiftDialog.setVisible(true);
+
+            // Update button and shift info if shift was closed
+            if (closeShiftDialog.isConfirmed()) {
+                currentShift = null;
+                loadShiftData();
+
+                JOptionPane.showMessageDialog(this,
+                    "Ca làm việc đã được đóng thành công!",
+                    "Thông báo",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
+        } else {
+            // Open shift
+            DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(
+                (Frame) SwingUtilities.getWindowAncestor(this),
+                currentStaff
+            );
+            openShiftDialog.setVisible(true);
+
+            // Update button and shift info if shift was opened
+            if (openShiftDialog.getOpenedShift() != null) {
+                currentShift = openShiftDialog.getOpenedShift();
+                loadShiftData();
+
+                JOptionPane.showMessageDialog(this,
+                    "Ca làm việc đã được mở thành công!",
+                    "Thông báo",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
+        }
+    }
+
+    private void showNotifications() {
+        // For manager dashboard, show business alerts
+        String message = String.format(
+            "📊 THÔNG BÁO QUẢN LÝ\n\n" +
+            "💰 Doanh thu hôm nay: %s\n" +
+            "📈 Lợi nhuận hôm nay: %s\n" +
+            "🧾 Số hóa đơn: %s\n\n" +
+            "Kiểm tra dashboard để xem chi tiết!",
+            lblTodayRevenue.getText(),
+            lblTodayProfit.getText(),
+            lblTodayInvoiceCount.getText()
+        );
+
+        JOptionPane.showMessageDialog(this,
+            message,
+            "Thông Báo Hệ Thống",
+            JOptionPane.INFORMATION_MESSAGE);
     }
 
     private JPanel createStatisticsPanel() {

@@ -76,10 +76,8 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         btnGuideLine.addActionListener(this);
         btnLogout.addActionListener(this);
         btnCustomer.addActionListener(this);
-        btnShift.addActionListener(this);
 
         // Check and update shift status
-        updateShiftButton();
 
         //testing rules
 
@@ -123,7 +121,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         cardLayout.show(pnlMain, "dashboard");
 
         Locale locale = Locale.of("vi", "VN");
-        DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss E, dd/MM/yyyy", locale);
+        DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss EEEE, dd/MM/yyyy", locale);
         Timer timer = new Timer(1000, e -> {
             LocalDateTime now = LocalDateTime.now();
             lblTime.setText(timeFormat.format(now));
@@ -133,76 +131,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
     }
 
-    private void updateShiftButton() {
-        // Get current shift status
-        currentShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
 
-        // Set common properties
-        btnShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnShift.setForeground(Color.WHITE);
-        btnShift.setBorderPainted(false);
-        btnShift.setFocusPainted(false);
-        btnShift.setPreferredSize(new Dimension(100, 35));
-
-        if (currentShift != null) {
-            // Shift is open - show "Đóng ca"
-            btnShift.setText("Đóng ca");
-            btnShift.setToolTipText("Nhấn để đóng ca làm việc");
-            btnShift.setBackground(new Color(220, 53, 69)); // Red color for close
-        } else {
-            // No open shift - show "Mở ca"
-            btnShift.setText("Mở ca");
-            btnShift.setToolTipText("Nhấn để mở ca làm việc");
-            btnShift.setBackground(new Color(40, 167, 69)); // Green color for open
-        }
-    }
-
-    private void handleShiftButtonClick() {
-        if (currentShift != null) {
-            // Close shift
-            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
-            DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(parentFrame, currentShift, currentStaff);
-            closeShiftDialog.setVisible(true);
-
-            // Update button if shift was closed
-            if (closeShiftDialog.isConfirmed()) {
-                Shift closedShift = currentShift;
-                currentShift = null;
-                updateShiftButton();
-
-                // Notify listener that shift was closed
-                if (shiftChangeListener != null) {
-                    shiftChangeListener.onShiftClosed(closedShift);
-                }
-
-                JOptionPane.showMessageDialog(pnlMainMenu,
-                        "Ca làm việc đã được đóng thành công!",
-                        "Thông báo",
-                        JOptionPane.INFORMATION_MESSAGE);
-            }
-        } else {
-            // Open shift
-            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
-            DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(parentFrame, currentStaff);
-            openShiftDialog.setVisible(true);
-
-            // Update button if shift was opened
-            if (openShiftDialog.getOpenedShift() != null) {
-                currentShift = openShiftDialog.getOpenedShift();
-                updateShiftButton();
-
-                // Notify listener that shift was opened
-                if (shiftChangeListener != null) {
-                    shiftChangeListener.onShiftOpened(currentShift);
-                }
-
-                JOptionPane.showMessageDialog(pnlMainMenu,
-                        "Ca làm việc đã được mở thành công!",
-                        "Thông báo",
-                        JOptionPane.INFORMATION_MESSAGE);
-            }
-        }
-    }
 
 
     @Override
@@ -247,7 +176,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 int choice = JOptionPane.showOptionDialog(
                         pnlMainMenu,
                         "CẢNH BÁO: Bạn đang có ca làm việc chưa đóng!\n\n" +
-                        "Vui lòng chọn một trong các hành động sau:",
+                                "Vui lòng chọn một trong các hành động sau:",
                         "Xác nhận đăng xuất",
                         JOptionPane.YES_NO_CANCEL_OPTION,
                         JOptionPane.WARNING_MESSAGE,
@@ -265,7 +194,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                     if (closeShiftDialog.isConfirmed()) {
                         Shift closedShift = currentShift;
                         currentShift = null;
-                        updateShiftButton();
 
                         // Notify listener that shift was closed
                         if (shiftChangeListener != null) {
@@ -339,9 +267,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
             setActiveButton(btnCustomer);
             cardLayout.show(pnlMain, "customer");
 
-        } else if (src == btnShift) {
-            handleShiftButtonClick();
-
         }
 
     }
@@ -368,7 +293,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     @Override
     public void onShiftOpened(Shift shift) {
         currentShift = shift;
-        updateShiftButton();
 
         // Forward event to invoice menu
         if (invoiceMenu != null) {
@@ -381,7 +305,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     @Override
     public void onShiftClosed(Shift shift) {
         currentShift = null;
-        updateShiftButton();
 
         // Forward event to invoice menu
         if (invoiceMenu != null) {
@@ -773,7 +696,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         lblTime.setText("");
         pnlRightHeader.add(lblTime, BorderLayout.CENTER);
         pnlSearch = new JPanel();
-        pnlSearch.setLayout(new GridLayoutManager(1, 4, new Insets(0, 100, 0, 0), -1, -1));
+        pnlSearch.setLayout(new GridLayoutManager(1, 3, new Insets(0, 100, 0, 0), -1, -1));
         pnlSearch.setAlignmentX(0.0f);
         pnlSearch.setBackground(new Color(-16724789));
         pnlRightHeader.add(pnlSearch, BorderLayout.WEST);
@@ -782,7 +705,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         Font txtSearchFont = this.$$$getFont$$$(null, -1, 18, txtSearch.getFont());
         if (txtSearchFont != null) txtSearch.setFont(txtSearchFont);
         txtSearch.setText("");
-        pnlSearch.add(txtSearch, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(500, 10), null, 0, false));
+        pnlSearch.add(txtSearch, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(500, 10), null, 0, false));
         lblSearch = new JLabel();
         lblSearch.setBackground(new Color(-16724789));
         Font lblSearchFont = this.$$$getFont$$$(null, -1, 18, lblSearch.getFont());
@@ -791,7 +714,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         lblSearch.setIcon(new ImageIcon(getClass().getResource("/icons/ico_search.png")));
         lblSearch.setName("");
         lblSearch.setText("Tra cứu");
-        pnlSearch.add(lblSearch, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        pnlSearch.add(lblSearch, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         comboBox1 = new JComboBox();
         comboBox1.setAlignmentX(0.0f);
         Font comboBox1Font = this.$$$getFont$$$(null, -1, 18, comboBox1.getFont());
@@ -804,12 +727,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         defaultComboBoxModel2.addElement("Nhân viên");
         defaultComboBoxModel2.addElement("Khách hàng");
         comboBox1.setModel(defaultComboBoxModel2);
-        pnlSearch.add(comboBox1, new GridConstraints(0, 3, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
-        btnShift = new JButton();
-        btnShift.setEnabled(true);
-        btnShift.setMargin(new Insets(0, 0, 0, 0));
-        btnShift.setText("Mở ca");
-        pnlSearch.add(btnShift, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        pnlSearch.add(comboBox1, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
         lblSearch.setLabelFor(txtSearch);
     }
 
