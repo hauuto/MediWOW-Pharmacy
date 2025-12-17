@@ -14,6 +14,8 @@ public class AppColors {
     public static final Color WHITE = Color.decode("#F2F2F2");
     public static final Color WARNING = Color.decode("#FFCC00");
     public static final Color DANGER = Color.decode("#FF3333");
+    public static final Color SUCCESS = Color.decode("#28A745");
+    public static final Color PURPLE = Color.decode("#9B59B6");
     public static final Color BACKGROUND = Color.decode("#DDDDDD");
     public static final Color PLACEHOLDER_TEXT = Color.decode("#808080");
     public static final Color TEXT = Color.decode("#000000");

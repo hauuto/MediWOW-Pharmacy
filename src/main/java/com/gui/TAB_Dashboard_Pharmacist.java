@@ -6,6 +6,7 @@ import com.entities.Lot;
 import com.entities.Product;
 import com.entities.Promotion;
 import com.enums.LotStatus;
+import com.utils.AppColors;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -67,17 +68,17 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         setBorder(new EmptyBorder(20, 20, 20, 20));
-        setBackground(Color.WHITE);
+        setBackground(AppColors.WHITE);
 
         // Header
         add(createHeaderPanel(), BorderLayout.NORTH);
 
         // Main content
         JPanel mainPanel = new JPanel(new GridLayout(3, 1, 10, 10));
-        mainPanel.setBackground(Color.WHITE);
+        mainPanel.setBackground(AppColors.WHITE);
 
-        mainPanel.add(createLowStockPanel());
         mainPanel.add(createExpiringSoonPanel());
+        mainPanel.add(createLowStockPanel());
         mainPanel.add(createPromotionPanel());
 
         add(mainPanel, BorderLayout.CENTER);
@@ -85,20 +86,20 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
     private JPanel createHeaderPanel() {
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBackground(AppColors.WHITE);
         headerPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
 
-        JLabel lblTitle = new JLabel("🏥 Dashboard Dược Sĩ - Vận Hành");
+        JLabel lblTitle = new JLabel("Dashboard Dược Sĩ - Vận Hành");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        lblTitle.setForeground(new Color(41, 128, 185));
+        lblTitle.setForeground(AppColors.PRIMARY);
 
         JLabel lblDate = new JLabel("Ngày: " + LocalDate.now().format(dateFormatter));
         lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        lblDate.setForeground(new Color(52, 73, 94));
+        lblDate.setForeground(AppColors.DARK);
 
-        btnRefresh = new JButton("🔄 Làm mới");
+        btnRefresh = new JButton("Làm mới");
         btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnRefresh.setBackground(new Color(52, 152, 219));
+        btnRefresh.setBackground(AppColors.SECONDARY);
         btnRefresh.setForeground(Color.WHITE);
         btnRefresh.setFocusPainted(false);
         btnRefresh.setBorderPainted(false);
@@ -107,7 +108,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         btnRefresh.addActionListener(e -> loadData());
 
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(Color.WHITE);
+        topPanel.setBackground(AppColors.WHITE);
         topPanel.add(lblTitle, BorderLayout.WEST);
         topPanel.add(btnRefresh, BorderLayout.EAST);
 
@@ -119,23 +120,20 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
     private JPanel createLowStockPanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(231, 76, 60), 2),
-            new EmptyBorder(15, 15, 15, 15)
-        ));
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
 
         // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBackground(AppColors.WHITE);
 
-        JLabel lblTitle = new JLabel("⚠️ CẢNH BÁO: Thuốc Sắp Hết Hàng");
+        JLabel lblTitle = new JLabel("CẢNH BÁO: Thuốc Sắp Hết Hàng");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblTitle.setForeground(new Color(231, 76, 60));
+        lblTitle.setForeground(AppColors.DANGER);
 
         lblLowStockCount = new JLabel("0 sản phẩm");
         lblLowStockCount.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblLowStockCount.setForeground(new Color(231, 76, 60));
+        lblLowStockCount.setForeground(AppColors.DANGER);
 
         headerPanel.add(lblTitle, BorderLayout.WEST);
         headerPanel.add(lblLowStockCount, BorderLayout.EAST);
@@ -154,7 +152,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         JScrollPane scrollPane = new JScrollPane(tblLowStock);
         scrollPane.setPreferredSize(new Dimension(0, 180));
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+        scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -164,23 +162,20 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
     private JPanel createExpiringSoonPanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(230, 126, 34), 2),
-            new EmptyBorder(15, 15, 15, 15)
-        ));
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
 
         // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBackground(AppColors.WHITE);
 
-        JLabel lblTitle = new JLabel("⏰ CẢNH BÁO: Thuốc Sắp Hết Hạn");
+        JLabel lblTitle = new JLabel("CẢNH BÁO: Thuốc Sắp Hết Hạn");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblTitle.setForeground(new Color(230, 126, 34));
+        lblTitle.setForeground(AppColors.WARNING);
 
         lblExpiringCount = new JLabel("0 lô hàng");
         lblExpiringCount.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblExpiringCount.setForeground(new Color(230, 126, 34));
+        lblExpiringCount.setForeground(AppColors.WARNING);
 
         headerPanel.add(lblTitle, BorderLayout.WEST);
         headerPanel.add(lblExpiringCount, BorderLayout.EAST);
@@ -200,7 +195,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         JScrollPane scrollPane = new JScrollPane(tblExpiringSoon);
         scrollPane.setPreferredSize(new Dimension(0, 180));
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+        scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -210,23 +205,20 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
     private JPanel createPromotionPanel() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(46, 204, 113), 2),
-            new EmptyBorder(15, 15, 15, 15)
-        ));
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
 
         // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBackground(AppColors.WHITE);
 
-        JLabel lblTitle = new JLabel("🎁 Khuyến Mãi Đang Áp Dụng");
+        JLabel lblTitle = new JLabel("Khuyến Mãi Đang Áp Dụng");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblTitle.setForeground(new Color(46, 204, 113));
+        lblTitle.setForeground(AppColors.SUCCESS);
 
         lblActivePromotionCount = new JLabel("0 chương trình");
         lblActivePromotionCount.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblActivePromotionCount.setForeground(new Color(46, 204, 113));
+        lblActivePromotionCount.setForeground(AppColors.SUCCESS);
 
         headerPanel.add(lblTitle, BorderLayout.WEST);
         headerPanel.add(lblActivePromotionCount, BorderLayout.EAST);
@@ -244,7 +236,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         JScrollPane scrollPane = new JScrollPane(tblActivePromotions);
         scrollPane.setPreferredSize(new Dimension(0, 180));
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+        scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -256,14 +248,14 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         JTable table = new JTable(model);
         table.setRowHeight(30);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        table.setSelectionBackground(new Color(52, 152, 219, 50));
+        table.setSelectionBackground(new Color(AppColors.SECONDARY.getRed(), AppColors.SECONDARY.getGreen(), AppColors.SECONDARY.getBlue(), 50));
         table.setSelectionForeground(Color.BLACK);
-        table.setGridColor(new Color(230, 230, 230));
+        table.setGridColor(AppColors.BACKGROUND);
         table.setShowGrid(true);
 
         JTableHeader header = table.getTableHeader();
         header.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        header.setBackground(new Color(52, 152, 219));
+        header.setBackground(AppColors.SECONDARY);
         header.setForeground(Color.WHITE);
         header.setPreferredSize(new Dimension(0, 35));
 
@@ -272,8 +264,8 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
     private void loadData() {
         try {
-            loadLowStockProducts();
             loadExpiringSoonLots();
+            loadLowStockProducts();
             loadActivePromotions();
         } catch (Exception e) {
             e.printStackTrace();
@@ -419,10 +411,10 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             if (value instanceof Integer) {
                 int stock = (Integer) value;
                 if (stock == 0) {
-                    c.setForeground(new Color(231, 76, 60));
+                    c.setForeground(AppColors.DANGER);
                     setFont(getFont().deriveFont(Font.BOLD));
                 } else if (stock <= 50) {
-                    c.setForeground(new Color(230, 126, 34));
+                    c.setForeground(AppColors.WARNING);
                     setFont(getFont().deriveFont(Font.BOLD));
                 } else {
                     c.setForeground(Color.BLACK);
@@ -445,13 +437,13 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                 try {
                     int days = Integer.parseInt(daysStr.split(" ")[0]);
                     if (days <= 30) {
-                        c.setForeground(new Color(231, 76, 60));
+                        c.setForeground(AppColors.DANGER);
                         setFont(getFont().deriveFont(Font.BOLD));
                     } else if (days <= 60) {
-                        c.setForeground(new Color(230, 126, 34));
+                        c.setForeground(AppColors.WARNING);
                         setFont(getFont().deriveFont(Font.BOLD));
                     } else {
-                        c.setForeground(new Color(241, 196, 15));
+                        c.setForeground(AppColors.WARNING);
                     }
                 } catch (Exception ignored) {}
             }
@@ -473,15 +465,15 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                 switch (level) {
                     case "NGUY HIỂM":
                         c.setForeground(Color.WHITE);
-                        c.setBackground(new Color(231, 76, 60));
+                        c.setBackground(AppColors.DANGER);
                         break;
                     case "CAO":
                         c.setForeground(Color.WHITE);
-                        c.setBackground(new Color(230, 126, 34));
+                        c.setBackground(AppColors.WARNING);
                         break;
                     case "TRUNG BÌNH":
                         c.setForeground(Color.BLACK);
-                        c.setBackground(new Color(241, 196, 15));
+                        c.setBackground(AppColors.LIGHT);
                         break;
                 }
             }
