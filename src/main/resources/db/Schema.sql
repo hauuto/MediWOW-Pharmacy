@@ -133,11 +133,13 @@ CREATE TABLE Invoice (
                          promotion NVARCHAR(50),
                          paymentMethod NVARCHAR(50) NOT NULL CHECK (paymentMethod IN ('CASH', 'BANK_TRANSFER')),
                          notes NVARCHAR(MAX),
+                         shift NVARCHAR(50),
 
                          FOREIGN KEY (creator) REFERENCES Staff(id),
                          FOREIGN KEY (prescribedCustomer) REFERENCES PrescribedCustomer(id),
                          FOREIGN KEY (referencedInvoice) REFERENCES Invoice(id),
-                         FOREIGN KEY (promotion) REFERENCES Promotion(id)
+                         FOREIGN KEY (promotion) REFERENCES Promotion(id),
+                         FOREIGN KEY (shift) REFERENCES Shift(id)
 );
 
 -- 11. InvoiceLine Table (Display & Pricing Info)
@@ -168,6 +170,22 @@ CREATE TABLE LotAllocation (
                                FOREIGN KEY (invoiceLine) REFERENCES InvoiceLine(id) ON DELETE CASCADE,
                                FOREIGN KEY (lot) REFERENCES Lot(id)
 );
+
+CREATE TABLE Shift (
+                       id NVARCHAR(50) PRIMARY KEY,
+                       staff NVARCHAR(50) NOT NULL,           -- Nhân viên trực ca
+                       startTime DATETIME NOT NULL DEFAULT GETDATE(),
+                       endTime DATETIME,                      -- Null nếu đang mở ca
+                       startCash DECIMAL(18,2) NOT NULL,      -- Tiền mặt đầu ca (Nhập tay)
+                       endCash DECIMAL(18,2),                 -- Tiền mặt thực tế đếm được khi kết ca (Nhập tay)
+                       systemCash DECIMAL(18,2),              -- Tiền mặt hệ thống tính toán (Lưu lại để đối chiếu)
+                       status NVARCHAR(20) NOT NULL CHECK (status IN ('OPEN', 'CLOSED')),
+                       notes NVARCHAR(MAX),
+
+                       FOREIGN KEY (staff) REFERENCES Staff(id)
+);
+
+
 
 -- Indexes for performance
 CREATE INDEX idx_staff_username ON Staff(username);

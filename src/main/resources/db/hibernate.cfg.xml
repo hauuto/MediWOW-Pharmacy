@@ -55,6 +55,7 @@
         <mapping class="com.entities.LotAllocation"/>
         <mapping class="com.entities.MeasurementName"/>
         <mapping class="com.entities.PrescribedCustomer"/>
+        <mapping class="com.entities.Shift"/>
     </session-factory>
 </hibernate-configuration>
 

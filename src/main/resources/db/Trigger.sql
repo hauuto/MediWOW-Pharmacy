@@ -309,3 +309,29 @@ BEGIN
     FROM inserted;
 END
 GO
+
+
+CREATE SEQUENCE dbo.ShiftSeg AS INT START WITH 1 INCREMENT BY 1;
+GO
+
+CREATE TRIGGER trg_Shift_AutoID ON Shift
+    INSTEAD OF INSERT
+    AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
+
+    INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
+    SELECT
+        'SHI' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.ShiftSeg AS NVARCHAR(4)), 4),
+        staff,
+        startTime,
+        endTime,
+        startCash,
+        endCash,
+        systemCash,
+        status,
+        notes
+    FROM inserted;
+END
+GO
