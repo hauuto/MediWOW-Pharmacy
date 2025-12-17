@@ -121,6 +121,20 @@ CREATE TABLE PromotionAction (
                                  FOREIGN KEY (product) REFERENCES Product(id)
 );
 
+CREATE TABLE Shift (
+                       id NVARCHAR(50) PRIMARY KEY,
+                       staff NVARCHAR(50) NOT NULL,           -- Nhân viên trực ca
+                       startTime DATETIME NOT NULL DEFAULT GETDATE(),
+                       endTime DATETIME,                      -- Null nếu đang mở ca
+                       startCash DECIMAL(18,2) NOT NULL,      -- Tiền mặt đầu ca (Nhập tay)
+                       endCash DECIMAL(18,2),                 -- Tiền mặt thực tế đếm được khi kết ca (Nhập tay)
+                       systemCash DECIMAL(18,2),              -- Tiền mặt hệ thống tính toán (Lưu lại để đối chiếu)
+                       status NVARCHAR(20) NOT NULL CHECK (status IN ('OPEN', 'CLOSED')),
+                       notes NVARCHAR(MAX),
+
+                       FOREIGN KEY (staff) REFERENCES Staff(id)
+);
+
 -- 10. Invoice Table
 CREATE TABLE Invoice (
                          id NVARCHAR(50) PRIMARY KEY,
@@ -169,20 +183,6 @@ CREATE TABLE LotAllocation (
 
                                FOREIGN KEY (invoiceLine) REFERENCES InvoiceLine(id) ON DELETE CASCADE,
                                FOREIGN KEY (lot) REFERENCES Lot(id)
-);
-
-CREATE TABLE Shift (
-                       id NVARCHAR(50) PRIMARY KEY,
-                       staff NVARCHAR(50) NOT NULL,           -- Nhân viên trực ca
-                       startTime DATETIME NOT NULL DEFAULT GETDATE(),
-                       endTime DATETIME,                      -- Null nếu đang mở ca
-                       startCash DECIMAL(18,2) NOT NULL,      -- Tiền mặt đầu ca (Nhập tay)
-                       endCash DECIMAL(18,2),                 -- Tiền mặt thực tế đếm được khi kết ca (Nhập tay)
-                       systemCash DECIMAL(18,2),              -- Tiền mặt hệ thống tính toán (Lưu lại để đối chiếu)
-                       status NVARCHAR(20) NOT NULL CHECK (status IN ('OPEN', 'CLOSED')),
-                       notes NVARCHAR(MAX),
-
-                       FOREIGN KEY (staff) REFERENCES Staff(id)
 );
 
 
