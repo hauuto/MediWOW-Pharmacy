@@ -3,6 +3,7 @@ package com.gui.invoice_options;
 import com.bus.*;
 import com.entities.*;
 import com.enums.*;
+import com.interfaces.ShiftChangeListener;
 import com.utils.*;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -51,9 +52,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private static final String PRESCRIPTION_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
     private Window parentWindow;
     private Shift currentShift;
+    private ShiftChangeListener shiftChangeListener;
 
-    public TAB_SalesInvoice(Staff creator) {
+    public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener) {
         this.currentStaff = Objects.requireNonNull(creator, "Nhân viên tạo hóa đơn không được null");
+        this.shiftChangeListener = shiftChangeListener;
         $$$setupUI$$$();
         parentWindow = this;
         currentShift = ensureCurrentShift();
@@ -86,46 +89,23 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private Shift promptOpenShiftDialog() {
-        JSpinner startCashSpinner = new JSpinner(new SpinnerNumberModel(0L, 0L, null, 1000L));
-        JSpinner.NumberEditor editor = new JSpinner.NumberEditor(startCashSpinner, "#,###");
-        startCashSpinner.setEditor(editor);
-        editor.getTextField().setColumns(10);
-        JTextArea notesArea = new JTextArea(3, 20);
-        notesArea.setLineWrap(true);
-        notesArea.setWrapStyleWord(true);
-        JScrollPane noteScroll = new JScrollPane(notesArea);
-        noteScroll.setPreferredSize(new Dimension(250, 80));
-
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.add(new JLabel("Tiền mặt đầu ca (VND):"));
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(startCashSpinner);
-        panel.add(Box.createVerticalStrut(10));
-        panel.add(new JLabel("Ghi chú (tùy chọn):"));
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(noteScroll);
-
-        int result = JOptionPane.showConfirmDialog(parentWindow, panel, "Mở ca làm việc",
-            JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result != JOptionPane.OK_OPTION) return null;
-
-        try {
-            startCashSpinner.commitEdit();
-        } catch (ParseException e) {
-            JOptionPane.showMessageDialog(parentWindow, "Giá trị tiền đầu ca không hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-            return null;
+        // Use the centralized DIALOG_OpenShift
+        JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(parentWindow);
+        if (parentFrame == null) {
+            parentFrame = new JFrame();
         }
 
-        Number value = (Number) startCashSpinner.getValue();
-        BigDecimal startCash = BigDecimal.valueOf(value.longValue());
-        String notes = notesArea.getText().trim();
-        try {
-            return busShift.openShift(currentStaff, startCash, notes.isEmpty() ? null : notes);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(parentWindow, ex.getMessage(), "Không thể mở ca", JOptionPane.ERROR_MESSAGE);
-            return null;
+        com.gui.DIALOG_OpenShift openShiftDialog = new com.gui.DIALOG_OpenShift(parentFrame, currentStaff);
+        openShiftDialog.setVisible(true);
+
+        Shift openedShift = openShiftDialog.getOpenedShift();
+
+        // Notify listener if shift was opened
+        if (openedShift != null && shiftChangeListener != null) {
+            shiftChangeListener.onShiftOpened(openedShift);
         }
+
+        return openedShift;
     }
 
     private Box createProductSearchBar() {

@@ -27,5 +27,22 @@ public class BUS_Shift {
         }
         return daoShift.openShift(staff, startCash, notes);
     }
+
+    public Shift closeShift(Shift shift, BigDecimal endCash, String notes) {
+        if (shift == null) {
+            throw new IllegalArgumentException("Không tìm thấy thông tin ca làm việc");
+        }
+        if (endCash == null || endCash.signum() < 0) {
+            throw new IllegalArgumentException("Tiền cuối ca phải lớn hơn hoặc bằng 0");
+        }
+
+        BigDecimal systemCash = daoShift.calculateSystemCashForShift(shift.getId());
+        return daoShift.closeShift(shift.getId(), endCash, systemCash, notes);
+    }
+
+    public BigDecimal calculateSystemCashForShift(Shift shift) {
+        if (shift == null) return BigDecimal.ZERO;
+        return daoShift.calculateSystemCashForShift(shift.getId());
+    }
 }
 
