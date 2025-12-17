@@ -151,6 +151,15 @@ public class DIALOG_CloseShift extends JDialog {
         panel.add(createLabel("Tiền thực tế cuối ca:"));
         txtEndCash = new JTextField();
         txtEndCash.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+        // Thêm FocusListener để format khi người dùng nhập xong
+        txtEndCash.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                formatEndCashField();
+            }
+        });
+
         txtEndCash.addCaretListener(e -> calculateDifference());
         panel.add(txtEndCash);
 
@@ -217,9 +226,21 @@ public class DIALOG_CloseShift extends JDialog {
         BigDecimal systemCash = busShift.calculateSystemCashForShift(currentShift);
         txtSystemCash.setText(currencyFormat.format(systemCash));
 
-        // Set default end cash to system cash
-        txtEndCash.setText(systemCash.toString());
+        // Set default end cash to system cash với định dạng tiền tệ
+        txtEndCash.setText(currencyFormat.format(systemCash));
         calculateDifference();
+    }
+
+    private void formatEndCashField() {
+        try {
+            String text = txtEndCash.getText().trim().replaceAll("[^0-9]", "");
+            if (!text.isEmpty()) {
+                BigDecimal value = new BigDecimal(text);
+                txtEndCash.setText(currencyFormat.format(value));
+            }
+        } catch (NumberFormatException ignored) {
+            // Không làm gì nếu format lỗi
+        }
     }
 
     private String calculateDuration() {
