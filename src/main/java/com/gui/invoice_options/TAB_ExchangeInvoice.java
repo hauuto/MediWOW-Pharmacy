@@ -110,7 +110,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private JSplitPane createSplitPane() {
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createLeftPanel(), createRightPanel());
         splitPane.setBackground(AppColors.WHITE);
-        splitPane.setDividerLocation(RIGHT_MIN);
+        splitPane.setDividerLocation(LEFT_MIN);
         return splitPane;
     }
 
@@ -119,7 +119,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         left.setBackground(AppColors.WHITE); left.setMinimumSize(new Dimension(LEFT_MIN, 0));
         JSplitPane verticalSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, createUpperSection(), createLowerSection());
         verticalSplit.setBackground(AppColors.WHITE);
-        verticalSplit.setDividerLocation(300); verticalSplit.setResizeWeight(0.5);
+        verticalSplit.setDividerLocation(TOP_MIN); verticalSplit.setResizeWeight(0.5);
         left.add(verticalSplit, BorderLayout.CENTER);
         return left;
     }
