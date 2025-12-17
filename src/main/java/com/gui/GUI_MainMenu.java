@@ -218,20 +218,95 @@ public class GUI_MainMenu implements ActionListener {
             setActiveButton(btnGuideLine);
 
         } else if (src == btnLogout) {
-            int choice = JOptionPane.showConfirmDialog(pnlMainMenu, "Bạn có chắc chắn muốn đăng xuất?", "Xác nhận đăng xuất", JOptionPane.YES_NO_OPTION);
-            if (choice == JOptionPane.YES_OPTION) {
-                // Close current main menu window
-                JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
-                topFrame.dispose();
+            // Check if there's an open shift
+            Shift openShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
 
-                // Open login window
-                JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
-                loginFrame.setContentPane(new GUI_Login().pnlLogin);
-                loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                loginFrame.setSize(1080, 600);
-                loginFrame.setLocationRelativeTo(null);
-                loginFrame.setResizable(false);
-                loginFrame.setVisible(true);
+            if (openShift != null) {
+                // Show warning with 3 options: Close Shift, Logout Anyway, Cancel
+                Object[] options = {"Đóng ca", "Đăng xuất", "Hủy"};
+                int choice = JOptionPane.showOptionDialog(
+                        pnlMainMenu,
+                        "CẢNH BÁO: Bạn đang có ca làm việc chưa đóng!\n\n" +
+                        "Vui lòng chọn một trong các hành động sau:",
+                        "Xác nhận đăng xuất",
+                        JOptionPane.YES_NO_CANCEL_OPTION,
+                        JOptionPane.WARNING_MESSAGE,
+                        null,
+                        options,
+                        options[0]); // Default to "Đóng ca"
+
+                if (choice == 0) {
+                    // Close shift first
+                    JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                    DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(parentFrame, openShift, currentStaff);
+                    closeShiftDialog.setVisible(true);
+
+                    // If shift was closed successfully, ask again to logout
+                    if (closeShiftDialog.isConfirmed()) {
+                        currentShift = null;
+                        updateShiftButton();
+
+                        int logoutChoice = JOptionPane.showConfirmDialog(
+                                pnlMainMenu,
+                                "Ca làm việc đã được đóng thành công!\n\nBạn có muốn đăng xuất không?",
+                                "Xác nhận đăng xuất",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.QUESTION_MESSAGE);
+
+                        if (logoutChoice == JOptionPane.YES_OPTION) {
+                            // Close current main menu window
+                            JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                            topFrame.dispose();
+
+                            // Open login window
+                            JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
+                            loginFrame.setContentPane(new GUI_Login().pnlLogin);
+                            loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                            loginFrame.setSize(1080, 600);
+                            loginFrame.setLocationRelativeTo(null);
+                            loginFrame.setResizable(false);
+                            loginFrame.setVisible(true);
+                        }
+                    }
+                } else if (choice == 1) {
+                    // Logout without closing shift
+                    // Close current main menu window
+                    JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                    topFrame.dispose();
+
+                    // Open login window
+                    JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
+                    loginFrame.setContentPane(new GUI_Login().pnlLogin);
+                    loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                    loginFrame.setSize(1080, 600);
+                    loginFrame.setLocationRelativeTo(null);
+                    loginFrame.setResizable(false);
+                    loginFrame.setVisible(true);
+                }
+                // If choice == 2 (Hủy) or dialog closed, do nothing
+            } else {
+                // No open shift, normal logout confirmation
+                int choice = JOptionPane.showConfirmDialog(
+                        pnlMainMenu,
+                        "Bạn có chắc chắn muốn đăng xuất không?",
+                        "Xác nhận đăng xuất",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+
+                if (choice == JOptionPane.YES_OPTION) {
+                    // Close current main menu window
+                    JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                    topFrame.dispose();
+
+                    // Open login window
+                    JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
+                    loginFrame.setContentPane(new GUI_Login().pnlLogin);
+                    loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                    loginFrame.setSize(1080, 600);
+                    loginFrame.setLocationRelativeTo(null);
+                    loginFrame.setResizable(false);
+                    loginFrame.setVisible(true);
+                }
             }
 
         } else if (src == btnCustomer) {
