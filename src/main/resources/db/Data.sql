@@ -17,8 +17,12 @@ GO
 
 -- Admin account (username: admin, password: admin)
 -- This account will not be displayed in staff list on UI
-INSERT INTO Staff (role, username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive)
-VALUES ( 'MANAGER', 'admin', '$2a$12$vVXxXrKyAGhRge.lO0ihZ.0Nl7PghqZLqSpRwvpoDnC8qe3uZC1TK', N'Administrator', NULL, NULL, NULL, '2025-01-01', 1);
+INSERT INTO Staff (role, username, password, fullName, licenseNumber, phoneNumber,
+                   email, hireDate, isActive, isFirstLogin, mustChangePassword)
+VALUES ( 'MANAGER', 'admin',
+        '$2a$12$vVXxXrKyAGhRge.lO0ihZ.0Nl7PghqZLqSpRwvpoDnC8qe3uZC1TK',
+        N'Administrator', NULL, NULL, NULL,
+        '2025-01-01', 1,0,0);
 
 -- =====================================================
 -- 2. PRODUCT DATA (2 OTC, 2 ETC, 1 Supplement)

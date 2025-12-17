@@ -3,7 +3,8 @@ package com.entities;
 import com.enums.LineType;
 import jakarta.persistence.*;
 
-import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -11,27 +12,21 @@ import java.util.Objects;
  */
 @Entity
 @Table(name = "InvoiceLine")
-@IdClass(InvoiceLine.InvoiceLineId.class)
 public class InvoiceLine {
     @Id
+    @Column(name = "id", length = 50)
+    private String id;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "invoice", nullable = false)
     private Invoice invoice;
 
-    @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product", nullable = false)
     private Product product;
 
-    @Id
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "unitOfMeasure", nullable = false)
-    private UnitOfMeasure unitOfMeasure;
-
-    @Id
-    @Enumerated(EnumType.STRING)
-    @Column(name = "lineType", nullable = false, length = 50)
-    private LineType lineType;
+    @Column(name = "unitOfMeasure", nullable = false, length = 100)
+    private String unitOfMeasure;
 
     @Column(name = "quantity", nullable = false)
     private int quantity;
@@ -39,23 +34,31 @@ public class InvoiceLine {
     @Column(name = "unitPrice", nullable = false)
     private double unitPrice;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lineType", nullable = false, length = 50)
+    private LineType lineType;
+
+    @OneToMany(mappedBy = "invoiceLine", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<LotAllocation> lotAllocations = new ArrayList<>();
+
     protected InvoiceLine() {}
 
-    public InvoiceLine(Product product, Invoice invoice, UnitOfMeasure unitOfMeasure, LineType lineType, int quantity) {
+    public InvoiceLine(String id, Product product, Invoice invoice, String unitOfMeasure, LineType lineType, int quantity, double unitPrice) {
+        this.id = id;
         this.product = product;
         this.invoice = invoice;
         this.unitOfMeasure = unitOfMeasure;
         this.lineType = lineType;
         this.quantity = quantity;
+        this.unitPrice = unitPrice;
+    }
 
-        // Calculate unit price based on the product's oldest lot
-        Lot oldestLot = product.getOldestLotAvailable();
-        if (oldestLot != null) {
-            this.unitPrice = oldestLot.getRawPrice();
-            if (unitOfMeasure != null) {
-                this.unitPrice *= unitOfMeasure.getBasePriceConversionRate();
-            }
-        }
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public Product getProduct() {
@@ -82,16 +85,20 @@ public class InvoiceLine {
         this.quantity = quantity;
     }
 
-    public UnitOfMeasure getUnitOfMeasure() {
+    public String getUnitOfMeasure() {
         return unitOfMeasure;
     }
 
-    public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
+    public void setUnitOfMeasure(String unitOfMeasure) {
         this.unitOfMeasure = unitOfMeasure;
     }
 
     public LineType getLineType() {
         return lineType;
+    }
+
+    public void setLineType(LineType lineType) {
+        this.lineType = lineType;
     }
 
     public double getUnitPrice() {
@@ -100,6 +107,14 @@ public class InvoiceLine {
 
     public void setUnitPrice(double unitPrice) {
         this.unitPrice = unitPrice;
+    }
+
+    public List<LotAllocation> getLotAllocations() {
+        return lotAllocations;
+    }
+
+    public void setLotAllocations(List<LotAllocation> lotAllocations) {
+        this.lotAllocations = lotAllocations;
     }
 
     /**
@@ -138,7 +153,7 @@ public class InvoiceLine {
 
     @Override
     public int hashCode() {
-        return Objects.hash(product.getId(), invoice.getId(), unitOfMeasure.getId(), lineType);
+        return Objects.hash(id);
     }
 
     @Override
@@ -150,49 +165,11 @@ public class InvoiceLine {
             return false;
 
         InvoiceLine other = (InvoiceLine) obj;
-        return Objects.equals(product.getId(), other.product.getId()) &&
-               Objects.equals(invoice.getId(), other.invoice.getId()) &&
-               Objects.equals(unitOfMeasure.getId(), other.unitOfMeasure.getId()) &&
-               lineType == other.lineType;
+        return Objects.equals(id, other.id);
     }
 
     @Override
     public String toString() {
         return super.toString();
-    }
-
-    /**
-     * Composite key class for InvoiceLine
-     */
-    public static class InvoiceLineId implements Serializable {
-        private String invoice;
-        private String product;
-        private String unitOfMeasure;
-        private LineType lineType;
-
-        public InvoiceLineId() {}
-
-        public InvoiceLineId(String invoice, String product, String unitOfMeasure, LineType lineType) {
-            this.invoice = invoice;
-            this.product = product;
-            this.unitOfMeasure = unitOfMeasure;
-            this.lineType = lineType;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            InvoiceLineId that = (InvoiceLineId) o;
-            return Objects.equals(invoice, that.invoice) &&
-                   Objects.equals(product, that.product) &&
-                   Objects.equals(unitOfMeasure, that.unitOfMeasure) &&
-                   lineType == that.lineType;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(invoice, product, unitOfMeasure, lineType);
-        }
     }
 }

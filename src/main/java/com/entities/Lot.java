@@ -13,7 +13,10 @@ import java.util.Objects;
 @Table(name = "Lot")
 public class Lot {
     @Id
-    @Column(name = "batchNumber")
+    @Column(name = "id", length = 50)
+    private String id;
+
+    @Column(name = "batchNumber", length = 50)
     private String batchNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -23,8 +26,8 @@ public class Lot {
     @Column(name = "quantity")
     private int quantity;
 
-    @Column(name = "mwPrice")
-    private double mwPrice;
+    @Column(name = "rawPrice")
+    private double rawPrice;
 
     @Column(name = "expiryDate")
     private LocalDateTime expiryDate;
@@ -35,17 +38,30 @@ public class Lot {
 
     protected Lot() {}
 
-    public Lot(String batchNumber, Product product, int quantity, double mwPrice, LocalDateTime expiryDate, LotStatus status) {
+    public Lot(String id, String batchNumber, Product product, int quantity, double rawPrice, LocalDateTime expiryDate, LotStatus status) {
+        this.id = id;
         this.batchNumber = batchNumber;
         this.product = product;
         this.quantity = quantity;
-        this.mwPrice = mwPrice;
+        this.rawPrice = rawPrice;
         this.expiryDate = expiryDate;
         this.status = status;
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getBatchNumber() {
         return batchNumber;
+    }
+
+    public void setBatchNumber(String batchNumber) {
+        this.batchNumber = batchNumber;
     }
 
     public Product getProduct() {
@@ -61,11 +77,11 @@ public class Lot {
     }
 
     public double getRawPrice() {
-        return mwPrice;
+        return rawPrice;
     }
 
     public void setRawPrice(double rawPrice) {
-        this.mwPrice = rawPrice;
+        this.rawPrice = rawPrice;
     }
 
     public LocalDateTime getExpiryDate() {
@@ -86,7 +102,7 @@ public class Lot {
 
     @Override
     public int hashCode() {
-        return Objects.hash(batchNumber);
+        return Objects.hash(id);
     }
 
     @Override
@@ -98,7 +114,7 @@ public class Lot {
             return false;
 
         Lot other = (Lot) o;
-        return Objects.equals(batchNumber, other.batchNumber);
+        return Objects.equals(id, other.id);
     }
 
     @Override

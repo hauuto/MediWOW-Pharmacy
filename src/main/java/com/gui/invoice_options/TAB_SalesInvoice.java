@@ -1,4 +1,4 @@
-package com.gui;
+package com.gui.invoice_options;
 
 import com.bus.*;
 import com.entities.*;
@@ -18,8 +18,8 @@ import java.text.*;
 import java.util.*;
 import java.util.List;
 
-public class TAB_Selling extends JFrame implements ActionListener, MouseListener, FocusListener, KeyListener, DocumentListener, PropertyChangeListener, TableModelListener {
-    JPanel pnlSelling;
+public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseListener, FocusListener, KeyListener, DocumentListener, PropertyChangeListener, TableModelListener {
+    public JPanel pnlSalesInvoice;
     private static final int LEFT_MIN = 750, RIGHT_MIN = 530;
     private final BUS_Product busProduct = new BUS_Product();
     private final BUS_Invoice busInvoice = new BUS_Invoice();
@@ -45,24 +45,26 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     private List<Product> currentSearchResults = new ArrayList<>();
     private List<Promotion> currentPromotionSearchResults = new ArrayList<>();
     private static final String PRESCRIPTION_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
+    private final Window parentWindow;
 
-    public TAB_Selling(Staff creator) {
+    public TAB_SalesInvoice(Staff creator) {
+        $$$setupUI$$$();
         invoice = new Invoice(InvoiceType.SALES, creator);
         invoice.setPaymentMethod(PaymentMethod.CASH);
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         promotions = busPromotion.getAllPromotions().stream().filter(Promotion::getIsActive).toList();
-        $$$setupUI$$$();
+        parentWindow = SwingUtilities.getWindowAncestor(pnlSalesInvoice);
         createSplitPane();
     }
 
     private Box createProductSearchBar() {
         Box v = Box.createVerticalBox(), h = Box.createHorizontalBox();
-        v.setOpaque(true); v.setBackground(Color.WHITE);
+        v.setOpaque(true); v.setBackground(AppColors.WHITE);
         v.add(Box.createVerticalStrut(5)); v.add(h); v.add(Box.createVerticalStrut(5));
         h.add(Box.createHorizontalStrut(5));
         txtSearchInput = new JTextField();
-        h.add(generateLabelAndTextField(new JLabel("Tìm kiếm thuốc:"), txtSearchInput, "Nhập mã/tên/tên rút gọn của thuốc...", "Nhập mã/tên/tên rút gọn của thuốc", 10));
+        h.add(generateLabelAndTextField(new JLabel("Tìm kiếm thuốc:"), txtSearchInput, "Nhập mã/tên/tên rút gọn của thuốc...", "Nhập mã/tên/tên rút gọn của thuốc", 0));
         h.add(Box.createHorizontalStrut(5));
         btnBarcodeScan = new JButton(new ImageIcon("src/main/resources/icons/png_scanner.png"));
         btnBarcodeScan.setMargin(new Insets(10,10,10,10)); btnBarcodeScan.setBorderPainted(false);
@@ -80,7 +82,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         searchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
         searchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         searchResultsList.setName("searchResultsList");
-        searchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
+        searchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSalesInvoice));
         searchWindow.add(new JScrollPane(searchResultsList));
         searchWindow.setFocusableWindowState(false);
         txt.getDocument().addDocumentListener(this);
@@ -90,7 +92,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
 
     private void performSearch(JTextField txt) {
         String search = txt.getText().trim().toLowerCase();
-        if (search.isEmpty() || search.equals("nhập mã/tên/tên rút gọn của thuốc...") || txt.getForeground().equals(Color.GRAY)) {
+        if (search.isEmpty() || search.equals("nhập mã/tên/tên rút gọn của thuốc...") || txt.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             searchWindow.setVisible(false); return;
         }
         searchResultsModel.clear(); currentSearchResults.clear();
@@ -115,7 +117,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     private void selectProduct(int idx, JTextField txt) {
         if (idx < 0 || idx >= currentSearchResults.size()) return;
         addProductToInvoice(currentSearchResults.get(idx));
-        txt.setText(""); txt.setForeground(Color.BLACK);
+        txt.setText(""); txt.setForeground(AppColors.TEXT);
         searchWindow.setVisible(false);
     }
 
@@ -125,7 +127,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         promotionSearchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
         promotionSearchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         promotionSearchResultsList.setName("promotionSearchResultsList");
-        promotionSearchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSelling));
+        promotionSearchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSalesInvoice));
         promotionSearchWindow.add(new JScrollPane(promotionSearchResultsList));
         promotionSearchWindow.setFocusableWindowState(false);
         txt.getDocument().addDocumentListener(this);
@@ -135,7 +137,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
 
     private void performPromotionSearch() {
         String search = txtPromotionSearch.getText().trim().toLowerCase();
-        if (search.isEmpty() || txtPromotionSearch.getForeground().equals(Color.GRAY)) {
+        if (search.isEmpty() || txtPromotionSearch.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             promotionSearchWindow.setVisible(false); return;
         }
         promotionSearchResultsModel.clear(); currentPromotionSearchResults.clear();
@@ -161,13 +163,13 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         Promotion p = currentPromotionSearchResults.get(idx);
         invoice.setPromotion(p);
         txtPromotionSearch.setText(p.getId() + " - " + p.getName());
-        txtPromotionSearch.setForeground(Color.BLACK);
+        txtPromotionSearch.setForeground(AppColors.TEXT);
         promotionSearchWindow.setVisible(false);
     }
 
     private void addProductToInvoice(Product product) {
         if (product.getCategory() == ProductCategory.ETC && !isValidPrescriptionCode()) {
-            JOptionPane.showMessageDialog(pnlSelling, "Sản phẩm '" + product.getName() + "' là thuốc ETC.\nVui lòng nhập mã đơn thuốc hợp lệ.", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' là thuốc ETC.\nVui lòng nhập mã đơn thuốc hợp lệ.", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
             txtPrescriptionCode.requestFocusInWindow(); return;
         }
         UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
@@ -177,7 +179,11 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
                 mdlInvoiceLine.setValueAt(qty, i, 3);
                 double price = parseCurrencyValue(mdlInvoiceLine.getValueAt(i, 4).toString());
                 mdlInvoiceLine.setValueAt(qty * price, i, 5);
-                invoice.updateInvoiceLine(product.getId(), baseUOM.getId(), new InvoiceLine(product, invoice, baseUOM, LineType.SALE, qty));
+                // Calculate unit price
+                Lot lot = product.getOldestLotAvailable();
+                double unitPrice = lot != null ? lot.getRawPrice() * (baseUOM != null ? baseUOM.getBasePriceConversionRate() : 1) : 0.0;
+                invoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(),
+                    new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice));
                 updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice(); return;
             }
         }
@@ -187,8 +193,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         productMap.put(product.getId(), product);
         int row = mdlInvoiceLine.getRowCount() - 1;
         previousUOMMap.put(row, product.getBaseUnitOfMeasure());
-        oldUOMIdMap.put(row, baseUOM.getId());
-        invoice.addInvoiceLine(new InvoiceLine(product, invoice, baseUOM, LineType.SALE, 1));
+        oldUOMIdMap.put(row, product.getBaseUnitOfMeasure());
+        invoice.addInvoiceLine(new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price));
         updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
     }
 
@@ -211,7 +217,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         if (product == null) return;
         for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
             if (i != row && mdlInvoiceLine.getValueAt(i, 0).equals(productId) && mdlInvoiceLine.getValueAt(i, 2).equals(uomName)) {
-                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(pnlSelling, "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại!", "Cảnh báo trùng lặp", JOptionPane.WARNING_MESSAGE));
+                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại!", "Cảnh báo trùng lặp", JOptionPane.WARNING_MESSAGE));
                 String prev = previousUOMMap.get(row);
                 mdlInvoiceLine.setValueAt(prev != null ? prev : product.getBaseUnitOfMeasure(), row, 2);
                 return;
@@ -222,35 +228,37 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         double price = lot != null ? lot.getRawPrice() * (uom != null ? uom.getBasePriceConversionRate() : 1) : 0.0;
         mdlInvoiceLine.setValueAt(price, row, 4);
         mdlInvoiceLine.setValueAt(price * quantity, row, 5);
-        String oldUomId = oldUOMIdMap.getOrDefault(row, uom.getId());
-        invoice.updateInvoiceLine(productId, oldUomId, new InvoiceLine(product, invoice, uom, LineType.SALE, quantity));
-        oldUOMIdMap.put(row, uom.getId());
+        String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
+        invoice.updateInvoiceLine(productId, oldUomName,
+            new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, uomName, LineType.SALE, quantity, price));
+        oldUOMIdMap.put(row, uomName);
         previousUOMMap.put(row, uomName);
         updateVatDisplay(); updateTotalDisplay();
     }
 
     private void setPlaceholderAndTooltip(JTextField txt, String placeholder, String tooltip) {
-        txt.setText(placeholder); txt.setForeground(Color.GRAY);
+        txt.setText(placeholder); txt.setForeground(AppColors.PLACEHOLDER_TEXT);
         txt.setName("placeholder_" + placeholder);
         txt.addFocusListener(this); txt.setToolTipText(tooltip);
     }
 
     private void createSplitPane() {
         JPanel left = new JPanel(new BorderLayout()), right = new JPanel(new BorderLayout());
-        left.setBackground(Color.WHITE); left.setMinimumSize(new Dimension(LEFT_MIN, 0));
-        right.setBackground(AppColors.WHITE); right.setMinimumSize(new Dimension(RIGHT_MIN, 0));
+        left.setBackground(AppColors.WHITE); left.setMinimumSize(new Dimension(LEFT_MIN, 0));
+        right.setBackground(AppColors.BACKGROUND); right.setMinimumSize(new Dimension(RIGHT_MIN, 0));
         left.add(createProductSearchBar(), BorderLayout.NORTH);
-        JPanel cont = new JPanel(new BorderLayout()); cont.setBackground(Color.WHITE);
-        Box v = Box.createVerticalBox(), h = Box.createHorizontalBox();
-        h.add(Box.createHorizontalStrut(10)); h.add(v); h.add(Box.createHorizontalStrut(10));
+        JPanel cont = new JPanel(new BorderLayout()); cont.setBackground(AppColors.WHITE);
+        Box tv = Box.createVerticalBox(), th = Box.createHorizontalBox();
         JLabel title = new JLabel("CHI TIẾT HÓA ĐƠN BÁN HÀNG");
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
-        Box th = Box.createHorizontalBox(); th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
-        v.add(Box.createVerticalStrut(20)); v.add(th); v.add(Box.createVerticalStrut(20));
-        cont.add(h, BorderLayout.NORTH); createInvoiceLineTable(); cont.add(scrInvoiceLine, BorderLayout.CENTER);
+        th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
+        tv.add(Box.createVerticalStrut(20)); tv.add(th); tv.add(Box.createVerticalStrut(20));
+        cont.add(tv, BorderLayout.NORTH); createInvoiceLineTable(); cont.add(scrInvoiceLine, BorderLayout.CENTER);
         left.add(cont, BorderLayout.CENTER); left.add(createInvoiceLineTableButtons(), BorderLayout.SOUTH);
         right.add(createInvoice(), BorderLayout.NORTH);
-        pnlSelling.add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right), BorderLayout.CENTER);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
+        splitPane.setBackground(AppColors.WHITE);
+        pnlSalesInvoice.add(splitPane, BorderLayout.CENTER);
     }
 
     private void createInvoiceLineTable() {
@@ -258,12 +266,13 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
             public boolean isCellEditable(int r, int c) { return c == 2 || c == 3; }
         };
         tblInvoiceLine = new JTable(mdlInvoiceLine);
+        tblInvoiceLine.setBackground(AppColors.WHITE);
         tblInvoiceLine.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         tblInvoiceLine.setFont(new Font("Arial", Font.PLAIN, 16));
         tblInvoiceLine.getTableHeader().setReorderingAllowed(false);
         tblInvoiceLine.setRowHeight(35);
         tblInvoiceLine.getTableHeader().setBackground(AppColors.PRIMARY);
-        tblInvoiceLine.getTableHeader().setForeground(Color.WHITE);
+        tblInvoiceLine.getTableHeader().setForeground(AppColors.WHITE);
         tblInvoiceLine.getTableHeader().setFont(new Font("Arial", Font.BOLD, 16));
         tblInvoiceLine.getColumnModel().getColumn(2).setCellEditor(new UnitOfMeasureCellEditor());
         tblInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
@@ -277,7 +286,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         DefaultTableCellRenderer r = new DefaultTableCellRenderer() {
             public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int row, int col) {
                 Component c = super.getTableCellRendererComponent(t, v, s, f, row, col);
-                c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(240, 240, 240));
+                c.setBackground(row % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
                 if (s) c.setBackground(t.getSelectionBackground());
                 return c;
             }
@@ -287,7 +296,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     }
 
     private JPanel createInvoiceLineTableButtons() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(Color.WHITE);
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(AppColors.WHITE);
         JButton removeAll = createStyledButton("Xóa tất cả"), remove = createStyledButton("Xóa sản phẩm");
         removeAll.setName("btnRemoveAllItems"); removeAll.addActionListener(this);
         remove.setName("btnRemoveItem"); remove.addActionListener(this);
@@ -299,38 +308,37 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         barcodeScanningEnabled = !barcodeScanningEnabled;
         updateBarcodeScanButtonAppearance();
         txtSearchInput.setText(""); txtSearchInput.requestFocusInWindow();
-        JOptionPane.showMessageDialog(pnlSelling, "Chế độ quét mã vạch đã " + (barcodeScanningEnabled ? "BẬT" : "TẮT") + "!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã " + (barcodeScanningEnabled ? "BẬT" : "TẮT") + "!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
         SwingUtilities.invokeLater(() -> txtSearchInput.requestFocusInWindow());
     }
 
     private void updateBarcodeScanButtonAppearance() {
-        btnBarcodeScan.setBackground(barcodeScanningEnabled ? new Color(46, 204, 113) : Color.WHITE);
+        btnBarcodeScan.setBackground(barcodeScanningEnabled ? new Color(46, 204, 113) : AppColors.WHITE);
     }
 
     private void processBarcodeInput() {
         String code = txtSearchInput.getText().trim(); txtSearchInput.setText("");
         if (code.isEmpty()) return;
         Product p = products.stream().filter(pr -> code.equals(pr.getBarcode())).findFirst().orElse(null);
-        if (p == null) {
-            Toolkit.getDefaultToolkit().beep();
-            JOptionPane.showMessageDialog(pnlSelling, "Không tìm thấy sản phẩm với mã vạch: " + code, "Lỗi", JOptionPane.ERROR_MESSAGE);
-        } else {
-            addProductToInvoice(p); Toolkit.getDefaultToolkit().beep();
-        }
+        Toolkit.getDefaultToolkit().beep();
+        if (p == null)
+            JOptionPane.showMessageDialog(parentWindow, "Không tìm thấy sản phẩm với mã vạch: " + code, "Lỗi", JOptionPane.ERROR_MESSAGE);
+        else
+            addProductToInvoice(p);
         SwingUtilities.invokeLater(() -> { if (barcodeScanningEnabled) txtSearchInput.requestFocusInWindow(); });
     }
 
     private void removeSelectedItems() {
         int[] rows = tblInvoiceLine.getSelectedRows();
-        if (rows.length == 0) { JOptionPane.showMessageDialog(pnlSelling, "Vui lòng chọn sản phẩm cần xóa!", "Thông báo", JOptionPane.WARNING_MESSAGE); return; }
-        if (JOptionPane.showConfirmDialog(pnlSelling, "Bạn có chắc chắn muốn xóa " + rows.length + " sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+        if (rows.length == 0) { JOptionPane.showMessageDialog(parentWindow, "Vui lòng chọn sản phẩm cần xóa!", "Thông báo", JOptionPane.WARNING_MESSAGE); return; }
+        if (JOptionPane.showConfirmDialog(parentWindow, "Bạn có chắc chắn muốn xóa " + rows.length + " sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
         for (int i = rows.length - 1; i >= 0; i--) {
             int row = rows[i];
             String id = (String) mdlInvoiceLine.getValueAt(row, 0);
             Product p = productMap.get(id);
             if (p != null) {
-                UnitOfMeasure u = findUnitOfMeasure(p, (String) mdlInvoiceLine.getValueAt(row, 2));
-                invoice.removeInvoiceLine(id, u.getId());
+                String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+                invoice.removeInvoiceLine(id, uomName);
             }
             mdlInvoiceLine.removeRow(row);
         }
@@ -339,12 +347,13 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     }
 
     private void removeAllItems() {
-        if (mdlInvoiceLine.getRowCount() == 0) { JOptionPane.showMessageDialog(pnlSelling, "Không có sản phẩm nào để xóa!", "Thông báo", JOptionPane.INFORMATION_MESSAGE); return; }
-        if (JOptionPane.showConfirmDialog(pnlSelling, "Bạn có chắc chắn muốn xóa tất cả sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+        if (mdlInvoiceLine.getRowCount() == 0) { JOptionPane.showMessageDialog(parentWindow, "Không có sản phẩm nào để xóa!", "Thông báo", JOptionPane.INFORMATION_MESSAGE); return; }
+        if (JOptionPane.showConfirmDialog(parentWindow, "Bạn có chắc chắn muốn xóa tất cả sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
         for (int i = mdlInvoiceLine.getRowCount() - 1; i >= 0; i--) {
             String id = (String) mdlInvoiceLine.getValueAt(i, 0);
             Product p = productMap.get(id);
-            if (p != null) invoice.removeInvoiceLine(id, findUnitOfMeasure(p, (String) mdlInvoiceLine.getValueAt(i, 2)).getId());
+            String uomName = (String) mdlInvoiceLine.getValueAt(i, 2);
+            if (p != null) invoice.removeInvoiceLine(id, uomName);
         }
         mdlInvoiceLine.setRowCount(0);
         previousUOMMap.clear(); oldUOMIdMap.clear(); productMap.clear();
@@ -355,7 +364,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         JButton b = new JButton(text);
         b.setMargin(new Insets(10,10,10,10)); b.setBorderPainted(false);
         b.setFont(new Font("Arial", Font.BOLD, 16)); b.setForeground(new Color(11, 110, 217));
-        b.setOpaque(true); b.setBackground(text.equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
+        b.setOpaque(true); b.setBackground(text.equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
         b.setCursor(new Cursor(Cursor.HAND_CURSOR)); b.setName(text); b.addMouseListener(this);
         return b;
     }
@@ -366,8 +375,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         JLabel title = new JLabel("HÓA ĐƠN BÁN HÀNG");
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
         Box th = Box.createHorizontalBox(); th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
-        v.add(Box.createVerticalStrut(57)); v.add(th); v.add(Box.createVerticalStrut(15));
-        
+        v.add(Box.createVerticalStrut(82)); v.add(th); v.add(Box.createVerticalStrut(20));
+
         Box presc = Box.createHorizontalBox();
         TitledBorder pb = BorderFactory.createTitledBorder("Thông tin kê đơn thuốc");
         pb.setTitleFont(new Font("Arial", Font.BOLD, 16)); pb.setTitleColor(AppColors.PRIMARY);
@@ -377,7 +386,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         txtPrescriptionCode = new JTextField(); txtPrescriptionCode.setName("txtPrescriptionCode"); txtPrescriptionCode.addFocusListener(this);
         pv.add(generateLabelAndTextField(new JLabel("Mã đơn kê thuốc:"), txtPrescriptionCode, "Điền mã đơn kê thuốc (nếu có)...", "Điền mã đơn kê thuốc", 39));
         pv.add(Box.createVerticalStrut(10));
-        
+
         Box pay = Box.createHorizontalBox();
         TitledBorder payb = BorderFactory.createTitledBorder("Thông tin thanh toán");
         payb.setTitleFont(new Font("Arial", Font.BOLD, 16)); payb.setTitleColor(AppColors.PRIMARY);
@@ -388,26 +397,26 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         payv.add(generateLabelAndTextField(new JLabel("Tìm kiếm khuyến mãi:"), txtPromotionSearch, "Điền mã hoặc tên khuyến mãi...", "Điền mã hoặc tên khuyến mãi", 10));
         setupPromotionSearchAutocomplete(txtPromotionSearch);
         payv.add(Box.createVerticalStrut(10));
-        
+
         txtVat = new JTextField(); txtVat.setEditable(false); txtVat.setFocusable(false);
         payv.add(generateLabelAndTextField(new JLabel("VAT:"), txtVat, "", "Thuế hóa đơn", 124));
         payv.add(Box.createVerticalStrut(10));
-        
+
         JTextField txtDiscount = new JTextField(); txtDiscount.setEditable(false); txtDiscount.setFocusable(false);
         payv.add(generateLabelAndTextField(new JLabel("Tiền giảm giá:"), txtDiscount, "", "Tiền giảm giá", 60));
         payv.add(Box.createVerticalStrut(10));
-        
+
         txtTotal = new JTextField(); txtTotal.setEditable(false); txtTotal.setFocusable(false);
         payv.add(generateLabelAndTextField(new JLabel("Tổng tiền:"), txtTotal, "", "Tổng tiền", 91));
         payv.add(Box.createVerticalStrut(10));
-        
+
         NumberFormatter fmt = new NumberFormatter(createCurrencyFormat());
         fmt.setValueClass(Long.class); fmt.setMinimum(0L); fmt.setAllowsInvalid(false); fmt.setCommitsOnValidEdit(true);
         txtCustomerPayment = new JFormattedTextField(fmt);
         payv.add(generateLabelAndTextField(new JLabel("Tiền khách đưa:"), txtCustomerPayment, "Nhập số tiền...", "Nhập số tiền", 47));
         txtCustomerPayment.setValue(0L);
         payv.add(Box.createVerticalStrut(10));
-        
+
         Box pm = Box.createHorizontalBox();
         JLabel lpm = new JLabel("Phương thức thanh toán:"); lpm.setFont(new Font("Arial", Font.PLAIN, 16));
         pm.add(lpm); pm.add(Box.createHorizontalStrut(29));
@@ -418,11 +427,11 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         bg.add(cash); bg.add(bank);
         pm.add(cash); pm.add(Box.createHorizontalStrut(10)); pm.add(bank); pm.add(Box.createHorizontalGlue());
         payv.add(pm); payv.add(Box.createVerticalStrut(10));
-        
+
         Box co = Box.createHorizontalBox(); co.add(Box.createHorizontalStrut(203));
         pnlCashOptions = createCashOptionsPanel(); co.add(pnlCashOptions);
         payv.add(co);
-        
+
         v.add(Box.createVerticalStrut(20));
         Box pb1 = Box.createHorizontalBox(); pb1.add(Box.createHorizontalGlue());
         btnProcessPayment = createStyledButton("Thanh toán");
@@ -434,7 +443,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
 
     private JPanel createCashOptionsPanel() {
         JPanel p = new JPanel(new GridLayout(0, 3, 10, 10));
-        p.setBackground(Color.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
+        p.setBackground(AppColors.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
         updateCashButtons();
         return p;
     }
@@ -442,10 +451,14 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     private void updateCashButtons() {
         if (pnlCashOptions == null || txtTotal == null || invoice == null) return;
         pnlCashOptions.removeAll();
-        long min = ((long) Math.ceil(invoice.calculateTotal() / 1000)) * 1000;
-        for (long inc : new long[]{0, 10000, 20000, 50000, 100000, 200000}) {
-            JButton b = createCashButton(min + inc);
-            pnlCashOptions.add(b);
+        long[] amounts = {
+            1000L, 2000L, 5000L, 10000L, 20000L, 50000L, 100000L, 200000L, 500000L,
+            ((long) Math.ceil(invoice.calculateTotal() / 1000) * 1000)
+        };
+        for (long inc : amounts) {
+            pnlCashOptions.add(createCashButton(inc));
+            if (inc == 500000L)
+                pnlCashOptions.add(new JPanel()); // Placeholder for alignment
         }
         pnlCashOptions.revalidate(); pnlCashOptions.repaint();
     }
@@ -457,11 +470,11 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     }
 
     private void $$$setupUI$$$() {
-        pnlSelling = new JPanel(); pnlSelling.setLayout(new BorderLayout(0, 0));
-        pnlSelling.setBackground(new Color(-16777216));
+        pnlSalesInvoice = new JPanel(); pnlSalesInvoice.setLayout(new BorderLayout(0, 0));
+        pnlSalesInvoice.setBackground(AppColors.WHITE);
     }
 
-    public JComponent $$$getRootComponent$$$() { return pnlSelling; }
+    public JComponent $$$getRootComponent$$$() { return pnlSalesInvoice; }
 
     private class UnitOfMeasureCellEditor extends DefaultCellEditor {
         private JComboBox<String> comboBox;
@@ -583,10 +596,10 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
 
     private void validatePrescriptionCode() {
         String txt = txtPrescriptionCode.getText().trim();
-        if (txt.isEmpty() || txt.equals("Điền mã đơn kê thuốc (nếu có)...") || txtPrescriptionCode.getForeground().equals(Color.GRAY)) {
+        if (txt.isEmpty() || txt.equals("Điền mã đơn kê thuốc (nếu có)...") || txtPrescriptionCode.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             boolean hasETC = invoice.getInvoiceLineList().stream().anyMatch(l -> l.getProduct().getCategory() == ProductCategory.ETC);
             if (hasETC) {
-                JOptionPane.showMessageDialog(pnlSelling, "Hóa đơn có thuốc ETC. Vui lòng nhập mã đơn thuốc!", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(parentWindow, "Hóa đơn có thuốc ETC. Vui lòng nhập mã đơn thuốc!", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
                 txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
             } else {
                 invoice.setPrescriptionCode(null); btnProcessPayment.setEnabled(true);
@@ -594,12 +607,12 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
             return;
         }
         if (!txt.matches(PRESCRIPTION_PATTERN)) {
-            JOptionPane.showMessageDialog(pnlSelling, "Mã đơn thuốc không hợp lệ!\n\nĐịnh dạng: xxxxxyyyyyyy-z\n- 5 ký tự đầu: mã cơ sở\n- 7 ký tự tiếp: mã đơn thuốc\n- 1 ký tự cuối: loại (N/H/C)", "Mã đơn thuốc không hợp lệ", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parentWindow, "Mã đơn thuốc không hợp lệ!\n\nĐịnh dạng: xxxxxyyyyyyy-z\n- 5 ký tự đầu: mã cơ sở\n- 7 ký tự tiếp: mã đơn thuốc\n- 1 ký tự cuối: loại (N/H/C)", "Mã đơn thuốc không hợp lệ", JOptionPane.ERROR_MESSAGE);
             txtPrescriptionCode.selectAll(); txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
             return;
         }
         if (previousPrescriptionCodes.contains(txt.toLowerCase())) {
-            JOptionPane.showMessageDialog(pnlSelling, "Mã đơn thuốc đã được sử dụng!", "Mã trùng lặp", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parentWindow, "Mã đơn thuốc đã được sử dụng!", "Mã trùng lặp", JOptionPane.ERROR_MESSAGE);
             txtPrescriptionCode.selectAll(); txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
             return;
         }
@@ -654,7 +667,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         if (e.getSource() instanceof JButton) {
             JButton b = (JButton) e.getSource();
             if ("btnBarcodeScan".equals(b.getName())) updateBarcodeScanButtonAppearance();
-            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
+            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
         }
     }
 
@@ -662,7 +675,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         if (e.getSource() instanceof JButton) {
             JButton b = (JButton) e.getSource();
             if (!"btnBarcodeScan".equals(b.getName()) || !barcodeScanningEnabled)
-                b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? Color.WHITE : AppColors.WHITE);
+                b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : AppColors.BACKGROUND);
         }
     }
 
@@ -670,15 +683,15 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         if (e.getSource() instanceof JButton) {
             JButton b = (JButton) e.getSource();
             if ("btnBarcodeScan".equals(b.getName())) updateBarcodeScanButtonAppearance();
-            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
+            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
         }
     }
 
     @Override public void focusGained(FocusEvent e) {
         if (e.getSource() instanceof JTextField) {
             JTextField t = (JTextField) e.getSource();
-            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getForeground().equals(Color.GRAY)) {
-                t.setText(""); t.setForeground(Color.BLACK);
+            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
+                t.setText(""); t.setForeground(AppColors.TEXT);
             }
         }
     }
@@ -692,7 +705,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         else if (src == txtPromotionSearch) new javax.swing.Timer(150, evt -> promotionSearchWindow.setVisible(false)) {{ setRepeats(false); start(); }};
         else if (src instanceof JTextField) {
             JTextField t = (JTextField) src;
-            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getText().isEmpty()) { t.setText(t.getToolTipText()); t.setForeground(Color.GRAY); }
+            if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getText().isEmpty()) { t.setText(t.getToolTipText()); t.setForeground(AppColors.PLACEHOLDER_TEXT); }
         }
     }
 
@@ -730,8 +743,8 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
     private void handleNav(KeyEvent e, JList<String> l, DefaultListModel<String> m, boolean isProd) {
         int i = l.getSelectedIndex();
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_DOWN: l.setSelectedIndex(i < m.getSize() - 1 ? i + 1 : 0); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
-            case KeyEvent.VK_UP: l.setSelectedIndex(i > 0 ? i - 1 : m.getSize() - 1); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
+            case KeyEvent.VK_DOWN: l.setSelectedIndex((i + 1) % m.getSize()); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
+            case KeyEvent.VK_UP: l.setSelectedIndex((i + m.getSize() - 1) % m.getSize()); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
             case KeyEvent.VK_ENTER: if (i != -1) { if (isProd) selectProduct(i, txtSearchInput); else selectPromotion(i); } e.consume(); break;
             case KeyEvent.VK_ESCAPE: (isProd ? searchWindow : promotionSearchWindow).setVisible(false); e.consume(); break;
         }
@@ -741,7 +754,7 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
         if (txtCustomerPayment != null) {
             Object v = txtCustomerPayment.getValue();
             long c = v instanceof Number ? ((Number) v).longValue() : 0;
-            txtCustomerPayment.setValue(c + amt); txtCustomerPayment.setForeground(Color.BLACK); txtCustomerPayment.requestFocusInWindow();
+            txtCustomerPayment.setValue(c + amt); txtCustomerPayment.setForeground(AppColors.TEXT); txtCustomerPayment.requestFocusInWindow();
         }
     }
 
@@ -761,22 +774,22 @@ public class TAB_Selling extends JFrame implements ActionListener, MouseListener
 
     private void processPayment() {
         if (invoice.getInvoiceLineList() == null || invoice.getInvoiceLineList().isEmpty()) {
-            JOptionPane.showMessageDialog(pnlSelling, "Danh sách sản phẩm trống!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
+            JOptionPane.showMessageDialog(parentWindow, "Danh sách sản phẩm trống!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
         }
         if (invoice.getPaymentMethod() == PaymentMethod.CASH && txtCustomerPayment != null) {
             long pay = txtCustomerPayment.getValue() instanceof Number ? ((Number) txtCustomerPayment.getValue()).longValue() : 0;
             long tot = (long) invoice.calculateTotal();
             if (pay < tot) {
-                JOptionPane.showMessageDialog(pnlSelling, "Số tiền không đủ!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
+                JOptionPane.showMessageDialog(parentWindow, "Số tiền không đủ!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
             }
         }
         try {
             File d = new File("invoices"); if (!d.exists()) d.mkdirs();
             String fn = "invoices/Invoice_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".pdf";
             File f = InvoicePDFGenerator.generateInvoicePDF(invoice, fn);
-            int o = JOptionPane.showConfirmDialog(pnlSelling, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
+            int o = JOptionPane.showConfirmDialog(parentWindow, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
             if (o == JOptionPane.YES_OPTION && Desktop.isDesktopSupported()) Desktop.getDesktop().open(f);
-        } catch (Exception ex) { JOptionPane.showMessageDialog(pnlSelling, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE); }
+        } catch (Exception ex) { JOptionPane.showMessageDialog(parentWindow, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE); }
     }
 }
 

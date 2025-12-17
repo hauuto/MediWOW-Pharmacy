@@ -2,6 +2,7 @@ package com.entities;
 
 import jakarta.persistence.*;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
@@ -9,19 +10,21 @@ import java.util.Objects;
  */
 @Entity
 @Table(name = "UnitOfMeasure")
+@IdClass(UnitOfMeasure.UnitOfMeasureId.class)
 public class UnitOfMeasure {
     @Id
-    @Column(name = "id")
-    private String id;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product", nullable = false) // ✅ DB cột tên "product"
+    @JoinColumn(name = "product", nullable = false)
     private Product product;
 
-    @Column(name = "name")
+    @Id
+    @Column(name = "name", length = 100)
     private String name;
 
-    @Column(name = "baseUnitConversionRate")
+    @Column(name = "price", nullable = false)
+    private double price;
+
+    @Column(name = "baseUnitConversionRate", nullable = false)
     private double baseUnitConversionRate;
 
     @Transient
@@ -29,10 +32,10 @@ public class UnitOfMeasure {
 
     protected UnitOfMeasure() {}
 
-    public UnitOfMeasure(String id, Product product, String name, double baseUnitConversionRate) {
-        this.id = id;
+    public UnitOfMeasure(Product product, String name, double price, double baseUnitConversionRate) {
         this.product = product;
         this.name = name;
+        this.price = price;
         this.baseUnitConversionRate = baseUnitConversionRate;
         basePriceConversionRate = 1 / baseUnitConversionRate;
     }
@@ -44,12 +47,16 @@ public class UnitOfMeasure {
         }
     }
 
-    public String getId() {
-        return id;
+    public UnitOfMeasureId getId() {
+        return new UnitOfMeasureId(product.getId(), name);
     }
 
     public Product getProduct() {
         return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
     }
 
     public String getName() {
@@ -58,6 +65,14 @@ public class UnitOfMeasure {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
     }
 
     public double getBaseUnitConversionRate() {
@@ -75,7 +90,7 @@ public class UnitOfMeasure {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return Objects.hash(product.getId(), name);
     }
 
     @Override
@@ -87,7 +102,8 @@ public class UnitOfMeasure {
             return false;
 
         UnitOfMeasure other = (UnitOfMeasure) obj;
-        return Objects.equals(id, other.id);
+        return Objects.equals(product.getId(), other.product.getId()) &&
+               Objects.equals(name, other.name);
     }
 
     @Override
@@ -95,7 +111,32 @@ public class UnitOfMeasure {
         return super.toString();
     }
 
-    public void setProduct(Product p) {
-        this.product = p;
+    /**
+     * Composite key class for UnitOfMeasure
+     */
+    public static class UnitOfMeasureId implements Serializable {
+        private String product;
+        private String name;
+
+        public UnitOfMeasureId() {}
+
+        public UnitOfMeasureId(String product, String name) {
+            this.product = product;
+            this.name = name;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            UnitOfMeasureId that = (UnitOfMeasureId) o;
+            return Objects.equals(product, that.product) &&
+                   Objects.equals(name, that.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(product, name);
+        }
     }
 }

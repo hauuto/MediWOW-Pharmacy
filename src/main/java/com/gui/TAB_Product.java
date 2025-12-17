@@ -1295,7 +1295,10 @@ public class TAB_Product {
             String name = valStr(uomModel.getValueAt(r, UOM_COL_NAME));
             Integer rate = parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE));
             if (id.isEmpty() || name.isEmpty() || rate == null) continue; // bỏ dòng thiếu
-            UnitOfMeasure u = new UnitOfMeasure(id, p, name, rate);
+            // Note: UnitOfMeasure now uses composite key (product, name) and requires price
+            // Assuming price is calculated from lot's raw price * conversion rate
+            double price = 0.0; // TODO: Calculate actual price based on business logic
+            UnitOfMeasure u = new UnitOfMeasure(p, name, price, rate);
             u.setProduct(p);
             uoms.add(u);
         }
@@ -1313,7 +1316,9 @@ public class TAB_Product {
             LocalDateTime expiry = parseDMYToLocalDate(exp).atStartOfDay();
             LotStatus status = mapLotStatusVN(st);
 
-            Lot lot = new Lot(bn, p, (qty == null ? 0 : qty), (price == null ? 0.0 : price), expiry, status);
+            // Generate UUID for new lot id, use batchNumber as is
+            String lotId = java.util.UUID.randomUUID().toString();
+            Lot lot = new Lot(lotId, bn, p, (qty == null ? 0 : qty), (price == null ? 0.0 : price), expiry, status);
             lot.setProduct(p);
             lots.add(lot);
         }
@@ -1389,7 +1394,7 @@ public class TAB_Product {
         if (p.getUnitOfMeasureList() != null) {
             for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
                 uomModel.addRow(new Object[]{
-                        safe(u.getId()),
+                        safe(u.getName()), // UnitOfMeasure now uses composite key, use name as ID
                         safe(u.getName()),
                         u.getBaseUnitConversionRate()
                 });

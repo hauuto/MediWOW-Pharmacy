@@ -45,12 +45,6 @@ public class GUI_MainMenu implements ActionListener {
     /**
      * @author Tô Thanh Hậu
      */
-    private void createUIComponents() {
-        // TODO: place custom component creation code here
-
-
-    }
-
 
     public GUI_MainMenu(Staff staff) {
         this.currentStaff = staff;
@@ -78,7 +72,7 @@ public class GUI_MainMenu implements ActionListener {
 
 
         TAB_Dashboard dashboard = new TAB_Dashboard();
-        TAB_Selling sales = new TAB_Selling(currentStaff);
+        GUI_InvoiceMenu invoiceMenu = new GUI_InvoiceMenu(currentStaff);
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();
@@ -86,7 +80,7 @@ public class GUI_MainMenu implements ActionListener {
         TAB_Customer customer = new TAB_Customer();
 
         pnlMain.add(dashboard, "dashboard"); // Fixed: dashboard is already a JPanel
-        pnlMain.add(sales.pnlSelling, "selling");
+        pnlMain.add(invoiceMenu.pnlInvoiceMenu, "invoiceMenu");
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic.pStatistic, "statistic");
         pnlMain.add(product.pProduct, "product");
@@ -135,7 +129,7 @@ public class GUI_MainMenu implements ActionListener {
             cardLayout.show(pnlMain, "dashboard");
         } else if (src == btnSales) {
             setActiveButton(btnSales);
-            cardLayout.show(pnlMain, "selling");
+            cardLayout.show(pnlMain, "invoiceMenu");
 
         } else if (src == btnProduct) {
             setActiveButton(btnProduct);
