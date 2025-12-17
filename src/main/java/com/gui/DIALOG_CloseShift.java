@@ -234,8 +234,8 @@ public class DIALOG_CloseShift extends JDialog {
         BigDecimal systemCash = busShift.calculateSystemCashForShift(currentShift);
         txtSystemCash.setText(currencyFormat.format(systemCash));
 
-        // Set default end cash to system cash without formatting (will be formatted by filter)
-        String systemCashDigits = systemCash.toPlainString().replaceAll("[^0-9]", "");
+        // Set default end cash to system cash - use toBigInteger to get only integer part
+        String systemCashDigits = systemCash.toBigInteger().toString();
         txtEndCash.setText(systemCashDigits);
         calculateDifference();
     }
