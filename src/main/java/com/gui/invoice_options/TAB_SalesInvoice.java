@@ -327,6 +327,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         right.add(createInvoice(), BorderLayout.NORTH);
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         splitPane.setBackground(AppColors.WHITE);
+        splitPane.setDividerLocation(RIGHT_MIN);
         pnlSalesInvoice.add(splitPane, BorderLayout.CENTER);
     }
 
@@ -382,7 +383,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private void updateBarcodeScanButtonAppearance() {
-        btnBarcodeScan.setBackground(barcodeScanningEnabled ? new Color(46, 204, 113) : AppColors.WHITE);
+        btnBarcodeScan.setBackground(barcodeScanningEnabled ? AppColors.PRIMARY : AppColors.WHITE);
     }
 
     private void processBarcodeInput() {
