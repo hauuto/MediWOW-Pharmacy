@@ -645,7 +645,7 @@ public class GUI_MainMenu implements ActionListener {
         lblTime.setText("");
         pnlRightHeader.add(lblTime, BorderLayout.CENTER);
         pnlSearch = new JPanel();
-        pnlSearch.setLayout(new GridLayoutManager(1, 4, new Insets(0, 300, 0, 0), -1, -1));
+        pnlSearch.setLayout(new GridLayoutManager(1, 4, new Insets(0, 100, 0, 0), -1, -1));
         pnlSearch.setAlignmentX(0.0f);
         pnlSearch.setBackground(new Color(-16724789));
         pnlRightHeader.add(pnlSearch, BorderLayout.WEST);
