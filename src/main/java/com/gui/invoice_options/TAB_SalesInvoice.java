@@ -14,6 +14,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.beans.*;
 import java.io.File;
+import java.math.BigDecimal;
 import java.text.*;
 import java.util.*;
 import java.util.List;
@@ -24,6 +25,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private final BUS_Product busProduct = new BUS_Product();
     private final BUS_Invoice busInvoice = new BUS_Invoice();
     private final BUS_Promotion busPromotion = new BUS_Promotion();
+    private final BUS_Shift busShift = new BUS_Shift();
+    private final Staff currentStaff;
     private final Invoice invoice;
     private final List<String> previousPrescriptionCodes;
     private final List<Product> products;
@@ -45,17 +48,83 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private List<Product> currentSearchResults = new ArrayList<>();
     private List<Promotion> currentPromotionSearchResults = new ArrayList<>();
     private static final String PRESCRIPTION_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
-    private final Window parentWindow;
+    private Window parentWindow;
+    private Shift currentShift;
 
     public TAB_SalesInvoice(Staff creator) {
+        this.currentStaff = Objects.requireNonNull(creator, "Nhân viên tạo hóa đơn không được null");
         $$$setupUI$$$();
-        invoice = new Invoice(InvoiceType.SALES, creator);
+        parentWindow = this;
+        currentShift = ensureCurrentShift();
+        invoice = new Invoice(InvoiceType.SALES, currentStaff, currentShift);
         invoice.setPaymentMethod(PaymentMethod.CASH);
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         promotions = busPromotion.getAllPromotions().stream().filter(Promotion::getIsActive).toList();
-        parentWindow = SwingUtilities.getWindowAncestor(pnlSalesInvoice);
         createSplitPane();
+    }
+
+    private Shift ensureCurrentShift() {
+        Shift shift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+        while (shift == null) {
+            Object[] options = {"Mở ca", "Hủy"};
+            int choice = JOptionPane.showOptionDialog(parentWindow,
+                "Bạn chưa mở ca làm việc. Vui lòng mở ca trước khi tạo hóa đơn.",
+                "Yêu cầu mở ca", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE,
+                null, options, options[0]);
+            if (choice != JOptionPane.YES_OPTION) {
+                throw new IllegalStateException("Người dùng chưa mở ca làm việc");
+            }
+            shift = promptOpenShiftDialog();
+            if (shift == null) {
+                // Người dùng hủy ở dialog mở ca -> hỏi lại vòng lặp
+                continue;
+            }
+        }
+        return shift;
+    }
+
+    private Shift promptOpenShiftDialog() {
+        JSpinner startCashSpinner = new JSpinner(new SpinnerNumberModel(0L, 0L, null, 1000L));
+        JSpinner.NumberEditor editor = new JSpinner.NumberEditor(startCashSpinner, "#,###");
+        startCashSpinner.setEditor(editor);
+        editor.getTextField().setColumns(10);
+        JTextArea notesArea = new JTextArea(3, 20);
+        notesArea.setLineWrap(true);
+        notesArea.setWrapStyleWord(true);
+        JScrollPane noteScroll = new JScrollPane(notesArea);
+        noteScroll.setPreferredSize(new Dimension(250, 80));
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.add(new JLabel("Tiền mặt đầu ca (VND):"));
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(startCashSpinner);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(new JLabel("Ghi chú (tùy chọn):"));
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(noteScroll);
+
+        int result = JOptionPane.showConfirmDialog(parentWindow, panel, "Mở ca làm việc",
+            JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) return null;
+
+        try {
+            startCashSpinner.commitEdit();
+        } catch (ParseException e) {
+            JOptionPane.showMessageDialog(parentWindow, "Giá trị tiền đầu ca không hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+
+        Number value = (Number) startCashSpinner.getValue();
+        BigDecimal startCash = BigDecimal.valueOf(value.longValue());
+        String notes = notesArea.getText().trim();
+        try {
+            return busShift.openShift(currentStaff, startCash, notes.isEmpty() ? null : notes);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(parentWindow, ex.getMessage(), "Không thể mở ca", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
     }
 
     private Box createProductSearchBar() {
