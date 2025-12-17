@@ -42,7 +42,7 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener {
 
     private JPanel createInvoiceButtonNavBar() {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(AppColors.DARK);
-        btnSalesInvoice = createStyledButton("Hóa đơn mua"); btnExchangeInvoice = createStyledButton("Hóa đơn đổi"); btnReturnInvoice = createStyledButton("Hóa đơn trả"); btnInvoiceList = createStyledButton("Danh sách HĐ");
+        btnSalesInvoice = createStyledButton("Hóa đơn mua"); btnExchangeInvoice = createStyledButton("Hóa đơn đổi"); btnReturnInvoice = createStyledButton("Hóa đơn trả"); btnInvoiceList = createStyledButton("Danh sách hóa đơn");
         btnSalesInvoice.addActionListener(this); btnExchangeInvoice.addActionListener(this); btnReturnInvoice.addActionListener(this); btnInvoiceList.addActionListener(this);
         p.add(btnSalesInvoice); p.add(btnExchangeInvoice); p.add(btnReturnInvoice); p.add(btnInvoiceList);
         return p;

@@ -221,7 +221,7 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0002', 'INV2025-0001', 'PRO2025-0003', N'Viên', 20, 500.00, 'SALE');
 
 -- LotAllocation for Invoice 1 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0001', 'ILN2025-0001', 'LOT2025-0001', 300);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0001', 'ILN2025-0001', 'LOT2025-0001', 3);
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0002', 'ILN2025-0002', 'LOT2025-0006', 20);
 
 -- Invoice 2: SALES with Bank Transfer
@@ -236,7 +236,7 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0004', 'INV2025-0002', 'PRO2025-0005', N'Viên', 30, 1500.00, 'SALE');
 
 -- LotAllocation for Invoice 2 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0003', 'ILN2025-0003', 'LOT2025-0004', 200);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0003', 'ILN2025-0003', 'LOT2025-0004', 2);
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0004', 'ILN2025-0004', 'LOT2025-0011', 30);
 
 -- Invoice 3: SALES with Prescription Code (ETC) - Different customer
@@ -251,8 +251,8 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0006', 'INV2025-0003', 'PRO2025-0001', N'Vỉ', 5, 2000.00, 'SALE');
 
 -- LotAllocation for Invoice 3 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0005', 'ILN2025-0005', 'LOT2025-0009', 240);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0006', 'ILN2025-0006', 'LOT2025-0001', 50);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0005', 'ILN2025-0005', 'LOT2025-0009', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0006', 'ILN2025-0006', 'LOT2025-0001', 5);
 
 -- Invoice 4: SALES - Large order
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
@@ -269,10 +269,10 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0009', 'INV2025-0004', 'PRO2025-0005', N'Lọ', 3, 90000.00, 'SALE');
 
 -- LotAllocation for Invoice 4 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0007', 'ILN2025-0007', 'LOT2025-0001', 800);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0008', 'ILN2025-0007', 'LOT2025-0003', 200);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0009', 'ILN2025-0008', 'LOT2025-0004', 500);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0010', 'ILN2025-0009', 'LOT2025-0011', 180);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0007', 'ILN2025-0007', 'LOT2025-0001', 8);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0008', 'ILN2025-0007', 'LOT2025-0003', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0009', 'ILN2025-0008', 'LOT2025-0004', 5);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0010', 'ILN2025-0009', 'LOT2025-0011', 3);
 
 -- Invoice 5: SALES - Simple cash transaction
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
@@ -308,8 +308,8 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0013', 'INV2025-0007', 'PRO2025-0003', N'Hộp', 1, 50000.00, 'EXCHANGE_IN');
 
 -- LotAllocation for Invoice 7 (Exchange)
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0013', 'ILN2025-0012', 'LOT2025-0001', 200);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0014', 'ILN2025-0013', 'LOT2025-0006', 100);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0013', 'ILN2025-0012', 'LOT2025-0001', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0014', 'ILN2025-0013', 'LOT2025-0006', 1);
 
 -- Invoice 8: SALES with Promotion 2 applied
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
@@ -323,8 +323,8 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0015', 'INV2025-0008', 'PRO2025-0002', N'Chai', 1, 0.00, 'SALE');
 
 -- LotAllocation for Invoice 8
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0015', 'ILN2025-0014', 'LOT2025-0012', 180);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0016', 'ILN2025-0015', 'LOT2025-0004', 100);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0015', 'ILN2025-0014', 'LOT2025-0012', 3);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0016', 'ILN2025-0015', 'LOT2025-0004', 1);
 
 GO
 
