@@ -257,14 +257,15 @@ public class DIALOG_CloseShift extends JDialog {
 
     private void calculateDifference() {
         try {
-            String endCashText = txtEndCash.getText().trim().replaceAll("[^0-9.]", "");
+            // Remove all non-digit characters (including currency symbols, dots, commas)
+            String endCashText = txtEndCash.getText().trim().replaceAll("[^0-9]", "");
             if (endCashText.isEmpty()) {
                 txtDifference.setText("");
                 txtDifference.setForeground(Color.BLACK);
                 return;
             }
 
-            String systemCashText = txtSystemCash.getText().trim().replaceAll("[^0-9.]", "");
+            String systemCashText = txtSystemCash.getText().trim().replaceAll("[^0-9]", "");
 
             BigDecimal endCash = new BigDecimal(endCashText);
             BigDecimal systemCash = new BigDecimal(systemCashText);
@@ -288,8 +289,8 @@ public class DIALOG_CloseShift extends JDialog {
 
     private void handleConfirm() {
         try {
-            // Validate end cash
-            String endCashText = txtEndCash.getText().trim().replaceAll("[^0-9.]", "");
+            // Validate end cash - remove all non-digit characters
+            String endCashText = txtEndCash.getText().trim().replaceAll("[^0-9]", "");
             if (endCashText.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
                     "Vui lòng nhập tiền thực tế cuối ca!",

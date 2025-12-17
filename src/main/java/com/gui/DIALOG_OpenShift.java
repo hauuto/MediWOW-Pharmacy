@@ -9,8 +9,10 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 public class DIALOG_OpenShift extends JDialog {
     private JTextField txtStartCash;
@@ -22,6 +24,7 @@ public class DIALOG_OpenShift extends JDialog {
     private BUS_Shift busShift;
     private Shift openedShift = null;
 
+    private static final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.of("vi", "VN"));
     private static final DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     public DIALOG_OpenShift(Frame parent, Staff staff) {
@@ -112,8 +115,27 @@ public class DIALOG_OpenShift extends JDialog {
         ));
 
         panel.add(createLabel("Số tiền (VND):"));
-        txtStartCash = new JTextField("0");
+        txtStartCash = new JTextField("0 ₫");
         txtStartCash.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+        // Thêm FocusListener để format khi người dùng nhập xong
+        txtStartCash.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                formatStartCashField();
+            }
+
+            @Override
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                // Khi focus vào, xóa định dạng để người dùng nhập dễ hơn
+                String text = txtStartCash.getText().trim().replaceAll("[^0-9]", "");
+                if (!text.isEmpty() && !text.equals("0")) {
+                    txtStartCash.setText(text);
+                    txtStartCash.selectAll();
+                }
+            }
+        });
+
         panel.add(txtStartCash);
 
         return panel;
@@ -164,10 +186,24 @@ public class DIALOG_OpenShift extends JDialog {
         return label;
     }
 
+    private void formatStartCashField() {
+        try {
+            String text = txtStartCash.getText().trim().replaceAll("[^0-9]", "");
+            if (!text.isEmpty()) {
+                BigDecimal value = new BigDecimal(text);
+                txtStartCash.setText(currencyFormat.format(value));
+            } else {
+                txtStartCash.setText("0 ₫");
+            }
+        } catch (NumberFormatException ignored) {
+            txtStartCash.setText("0 ₫");
+        }
+    }
+
     private void handleConfirm() {
         try {
-            // Validate start cash
-            String startCashText = txtStartCash.getText().trim().replaceAll("[^0-9.]", "");
+            // Validate start cash - remove all non-digit characters
+            String startCashText = txtStartCash.getText().trim().replaceAll("[^0-9]", "");
             if (startCashText.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
                     "Vui lòng nhập tiền đầu ca!",
