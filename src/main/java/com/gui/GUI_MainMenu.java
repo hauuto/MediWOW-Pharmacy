@@ -47,6 +47,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     private BUS_Shift busShift;
     private Shift currentShift;
     private GUI_InvoiceMenu invoiceMenu;
+    private ShiftChangeListener shiftChangeListener;
 
 
     /**
@@ -85,7 +86,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
         TAB_Dashboard dashboard = new TAB_Dashboard(currentStaff);
         invoiceMenu = new GUI_InvoiceMenu(currentStaff);
-        invoiceMenu.setShiftChangeListener(this); // Set listener để cập nhật trạng thái shift
+        shiftChangeListener = invoiceMenu; // Set invoiceMenu as the shift change listener
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();
@@ -165,7 +166,15 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
             // Update button if shift was closed
             if (closeShiftDialog.isConfirmed()) {
+                Shift closedShift = currentShift;
+                currentShift = null;
                 updateShiftButton();
+
+                // Notify listener that shift was closed
+                if (shiftChangeListener != null) {
+                    shiftChangeListener.onShiftClosed(closedShift);
+                }
+
                 JOptionPane.showMessageDialog(pnlMainMenu,
                         "Ca làm việc đã được đóng thành công!",
                         "Thông báo",
@@ -181,6 +190,12 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
             if (openShiftDialog.getOpenedShift() != null) {
                 currentShift = openShiftDialog.getOpenedShift();
                 updateShiftButton();
+
+                // Notify listener that shift was opened
+                if (shiftChangeListener != null) {
+                    shiftChangeListener.onShiftOpened(currentShift);
+                }
+
                 JOptionPane.showMessageDialog(pnlMainMenu,
                         "Ca làm việc đã được mở thành công!",
                         "Thông báo",
@@ -248,8 +263,14 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
                     // If shift was closed successfully, ask again to logout
                     if (closeShiftDialog.isConfirmed()) {
+                        Shift closedShift = currentShift;
                         currentShift = null;
                         updateShiftButton();
+
+                        // Notify listener that shift was closed
+                        if (shiftChangeListener != null) {
+                            shiftChangeListener.onShiftClosed(closedShift);
+                        }
 
                         int logoutChoice = JOptionPane.showConfirmDialog(
                                 pnlMainMenu,
@@ -348,6 +369,12 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     public void onShiftOpened(Shift shift) {
         currentShift = shift;
         updateShiftButton();
+
+        // Forward event to invoice menu
+        if (invoiceMenu != null) {
+            invoiceMenu.onShiftOpened(shift);
+        }
+
         // Don't show message here - DIALOG_OpenShift already shows success message
     }
 
@@ -355,6 +382,12 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     public void onShiftClosed(Shift shift) {
         currentShift = null;
         updateShiftButton();
+
+        // Forward event to invoice menu
+        if (invoiceMenu != null) {
+            invoiceMenu.onShiftClosed(shift);
+        }
+
         // Don't show message here - DIALOG_CloseShift already shows success message
     }
 
