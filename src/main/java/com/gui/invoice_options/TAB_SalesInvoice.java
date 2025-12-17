@@ -42,6 +42,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private JFormattedTextField txtCustomerPayment;
     private JPanel pnlCashOptions;
     private boolean barcodeScanningEnabled = false;
+    private boolean isValidatingPrescriptionCode = false;
     private JWindow searchWindow, promotionSearchWindow;
     private JList<String> searchResultsList, promotionSearchResultsList;
     private DefaultListModel<String> searchResultsModel, promotionSearchResultsModel;
@@ -431,11 +432,25 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private JButton createStyledButton(String text) {
-        JButton b = new JButton(text);
-        b.setMargin(new Insets(10,10,10,10)); b.setBorderPainted(false);
-        b.setFont(new Font("Arial", Font.BOLD, 16)); b.setForeground(new Color(11, 110, 217));
-        b.setOpaque(true); b.setBackground(text.equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
-        b.setCursor(new Cursor(Cursor.HAND_CURSOR)); b.setName(text); b.addMouseListener(this);
+        int arc = 12;
+        boolean isPaymentBtn = text.equalsIgnoreCase("Thanh toán");
+        Color defaultBg = isPaymentBtn ? AppColors.BACKGROUND : AppColors.WHITE;
+        Color rolloverBg = isPaymentBtn ? AppColors.WHITE : AppColors.BACKGROUND;
+        Color pressedBg = AppColors.LIGHT;
+        JButton b = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                ButtonModel model = getModel();
+                Color fill = model.isPressed() ? pressedBg : (model.isRollover() ? rolloverBg : getBackground());
+                g2.setColor(fill); g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc); g2.dispose(); super.paintComponent(g);
+            }
+        };
+        b.setContentAreaFilled(false); b.setOpaque(false); b.setBorderPainted(false); b.setFocusPainted(false); b.setRolloverEnabled(true);
+        b.setMargin(new Insets(10, 10, 10, 10)); b.setFont(new Font("Arial", Font.BOLD, 16));
+        b.setForeground(AppColors.PRIMARY); b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setName(text); b.setBackground(defaultBg);
         return b;
     }
 
@@ -665,28 +680,37 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private void validatePrescriptionCode() {
+        if (isValidatingPrescriptionCode) return;
+        isValidatingPrescriptionCode = true;
         String txt = txtPrescriptionCode.getText().trim();
         if (txt.isEmpty() || txt.equals("Điền mã đơn kê thuốc (nếu có)...") || txtPrescriptionCode.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             boolean hasETC = invoice.getInvoiceLineList().stream().anyMatch(l -> l.getProduct().getCategory() == ProductCategory.ETC);
             if (hasETC) {
                 JOptionPane.showMessageDialog(parentWindow, "Hóa đơn có thuốc ETC. Vui lòng nhập mã đơn thuốc!", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
-                txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
+                SwingUtilities.invokeLater(() -> { txtPrescriptionCode.requestFocusInWindow(); isValidatingPrescriptionCode = false; });
+                btnProcessPayment.setEnabled(false);
             } else {
                 invoice.setPrescriptionCode(null); btnProcessPayment.setEnabled(true);
+                isValidatingPrescriptionCode = false;
             }
             return;
         }
         if (!txt.matches(PRESCRIPTION_PATTERN)) {
             JOptionPane.showMessageDialog(parentWindow, "Mã đơn thuốc không hợp lệ!\n\nĐịnh dạng: xxxxxyyyyyyy-z\n- 5 ký tự đầu: mã cơ sở\n- 7 ký tự tiếp: mã đơn thuốc\n- 1 ký tự cuối: loại (N/H/C)", "Mã đơn thuốc không hợp lệ", JOptionPane.ERROR_MESSAGE);
-            txtPrescriptionCode.selectAll(); txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
+            txtPrescriptionCode.selectAll();
+            SwingUtilities.invokeLater(() -> { txtPrescriptionCode.requestFocusInWindow(); isValidatingPrescriptionCode = false; });
+            btnProcessPayment.setEnabled(false);
             return;
         }
         if (previousPrescriptionCodes.contains(txt.toLowerCase())) {
             JOptionPane.showMessageDialog(parentWindow, "Mã đơn thuốc đã được sử dụng!", "Mã trùng lặp", JOptionPane.ERROR_MESSAGE);
-            txtPrescriptionCode.selectAll(); txtPrescriptionCode.requestFocusInWindow(); btnProcessPayment.setEnabled(false);
+            txtPrescriptionCode.selectAll();
+            SwingUtilities.invokeLater(() -> { txtPrescriptionCode.requestFocusInWindow(); isValidatingPrescriptionCode = false; });
+            btnProcessPayment.setEnabled(false);
             return;
         }
         invoice.setPrescriptionCode(txt); btnProcessPayment.setEnabled(true);
+        isValidatingPrescriptionCode = false;
     }
 
     private void validatePrescriptionCodeForInvoice() {
@@ -731,31 +755,10 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         else if (e.getSource() == promotionSearchResultsList && promotionSearchResultsList.getSelectedIndex() != -1) selectPromotion(promotionSearchResultsList.getSelectedIndex());
     }
 
-    @Override public void mousePressed(MouseEvent e) { if (e.getSource() instanceof JButton) ((JButton) e.getSource()).setBackground(AppColors.LIGHT); }
-
-    @Override public void mouseReleased(MouseEvent e) {
-        if (e.getSource() instanceof JButton) {
-            JButton b = (JButton) e.getSource();
-            if ("btnBarcodeScan".equals(b.getName())) updateBarcodeScanButtonAppearance();
-            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
-        }
-    }
-
-    @Override public void mouseEntered(MouseEvent e) {
-        if (e.getSource() instanceof JButton) {
-            JButton b = (JButton) e.getSource();
-            if (!"btnBarcodeScan".equals(b.getName()) || !barcodeScanningEnabled)
-                b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : AppColors.BACKGROUND);
-        }
-    }
-
-    @Override public void mouseExited(MouseEvent e) {
-        if (e.getSource() instanceof JButton) {
-            JButton b = (JButton) e.getSource();
-            if ("btnBarcodeScan".equals(b.getName())) updateBarcodeScanButtonAppearance();
-            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.BACKGROUND : AppColors.WHITE);
-        }
-    }
+    @Override public void mousePressed(MouseEvent e) {}
+    @Override public void mouseReleased(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e) {}
+    @Override public void mouseExited(MouseEvent e) {}
 
     @Override public void focusGained(FocusEvent e) {
         if (e.getSource() instanceof JTextField) {
