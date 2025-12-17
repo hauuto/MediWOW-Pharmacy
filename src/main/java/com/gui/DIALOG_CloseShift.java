@@ -7,6 +7,10 @@ import com.utils.AppColors;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -149,18 +153,22 @@ public class DIALOG_CloseShift extends JDialog {
 
         // End cash (manual input)
         panel.add(createLabel("Tiền thực tế cuối ca:"));
-        txtEndCash = new JTextField();
+        txtEndCash = new JTextField("0");
         txtEndCash.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        txtEndCash.setHorizontalAlignment(JTextField.RIGHT);
 
-        // Thêm FocusListener để format khi người dùng nhập xong
+        // Chỉ cho phép nhập số và tự động format
+        ((AbstractDocument) txtEndCash.getDocument()).setDocumentFilter(new LiveCurrencyDocumentFilter(txtEndCash, this::calculateDifference));
+
+        // Thêm FocusListener
         txtEndCash.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                formatEndCashField();
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                // Select all để dễ thay thế
+                txtEndCash.selectAll();
             }
         });
 
-        txtEndCash.addCaretListener(e -> calculateDifference());
         panel.add(txtEndCash);
 
         // Difference
@@ -226,21 +234,10 @@ public class DIALOG_CloseShift extends JDialog {
         BigDecimal systemCash = busShift.calculateSystemCashForShift(currentShift);
         txtSystemCash.setText(currencyFormat.format(systemCash));
 
-        // Set default end cash to system cash với định dạng tiền tệ
-        txtEndCash.setText(currencyFormat.format(systemCash));
+        // Set default end cash to system cash without formatting (will be formatted by filter)
+        String systemCashDigits = systemCash.toPlainString().replaceAll("[^0-9]", "");
+        txtEndCash.setText(systemCashDigits);
         calculateDifference();
-    }
-
-    private void formatEndCashField() {
-        try {
-            String text = txtEndCash.getText().trim().replaceAll("[^0-9]", "");
-            if (!text.isEmpty()) {
-                BigDecimal value = new BigDecimal(text);
-                txtEndCash.setText(currencyFormat.format(value));
-            }
-        } catch (NumberFormatException ignored) {
-            // Không làm gì nếu format lỗi
-        }
     }
 
     private String calculateDuration() {
@@ -340,6 +337,121 @@ public class DIALOG_CloseShift extends JDialog {
 
     public boolean isConfirmed() {
         return confirmed;
+    }
+
+    /**
+     * DocumentFilter tự động format tiền tệ khi nhập (live formatting)
+     * Chỉ cho phép nhập số và tự động thêm dấu chấm phân cách hàng nghìn
+     */
+    private static class LiveCurrencyDocumentFilter extends DocumentFilter {
+        private final JTextField textField;
+        private final Runnable onChangeCallback;
+        private boolean isUpdating = false;
+
+        public LiveCurrencyDocumentFilter(JTextField textField, Runnable onChangeCallback) {
+            this.textField = textField;
+            this.onChangeCallback = onChangeCallback;
+        }
+
+        @Override
+        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+            if (string == null || isUpdating) return;
+
+            // Chỉ cho phép số
+            if (string.matches("\\d+")) {
+                isUpdating = true;
+                super.insertString(fb, offset, string, attr);
+                formatTextField(fb);
+                isUpdating = false;
+            }
+        }
+
+        @Override
+        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+            if (isUpdating) {
+                super.replace(fb, offset, length, text, attrs);
+                return;
+            }
+
+            if (text == null) {
+                isUpdating = true;
+                super.replace(fb, offset, length, text, attrs);
+                formatTextField(fb);
+                isUpdating = false;
+                return;
+            }
+
+            // Chỉ cho phép số
+            if (text.matches("\\d*")) {
+                isUpdating = true;
+                super.replace(fb, offset, length, text, attrs);
+                formatTextField(fb);
+                isUpdating = false;
+            }
+        }
+
+        @Override
+        public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
+            if (isUpdating) {
+                super.remove(fb, offset, length);
+                return;
+            }
+
+            isUpdating = true;
+            super.remove(fb, offset, length);
+            formatTextField(fb);
+            isUpdating = false;
+        }
+
+        private void formatTextField(FilterBypass fb) throws BadLocationException {
+            String text = fb.getDocument().getText(0, fb.getDocument().getLength());
+            String digitsOnly = text.replaceAll("[^0-9]", "");
+
+            if (digitsOnly.isEmpty()) {
+                digitsOnly = "0";
+            }
+
+            // Format với dấu chấm phân cách hàng nghìn
+            String formatted = formatWithThousandSeparator(digitsOnly);
+
+            // Lưu vị trí cursor
+            int caretPos = textField.getCaretPosition();
+            int oldLength = text.length();
+
+            // Cập nhật text
+            fb.remove(0, fb.getDocument().getLength());
+            fb.insertString(0, formatted, null);
+
+            // Điều chỉnh cursor position
+            int diff = formatted.length() - oldLength;
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    textField.setCaretPosition(Math.min(Math.max(0, caretPos + diff), formatted.length()));
+                    // Gọi callback để tính toán chênh lệch
+                    if (onChangeCallback != null) {
+                        onChangeCallback.run();
+                    }
+                } catch (IllegalArgumentException ignored) {
+                }
+            });
+        }
+
+        private String formatWithThousandSeparator(String number) {
+            // Xóa các số 0 ở đầu (trừ khi chỉ có số 0)
+            number = number.replaceFirst("^0+(?!$)", "");
+
+            // Thêm dấu chấm phân cách hàng nghìn
+            StringBuilder formatted = new StringBuilder();
+            int count = 0;
+            for (int i = number.length() - 1; i >= 0; i--) {
+                if (count > 0 && count % 3 == 0) {
+                    formatted.insert(0, '.');
+                }
+                formatted.insert(0, number.charAt(i));
+                count++;
+            }
+            return formatted.toString();
+        }
     }
 }
 
