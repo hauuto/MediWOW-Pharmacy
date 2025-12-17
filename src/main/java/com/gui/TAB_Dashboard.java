@@ -34,7 +34,7 @@ public class TAB_Dashboard extends JPanel {
         if (currentStaff != null && currentStaff.getRole() == Role.MANAGER) {
             contentPanel = new TAB_Dashboard_Manager();
         } else if (currentStaff != null && currentStaff.getRole() == Role.PHARMACIST) {
-            contentPanel = new TAB_Dashboard_Pharmacist();
+            contentPanel = new TAB_Dashboard_Pharmacist(currentStaff);
         } else {
             // Default to Manager dashboard if no role specified (for backward compatibility)
             contentPanel = new TAB_Dashboard_Manager();
