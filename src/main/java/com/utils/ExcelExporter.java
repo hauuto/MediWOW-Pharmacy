@@ -221,5 +221,63 @@ public class ExcelExporter {
                 return role.toString();
         }
     }
+
+    /**
+     * Xuất dữ liệu generic ra file Excel
+     * @param data Danh sách dữ liệu (dòng đầu là header)
+     * @param filePath Đường dẫn file đầy đủ (bao gồm .xlsx)
+     * @param sheetName Tên sheet Excel
+     */
+    public static void exportToExcel(List<String[]> data, String filePath, String sheetName) {
+        if (data == null || data.isEmpty()) {
+            throw new IllegalArgumentException("Dữ liệu trống, không thể xuất Excel");
+        }
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet(sheetName);
+
+            // Tạo style cho header
+            CellStyle headerStyle = createHeaderStyle(workbook);
+
+            // Tạo style cho dữ liệu
+            CellStyle dataStyle = createDataStyle(workbook);
+
+            // Tạo rows
+            for (int i = 0; i < data.size(); i++) {
+                Row row = sheet.createRow(i);
+                String[] rowData = data.get(i);
+
+                for (int j = 0; j < rowData.length; j++) {
+                    Cell cell = row.createCell(j);
+                    cell.setCellValue(rowData[j] != null ? rowData[j] : "");
+
+                    // Header row
+                    if (i == 0) {
+                        cell.setCellStyle(headerStyle);
+                    } else {
+                        cell.setCellStyle(dataStyle);
+                    }
+                }
+            }
+
+            // Tự động điều chỉnh độ rộng cột
+            if (!data.isEmpty()) {
+                int columnCount = data.get(0).length;
+                for (int i = 0; i < columnCount; i++) {
+                    sheet.autoSizeColumn(i);
+                    // Thêm padding
+                    sheet.setColumnWidth(i, sheet.getColumnWidth(i) + 1000);
+                }
+            }
+
+            // Ghi file
+            try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+                workbook.write(outputStream);
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException("Lỗi khi xuất file Excel: " + e.getMessage(), e);
+        }
+    }
 }
 

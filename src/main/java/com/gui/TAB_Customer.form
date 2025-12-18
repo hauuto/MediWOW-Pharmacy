@@ -6,13 +6,6 @@
     </constraints>
     <properties/>
     <border type="none"/>
-    <children>
-      <component id="69fa3" class="javax.swing.JButton" binding="kháchHàngButton" default-binding="true">
-        <constraints border-constraint="Center"/>
-        <properties>
-          <text value="Khách hàng"/>
-        </properties>
-      </component>
-    </children>
+    <children/>
   </grid>
 </form>
