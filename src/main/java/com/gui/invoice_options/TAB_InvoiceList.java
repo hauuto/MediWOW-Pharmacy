@@ -113,10 +113,10 @@ public class TAB_InvoiceList extends JPanel {
 
     private JPanel createRightPanel() {
         JPanel right = new JPanel(new BorderLayout());
-        right.setBackground(AppColors.WHITE);
+        right.setBackground(AppColors.BACKGROUND);
         right.setMinimumSize(new Dimension(RIGHT_MIN, 0));
         JSplitPane verticalSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, createUpperSection(), createLowerSection());
-        verticalSplit.setBackground(AppColors.WHITE);
+        verticalSplit.setBackground(AppColors.BACKGROUND);
         verticalSplit.setDividerLocation(TOP_MIN);
         verticalSplit.setResizeWeight(0.5);
         right.add(verticalSplit, BorderLayout.CENTER);
@@ -125,7 +125,7 @@ public class TAB_InvoiceList extends JPanel {
 
     private JPanel createUpperSection() {
         JPanel upper = new JPanel(new BorderLayout());
-        upper.setBackground(AppColors.WHITE);
+        upper.setBackground(AppColors.BACKGROUND);
         upper.setMinimumSize(new Dimension(0, TOP_MIN));
         Box titleBox = Box.createVerticalBox(), titleH = Box.createHorizontalBox();
         JLabel title = new JLabel("CHI TIẾT DÒNG HÓA ĐƠN");
@@ -141,7 +141,7 @@ public class TAB_InvoiceList extends JPanel {
 
     private JPanel createLowerSection() {
         JPanel lower = new JPanel(new BorderLayout());
-        lower.setBackground(AppColors.WHITE);
+        lower.setBackground(AppColors.BACKGROUND);
         lower.setMinimumSize(new Dimension(0, BOTTOM_MIN));
         Box titleBox = Box.createVerticalBox(), titleH = Box.createHorizontalBox();
         JLabel title = new JLabel("PHÂN BỔ LÔ HÀNG");
@@ -177,7 +177,7 @@ public class TAB_InvoiceList extends JPanel {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         tblInvoiceLine = new JTable(mdlInvoiceLine);
-        styleTable(tblInvoiceLine);
+        styleTable(tblInvoiceLine); tblInvoiceLine.setBackground(AppColors.BACKGROUND);
         CurrencyRenderer currencyRenderer = new CurrencyRenderer();
         tblInvoiceLine.getColumnModel().getColumn(5).setCellRenderer(currencyRenderer);
         tblInvoiceLine.getColumnModel().getColumn(6).setCellRenderer(currencyRenderer);
@@ -197,7 +197,7 @@ public class TAB_InvoiceList extends JPanel {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         tblLotAllocation = new JTable(mdlLotAllocation);
-        styleTable(tblLotAllocation);
+        styleTable(tblLotAllocation); tblLotAllocation.setBackground(AppColors.BACKGROUND);
     }
 
     private void styleTable(JTable table) {

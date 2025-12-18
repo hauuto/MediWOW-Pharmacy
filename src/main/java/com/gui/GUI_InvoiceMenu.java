@@ -79,7 +79,9 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
     }
 
     private void checkActiveShift() {
-        Shift currentShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+        // Check if there's ANY open shift on current workstation (not just current staff's shift)
+        String workstation = busShift.getCurrentWorkstation();
+        Shift currentShift = busShift.getOpenShiftOnWorkstation(workstation);
         hasActiveShift = (currentShift != null);
     }
 

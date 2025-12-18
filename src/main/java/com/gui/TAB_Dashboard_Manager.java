@@ -6,6 +6,7 @@ import com.bus.BUS_Shift;
 import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LineType;
+import com.interfaces.ShiftChangeListener;
 import com.utils.AppColors;
 import org.knowm.xchart.XChartPanel;
 import org.knowm.xchart.XYChart;
@@ -45,6 +46,7 @@ public class TAB_Dashboard_Manager extends JPanel {
     // Current staff and shift
     private Staff currentStaff;
     private Shift currentShift;
+    private ShiftChangeListener shiftChangeListener;
 
     // Tables
     private JTable tblBestSellers;
@@ -310,8 +312,14 @@ public class TAB_Dashboard_Manager extends JPanel {
 
             // Update button and shift info if shift was closed
             if (closeShiftDialog.isConfirmed()) {
+                Shift closedShift = currentShift;
                 currentShift = null;
                 loadShiftData();
+
+                // Notify listener that shift was closed
+                if (shiftChangeListener != null) {
+                    shiftChangeListener.onShiftClosed(closedShift);
+                }
 
                 JOptionPane.showMessageDialog(this,
                     "Ca làm việc đã được đóng thành công!",
@@ -385,6 +393,11 @@ public class TAB_Dashboard_Manager extends JPanel {
         if (openShiftDialog.getOpenedShift() != null) {
             currentShift = openShiftDialog.getOpenedShift();
             loadShiftData();
+
+            // Notify listener that shift was opened
+            if (shiftChangeListener != null) {
+                shiftChangeListener.onShiftOpened(currentShift);
+            }
 
             JOptionPane.showMessageDialog(this,
                 "Ca làm việc đã được mở thành công!",
@@ -922,6 +935,13 @@ public class TAB_Dashboard_Manager extends JPanel {
      */
     public void refresh() {
         loadData();
+    }
+
+    /**
+     * Set shift change listener to notify when shift is opened/closed
+     */
+    public void setShiftChangeListener(ShiftChangeListener listener) {
+        this.shiftChangeListener = listener;
     }
 
     // Helper classes

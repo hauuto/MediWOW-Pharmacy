@@ -89,15 +89,17 @@ public class BUS_Shift {
             throw new IllegalArgumentException("Tiền cuối ca phải lớn hơn hoặc bằng 0");
         }
 
-        // Check permissions: only shift owner or manager can close
+        // Check permissions: shift owner, manager, or staff on same workstation can close
         boolean isShiftOwner = closingStaff != null &&
             shift.getStaff() != null &&
             closingStaff.getId().equals(shift.getStaff().getId());
         boolean isManager = closingStaff != null && closingStaff.getRole() == Role.MANAGER;
+        boolean isSameWorkstation = shift.getWorkstation() != null &&
+            shift.getWorkstation().equals(getCurrentWorkstation());
 
-        if (!isShiftOwner && !isManager) {
+        if (!isShiftOwner && !isManager && !isSameWorkstation) {
             throw new IllegalArgumentException("Bạn không có quyền đóng ca này. " +
-                "Chỉ người mở ca hoặc Quản lý mới có thể đóng ca.");
+                "Chỉ người mở ca, Quản lý hoặc nhân viên trên cùng máy mới có thể đóng ca.");
         }
 
         // If not shift owner, require close reason
