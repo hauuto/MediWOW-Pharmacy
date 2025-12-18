@@ -108,6 +108,7 @@ CREATE TABLE PromotionCondition (
 );
 
 
+
 -- 9. PromotionAction Table
 CREATE TABLE PromotionAction (
                                  id NVARCHAR(50) PRIMARY KEY,
@@ -123,7 +124,6 @@ CREATE TABLE PromotionAction (
                                  FOREIGN KEY (product, unitOfMeasure)
                                      REFERENCES UnitOfMeasure(product, name)
 );
-
 
 -- 10. Invoice Table
 CREATE TABLE Invoice (
