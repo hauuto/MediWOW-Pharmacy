@@ -160,42 +160,6 @@ public class DAO_Promotion implements IPromotion {
         }
     }
 
-//
-//
-//    public boolean addPromotion(Promotion p) {
-//        Session session = null;
-//        Transaction tx = null;
-//
-//        try {
-//            session = sessionFactory.openSession();
-//            tx = session.beginTransaction();
-//
-//            session.persist(p);
-//            session.flush(); // trigger insert and generate ID
-//            session.refresh(p); // if AFTER trigger
-//
-//            for (PromotionCondition c : p.getConditions()) {
-//                c.setPromotion(p);
-//                session.persist(c);
-//            }
-//            for (PromotionAction a : p.getActions()) {
-//                a.setPromotion(p);
-//                session.persist(a);
-//            }
-//
-//            tx.commit();
-//            System.out.println("✅ All saved OK!");
-//            return true;
-//
-//        } catch (Exception e) {
-//            if (tx != null && tx.isActive()) tx.rollback();
-//            e.printStackTrace();
-//            return false;
-//        } finally {
-//            if (session != null) session.close();
-//        }
-//    }
-
 
 
     @Override
@@ -314,29 +278,27 @@ public class DAO_Promotion implements IPromotion {
     }
 
     @Override
-    public boolean updatePromotion(Promotion p) {
+    public boolean updatePromotion(Promotion detached) {
         Transaction tx = null;
 
         try (Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
 
-            Promotion existing = session.find(Promotion.class, p.getId());
+            Promotion existing = session.find(Promotion.class, detached.getId());
             if (existing == null) return false;
 
-            // scalar fields
-            existing.setName(p.getName());
-            existing.setDescription(p.getDescription());
-            existing.setEffectiveDate(p.getEffectiveDate());
-            existing.setEndDate(p.getEndDate());
-            existing.setIsActive(p.getIsActive());
+            // Update scalar
+            existing.setName(detached.getName());
+            existing.setDescription(detached.getDescription());
+            existing.setEffectiveDate(detached.getEffectiveDate());
+            existing.setEndDate(detached.getEndDate());
+            existing.setIsActive(detached.getIsActive());
 
-            // Sync children
-            syncConditions(session, existing, p);
-            syncActions(session, existing, p);
+            // Update detail without deleting
+            mergeConditions(session, existing, detached.getConditions());
+            mergeActions(session, existing, detached.getActions());
 
             session.flush();
-            session.refresh(existing);
-
             tx.commit();
             return true;
 
@@ -346,6 +308,68 @@ public class DAO_Promotion implements IPromotion {
             return false;
         }
     }
+
+    private void mergeConditions(Session session, Promotion existing, List<PromotionCondition> incomingList) {
+        if (incomingList == null) return;
+
+        for (PromotionCondition incoming : incomingList) {
+            if (incoming.getId() == null || incoming.getId().isBlank()) {
+                // New condition
+                PromotionCondition c = new PromotionCondition();
+                c.setPromotion(existing);
+                c.setTarget(incoming.getTarget());
+                c.setComparator(incoming.getComparator());
+                c.setConditionType(incoming.getConditionType());
+                c.setValue(incoming.getValue());
+                c.setProductUOM(incoming.getProductUOM());
+
+                session.persist(c);
+            } else {
+                // Update existing
+                PromotionCondition existingCond =
+                        session.find(PromotionCondition.class, incoming.getId());
+
+                if (existingCond != null) {
+                    existingCond.setTarget(incoming.getTarget());
+                    existingCond.setComparator(incoming.getComparator());
+                    existingCond.setConditionType(incoming.getConditionType());
+                    existingCond.setValue(incoming.getValue());
+                    existingCond.setProductUOM(incoming.getProductUOM());
+                }
+            }
+        }
+    }
+
+    private void mergeActions(Session session, Promotion existing, List<PromotionAction> incomingList) {
+        if (incomingList == null) return;
+
+        for (PromotionAction incoming : incomingList) {
+            if (incoming.getId() == null || incoming.getId().isBlank()) {
+                PromotionAction a = new PromotionAction();
+                a.setPromotion(existing);
+                a.setActionOrder(incoming.getActionOrder());
+                a.setType(incoming.getType());
+                a.setTarget(incoming.getTarget());
+                a.setValue(incoming.getValue());
+                a.setProductUOM(incoming.getProductUOM());
+
+                session.persist(a);
+            } else {
+                PromotionAction existingAct =
+                        session.find(PromotionAction.class, incoming.getId());
+
+                if (existingAct != null) {
+                    existingAct.setActionOrder(incoming.getActionOrder());
+                    existingAct.setType(incoming.getType());
+                    existingAct.setTarget(incoming.getTarget());
+                    existingAct.setValue(incoming.getValue());
+                    existingAct.setProductUOM(incoming.getProductUOM());
+                }
+            }
+        }
+    }
+
+
 
 
 
