@@ -160,30 +160,30 @@ INSERT INTO Promotion (id, name, description, creationDate, effectiveDate, endDa
 VALUES ('PMO2025-0003', N'Khuyến mãi Amoxicillin - Tặng Omega 3', N'Mua từ 5 hộp Amoxicillin, tặng 1 lọ Omega 3', '2025-01-22', '2025-01-22', '2025-12-31', 1);
 
 -- Insert all PromotionConditions
-INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
-VALUES ('PRMC2025-0001', 'PMO2025-0001', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 2, NULL, 'PRO2025-0001');
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product)
+VALUES ('PCO2025-0001', 'PMO2025-0001', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 2, 'PRO2025-0001');
 
-INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
-VALUES ('PRMC2025-0002', 'PMO2025-0002', 'ORDER_SUBTOTAL', 'GREATER_EQUAL', 'ORDER_SUBTOTAL', 200000, NULL, NULL);
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product)
+VALUES ('PCO2025-0002', 'PMO2025-0002', 'ORDER_SUBTOTAL', 'GREATER_EQUAL', 'ORDER_SUBTOTAL', 200000, NULL);
 
-INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
-VALUES ('PRMC2025-0003', 'PMO2025-0003', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 5, NULL, 'PRO2025-0003');
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product)
+VALUES ('PCO2025-0003', 'PMO2025-0003', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 5, 'PRO2025-0003');
 
 -- Insert all PromotionActions
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
-VALUES ('PRMA2025-0001', 'PMO2025-0001', 1, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 10, NULL, NULL);
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
+VALUES ('PAC2025-0001', 'PMO2025-0001', 1, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 10, NULL);
 
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
-VALUES ('PRMA2025-0002', 'PMO2025-0001', 2, 'FIXED_DISCOUNT', 'ORDER_SUBTOTAL', 20000, NULL, NULL);
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
+VALUES ('PAC2025-0002', 'PMO2025-0001', 2, 'FIXED_DISCOUNT', 'ORDER_SUBTOTAL', 20000, NULL);
 
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
-VALUES ('PRMA2025-0003', 'PMO2025-0002', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, 'PRO2025-0002');
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
+VALUES ('PAC2025-0003', 'PMO2025-0002', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, 'PRO2025-0002');
 
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
-VALUES ('PRMA2025-0004', 'PMO2025-0002', 2, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 5, NULL, NULL);
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
+VALUES ('PAC2025-0004', 'PMO2025-0002', 2, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 5, NULL);
 
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
-VALUES ('PRMA2025-0005', 'PMO2025-0003', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, 'PRO2025-0005');
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
+VALUES ('PAC2025-0005', 'PMO2025-0003', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, 'PRO2025-0005');
 
 -- =====================================================
 -- 8. SHIFT DATA
@@ -191,19 +191,19 @@ VALUES ('PRMA2025-0005', 'PMO2025-0003', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, 
 
 -- Shift 1: Completed morning shift
 INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
-VALUES ('SHF2025-0001', 'MAN2025-0001', '2025-01-22 08:00:00', '2025-01-22 14:00:00', 1000000.00, 1850000.00, 1845000.00, 'CLOSED', N'Ca sáng - Chênh lệch 5,000đ do tiền lẻ');
+VALUES ('SHI2025-0001', 'MAN2025-0001', '2025-01-22 08:00:00', '2025-01-22 14:00:00', 1000000.00, 1850000.00, 1845000.00, 'CLOSED', N'Ca sáng - Chênh lệch 5,000đ do tiền lẻ');
 
 -- Shift 2: Completed afternoon shift
 INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
-VALUES ('SHF2025-0002', 'MAN2025-0001', '2025-01-22 14:00:00', '2025-01-22 22:00:00', 500000.00, 1250000.00, 1250000.00, 'CLOSED', N'Ca chiều - Khớp tiền');
+VALUES ('SHI2025-0002', 'MAN2025-0001', '2025-01-22 14:00:00', '2025-01-22 22:00:00', 500000.00, 1250000.00, 1250000.00, 'CLOSED', N'Ca chiều - Khớp tiền');
 
 -- Shift 3: Completed full day shift
 INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
-VALUES ('SHF2025-0003', 'MAN2025-0001', '2025-01-23 08:00:00', '2025-01-23 20:00:00', 2000000.00, 3500000.00, 3480000.00, 'CLOSED', N'Ca cả ngày');
+VALUES ('SHI2025-0003', 'MAN2025-0001', '2025-01-23 08:00:00', '2025-01-23 20:00:00', 2000000.00, 3500000.00, 3480000.00, 'CLOSED', N'Ca cả ngày');
 
 -- Shift 4: Open shift (currently working)
 INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
-VALUES ('SHF2025-0004', 'MAN2025-0001', '2025-01-26 08:00:00', NULL, 1500000.00, NULL, NULL, 'OPEN', N'Ca đang mở');
+VALUES ('SHI2025-0004', 'MAN2025-0001', '2025-01-26 08:00:00', NULL, 1500000.00, NULL, NULL, 'OPEN', N'Ca đang mở');
 
 -- =====================================================
 -- 9. INVOICE DATA (Various types for different test cases)
@@ -211,7 +211,7 @@ VALUES ('SHF2025-0004', 'MAN2025-0001', '2025-01-26 08:00:00', NULL, 1500000.00,
 
 -- Invoice 1: SALES with Promotion 1 and Prescription Code (ETC product)
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0001', 'CUS2025-0001', 'MW001a3b5c7d-C', NULL, 'PMO2025-0001', 'CASH', N'Bán thuốc theo đơn, áp dụng khuyến mãi', 'SHF2025-0001');
+VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0001', 'CUS2025-0001', 'MW001a3b5c7d-C', NULL, 'PMO2025-0001', 'CASH', N'Bán thuốc theo đơn, áp dụng khuyến mãi', 'SHI2025-0001');
 
 -- Invoice Lines for Invoice 1
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
@@ -221,12 +221,12 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0002', 'INV2025-0001', 'PRO2025-0003', N'Viên', 20, 500.00, 'SALE');
 
 -- LotAllocation for Invoice 1 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0001', 'ILN2025-0001', 'LOT2025-0001', 3);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0002', 'ILN2025-0002', 'LOT2025-0006', 20);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0001', 'ILN2025-0001', 'LOT2025-0001', 3);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0002', 'ILN2025-0002', 'LOT2025-0006', 20);
 
 -- Invoice 2: SALES with Bank Transfer
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES ('INV2025-0002', 'SALES', '2025-01-22 10:15:00', 'MAN2025-0001', NULL, NULL, NULL, NULL, 'BANK_TRANSFER', N'Khách hàng thanh toán chuyển khoản', 'SHF2025-0001');
+VALUES ('INV2025-0002', 'SALES', '2025-01-22 10:15:00', 'MAN2025-0001', NULL, NULL, NULL, NULL, 'BANK_TRANSFER', N'Khách hàng thanh toán chuyển khoản', 'SHI2025-0001');
 
 -- Invoice Lines for Invoice 2
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
@@ -236,12 +236,12 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0004', 'INV2025-0002', 'PRO2025-0005', N'Viên', 30, 1500.00, 'SALE');
 
 -- LotAllocation for Invoice 2 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0003', 'ILN2025-0003', 'LOT2025-0004', 2);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0004', 'ILN2025-0004', 'LOT2025-0011', 30);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0003', 'ILN2025-0003', 'LOT2025-0004', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0004', 'ILN2025-0004', 'LOT2025-0011', 30);
 
 -- Invoice 3: SALES with Prescription Code (ETC) - Different customer
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES ('INV2025-0003', 'SALES', '2025-01-22 14:20:00', 'MAN2025-0001', 'CUS2025-0002', 'MW0019k2m4p6-H', NULL, NULL, 'CASH', N'Đơn thuốc hướng thần', 'SHF2025-0002');
+VALUES ('INV2025-0003', 'SALES', '2025-01-22 14:20:00', 'MAN2025-0001', 'CUS2025-0002', 'MW0019k2m4p6-H', NULL, NULL, 'CASH', N'Đơn thuốc hướng thần', 'SHI2025-0002');
 
 -- Invoice Lines for Invoice 3
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
@@ -251,12 +251,12 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0006', 'INV2025-0003', 'PRO2025-0001', N'Vỉ', 5, 2000.00, 'SALE');
 
 -- LotAllocation for Invoice 3 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0005', 'ILN2025-0005', 'LOT2025-0009', 2);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0006', 'ILN2025-0006', 'LOT2025-0001', 5);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0005', 'ILN2025-0005', 'LOT2025-0009', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0006', 'ILN2025-0006', 'LOT2025-0001', 5);
 
 -- Invoice 4: SALES - Large order
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES ('INV2025-0004', 'SALES', '2025-01-23 11:45:00', 'MAN2025-0001', 'CUS2025-0003', NULL, NULL, NULL, 'CASH', N'Đơn hàng lớn', 'SHF2025-0003');
+VALUES ('INV2025-0004', 'SALES', '2025-01-23 11:45:00', 'MAN2025-0001', 'CUS2025-0003', NULL, NULL, NULL, 'CASH', N'Đơn hàng lớn', 'SHI2025-0003');
 
 -- Invoice Lines for Invoice 4
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
@@ -269,36 +269,36 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0009', 'INV2025-0004', 'PRO2025-0005', N'Lọ', 3, 90000.00, 'SALE');
 
 -- LotAllocation for Invoice 4 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0007', 'ILN2025-0007', 'LOT2025-0001', 8);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0008', 'ILN2025-0007', 'LOT2025-0003', 2);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0009', 'ILN2025-0008', 'LOT2025-0004', 5);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0010', 'ILN2025-0009', 'LOT2025-0011', 3);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0007', 'ILN2025-0007', 'LOT2025-0001', 8);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0008', 'ILN2025-0007', 'LOT2025-0003', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0009', 'ILN2025-0008', 'LOT2025-0004', 5);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0010', 'ILN2025-0009', 'LOT2025-0011', 3);
 
 -- Invoice 5: SALES - Simple cash transaction
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0001', NULL, NULL, NULL, NULL, 'CASH', N'Khách hàng mua lẻ', 'SHF2025-0004');
+VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0001', NULL, NULL, NULL, NULL, 'CASH', N'Khách hàng mua lẻ', 'SHI2025-0004');
 
 -- Invoice Lines for Invoice 5
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
 VALUES ('ILN2025-0010', 'INV2025-0005', 'PRO2025-0001', N'Viên', 20, 200.00, 'SALE');
 
 -- LotAllocation for Invoice 5 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0011', 'ILN2025-0010', 'LOT2025-0001', 20);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0011', 'ILN2025-0010', 'LOT2025-0001', 20);
 
 -- Invoice 6: RETURN - Return from Invoice 2
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES ('INV2025-0006', 'RETURN', '2025-01-23 15:30:00', 'MAN2025-0001', NULL, NULL, 'INV2025-0002', NULL, 'CASH', N'Khách hàng đổi trả do sản phẩm hư', 'SHF2025-0003');
+VALUES ('INV2025-0006', 'RETURN', '2025-01-23 15:30:00', 'MAN2025-0001', NULL, NULL, 'INV2025-0002', NULL, 'CASH', N'Khách hàng đổi trả do sản phẩm hư', 'SHI2025-0003');
 
 -- Invoice Lines for Invoice 6 (Return)
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
 VALUES ('ILN2025-0011', 'INV2025-0006', 'PRO2025-0005', N'Viên', 10, 1500.00, 'RETURN');
 
 -- LotAllocation for Invoice 6 (Return - returning to lot)
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0012', 'ILN2025-0011', 'LOT2025-0011', 10);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0012', 'ILN2025-0011', 'LOT2025-0011', 10);
 
 -- Invoice 7: EXCHANGE - Exchange from Invoice 4
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES ('INV2025-0007', 'EXCHANGE', '2025-01-24 10:00:00', 'MAN2025-0001', 'CUS2025-0003', NULL, 'INV2025-0004', NULL, 'CASH', N'Đổi sản phẩm khác loại', 'SHF2025-0003');
+VALUES ('INV2025-0007', 'EXCHANGE', '2025-01-24 10:00:00', 'MAN2025-0001', 'CUS2025-0003', NULL, 'INV2025-0004', NULL, 'CASH', N'Đổi sản phẩm khác loại', 'SHI2025-0003');
 
 -- Invoice Lines for Invoice 7 (Exchange)
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
@@ -308,12 +308,12 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0013', 'INV2025-0007', 'PRO2025-0003', N'Hộp', 1, 50000.00, 'EXCHANGE_IN');
 
 -- LotAllocation for Invoice 7 (Exchange)
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0013', 'ILN2025-0012', 'LOT2025-0001', 2);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0014', 'ILN2025-0013', 'LOT2025-0006', 1);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0013', 'ILN2025-0012', 'LOT2025-0001', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0014', 'ILN2025-0013', 'LOT2025-0006', 1);
 
 -- Invoice 8: SALES with Promotion 2 applied
 INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES ('INV2025-0008', 'SALES', '2025-01-26 17:30:00', 'MAN2025-0001', 'CUS2025-0004', NULL, NULL, 'PMO2025-0002', 'BANK_TRANSFER', N'Áp dụng khuyến mãi tặng quà', 'SHF2025-0004');
+VALUES ('INV2025-0008', 'SALES', '2025-01-26 17:30:00', 'MAN2025-0001', 'CUS2025-0004', NULL, NULL, 'PMO2025-0002', 'BANK_TRANSFER', N'Áp dụng khuyến mãi tặng quà', 'SHI2025-0004');
 
 -- Invoice Lines for Invoice 8
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
@@ -323,8 +323,8 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0015', 'INV2025-0008', 'PRO2025-0002', N'Chai', 1, 0.00, 'SALE');
 
 -- LotAllocation for Invoice 8
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0015', 'ILN2025-0014', 'LOT2025-0012', 3);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0016', 'ILN2025-0015', 'LOT2025-0004', 1);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0015', 'ILN2025-0014', 'LOT2025-0012', 3);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0016', 'ILN2025-0015', 'LOT2025-0004', 1);
 
 GO
 
