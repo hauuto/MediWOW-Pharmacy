@@ -191,7 +191,7 @@ BEGIN
     SET NOCOUNT ON;
     DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
 
-    INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product)
+    INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product, unitOfMeasure)
     SELECT
         'PCO' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.PromotionConditionSeg AS NVARCHAR(4)), 4),
         promotion,
@@ -199,7 +199,8 @@ BEGIN
         comparator,
         target,
         value,
-        product
+        product,
+        unitOfMeasure
     FROM inserted;
 END
 GO
@@ -217,7 +218,7 @@ BEGIN
     SET NOCOUNT ON;
     DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
 
-    INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
+    INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product, unitOfMeasure)
     SELECT
         'PAC' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.PromotionActionSeg AS NVARCHAR(4)), 4),
         promotion,
@@ -225,8 +226,8 @@ BEGIN
         type,
         target,
         value,
-
-        product
+        product,
+        unitOfMeasure
     FROM inserted;
 END
 GO

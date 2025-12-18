@@ -2,19 +2,20 @@ package com.entities;
 
 import com.enums.PromotionEnum.*;
 import jakarta.persistence.*;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.UuidGenerator;
 
-/*
-@author Nguyễn Thanh Khôi
- */
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "PromotionAction")
 public class PromotionAction {
 
     @Id
-    @Column(length = 50) // ID do trigger SQL Server sinh: PRMA-XXXXXX
+    @UuidGenerator
+    @Column(name = "id",insertable = false, updatable = false, nullable = false, length = 50)
     private String id;
 
-    // Many actions → 1 Promotion
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion", nullable = false)
     private Promotion promotion;
@@ -30,84 +31,69 @@ public class PromotionAction {
     @Column(nullable = false)
     private Target target;
 
-    @Column(name = "primaryValue", nullable = false)
-    private Double primaryValue;
-
-    @Column(name = "secondaryValue", nullable = true)
-    private Double secondaryValue;
+    @Column(name = "value", precision = 18, scale = 2)
+    private BigDecimal value;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product", nullable = true)
-    private Product product;
+    @JoinColumns({
+            @JoinColumn(name = "product", referencedColumnName = "product"),
+            @JoinColumn(name = "unitOfMeasure", referencedColumnName = "name")
+    })
+    private UnitOfMeasure productUOM;
 
-
-
-
-
+    // ======================
+    // Constructors
+    // ======================
     public PromotionAction() {}
 
-    public PromotionAction(ActionType type, Target target, Double primaryValue,
-                           Double secondaryValue, Product product, int order) {
+    public PromotionAction(
+            ActionType type,
+            Target target,
+            BigDecimal value,
+            UnitOfMeasure productUOM,
+            int actionOrder
+    ) {
         this.type = type;
         this.target = target;
-        this.primaryValue = primaryValue;
-        this.secondaryValue = secondaryValue;
-        this.product = product;
-        this.actionOrder = order;
+        this.value = value;
+        this.productUOM = productUOM;
+        this.actionOrder = actionOrder;
     }
 
+    // ======================
+    // Getters / Setters
+    // ======================
     public String getId() { return id; }
-
     public void setId(String id) { this.id = id; }
+
+    public Promotion getPromotion() { return promotion; }
+    public void setPromotion(Promotion promotion) { this.promotion = promotion; }
+
+    public int getActionOrder() { return actionOrder; }
+    public void setActionOrder(int actionOrder) { this.actionOrder = actionOrder; }
 
     public ActionType getType() { return type; }
     public void setType(ActionType type) { this.type = type; }
 
-    public Promotion getPromotion() {
-        return promotion;
-    }
+    public Target getTarget() { return target; }
+    public void setTarget(Target target) { this.target = target; }
 
-    public void setPromotion(Promotion promotion) {
-        this.promotion = promotion;
-    }
+    public BigDecimal getValue() { return value; }
+    public void setValue(BigDecimal value) { this.value = value; }
 
-    public int getActionOrder() {
-        return actionOrder;
-    }
+    public UnitOfMeasure getProductUOM() { return productUOM; }
+    public void setProductUOM(UnitOfMeasure productUOM) { this.productUOM = productUOM; }
 
-    public void setActionOrder(int actionOrder) {
-        this.actionOrder = actionOrder;
-    }
-
-    public Target getTarget() {
-        return target;
-    }
-
-    public void setTarget(Target target) {
-        this.target = target;
-    }
-
-    public Double getPrimaryValue() {
-        return primaryValue;
-    }
-
-    public void setPrimaryValue(Double primaryValue) {
-        this.primaryValue = primaryValue;
-    }
-
-    public Double getSecondaryValue() {
-        return secondaryValue;
-    }
-
-    public void setSecondaryValue(Double secondaryValue) {
-        this.secondaryValue = secondaryValue;
-    }
-
+    // ======================
+    // Compatibility Helpers
+    // ======================
     public Product getProduct() {
-        return product;
+        return (productUOM != null) ? productUOM.getProduct() : null;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
+    public double getPrimaryValue() {
+        return (value == null) ? 0.0 : value.doubleValue();
     }
+
+
 }

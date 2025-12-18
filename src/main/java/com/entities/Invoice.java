@@ -9,6 +9,7 @@ import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -161,12 +162,7 @@ public class Invoice {
     }
 
     /**
-     * @author Bùi Quốc Trụ
-     *
      * Adds an InvoiceLine to the invoice if it does not already exist.
-     *
-     * @param invoiceLine The InvoiceLine to be added.
-     * @return true if the InvoiceLine was added, false if it already exists or is null.
      */
     public boolean addInvoiceLine(InvoiceLine invoiceLine) {
         if (invoiceLine == null)
@@ -181,16 +177,7 @@ public class Invoice {
     }
 
     /**
-     * @author Bùi Quốc Trụ
-     *
      * Updates an existing InvoiceLine in the invoice.
-     * If the UOM changes, removes the old line and adds the new one.
-     * If only quantity changes, updates the existing line.
-     *
-     * @param oldProductId The product ID of the line to update
-     * @param oldUomName The old UOM name
-     * @param newInvoiceLine The new InvoiceLine with updated values
-     * @return true if the InvoiceLine was found and updated, false otherwise.
      */
     public boolean updateInvoiceLine(String oldProductId, String oldUomName, InvoiceLine newInvoiceLine) {
         if (newInvoiceLine == null)
@@ -231,13 +218,7 @@ public class Invoice {
     }
 
     /**
-     * @author Bùi Quốc Trụ
-     *
      * Removes an InvoiceLine from the invoice.
-     *
-     * @param productId The ID of the product in the InvoiceLine to be removed.
-     * @param unitOfMeasureName The name of the unit of measure in the InvoiceLine to be removed.
-     * @return true if the InvoiceLine was found and removed, false otherwise
      */
     public boolean removeInvoiceLine(String productId, String unitOfMeasureName) {
         return invoiceLineList.removeIf(line ->
@@ -246,13 +227,7 @@ public class Invoice {
         );
     }
 
-    /**
-     * @author Bùi Quốc Trụ
-     *
-     * Calculate the subtotal amount of the invoice.
-     *
-     * @return The subtotal amount.
-     */
+    /** Calculate the subtotal amount of the invoice. */
     public double calculateSubtotal() {
         double subtotal = 0.0;
 
@@ -263,13 +238,7 @@ public class Invoice {
         return subtotal;
     }
 
-    /**
-     * @author Bùi Quốc Trụ
-     *
-     * Calculate the total VAT amount of the invoice.
-     *
-     * @return The total VAT amount.
-     */
+    /** Calculate the total VAT amount of the invoice. */
     public double calculateVatAmount() {
         double vatAmount = 0.0;
 
@@ -280,27 +249,17 @@ public class Invoice {
         return vatAmount;
     }
 
-    /**
-     * @author Bùi Quốc Trụ
-     *
-     * Calculate the subtotal including VAT.
-     *
-     * @return The subtotal with VAT.
-     */
+    /** Calculate the subtotal including VAT. */
     public double calculateSubtotalWithVat() {
         return calculateSubtotal() + calculateVatAmount();
     }
 
-    /**
-     * Check if the invoice satisfies all promotion conditions
-     *
-     * @return true if all conditions are met, false otherwise
-     */
+    /** Check if the invoice satisfies all promotion conditions */
     public boolean checkPromotionConditions() {
         if (promotion == null)
             return false;
 
-        Set<PromotionCondition> conditions = promotion.getConditions();
+        List<PromotionCondition> conditions = promotion.getConditions();
         if (conditions == null || conditions.isEmpty())
             return true; // No conditions means promotion is always applicable
 
@@ -314,9 +273,7 @@ public class Invoice {
         return true;
     }
 
-    /**
-     * Check if a single promotion condition is satisfied
-     */
+    /** Check if a single promotion condition is satisfied */
     private boolean checkSingleCondition(PromotionCondition condition) {
         if (condition.getTarget() == PromotionEnum.Target.PRODUCT) {
             return checkProductCondition(condition);
@@ -326,9 +283,7 @@ public class Invoice {
         return false;
     }
 
-    /**
-     * Check product-targeted condition (e.g., buy X quantity of product Y)
-     */
+    /** Check product-targeted condition (e.g., buy X quantity of product Y) */
     private boolean checkProductCondition(PromotionCondition condition) {
         Product targetProduct = condition.getProduct();
         if (targetProduct == null)
@@ -350,9 +305,7 @@ public class Invoice {
         return false;
     }
 
-    /**
-     * Check order subtotal condition (e.g., order total >= X)
-     */
+    /** Check order subtotal condition (e.g., order total >= X) */
     private boolean checkOrderCondition(PromotionCondition condition) {
         if (condition.getConditionType() == PromotionEnum.ConditionType.ORDER_SUBTOTAL) {
             double subtotalWithVat = calculateSubtotalWithVat();
@@ -362,37 +315,20 @@ public class Invoice {
         return false;
     }
 
-    /**
-     * Compare two values based on comparator
-     */
+    /** Compare two values based on comparator */
     private boolean compareValues(double actualValue, double requiredValue, PromotionEnum.Comp comparator) {
-        switch (comparator) {
-            case EQUAL:
-                return actualValue == requiredValue;
-            case GREATER:
-                return actualValue > requiredValue;
-            case GREATER_EQUAL:
-                return actualValue >= requiredValue;
-            case LESS:
-                return actualValue < requiredValue;
-            case LESS_EQUAL:
-                return actualValue <= requiredValue;
-            case BETWEEN:
-                // BETWEEN requires secondaryValue - not implemented yet
-                return false;
-            default:
-                return false;
-        }
+        return switch (comparator) {
+            case EQUAL -> actualValue == requiredValue;
+            case GREATER -> actualValue > requiredValue;
+            case GREATER_EQUAL -> actualValue >= requiredValue;
+            case LESS -> actualValue < requiredValue;
+            case LESS_EQUAL -> actualValue <= requiredValue;
+            case BETWEEN -> false; // BETWEEN requires secondaryValue - not implemented yet
+            default -> false;
+        };
     }
 
-    /**
-     * @author Bùi Quốc Trụ
-     *
-     * Calculate the total discount applied to the invoice.
-     * Only applies discount if conditions are satisfied.
-     *
-     * @return The total discount.
-     */
+    /** Calculate the total discount applied to the invoice. */
     public double calculatePromotion() {
         if (promotion == null)
             return 0.0;
@@ -403,7 +339,7 @@ public class Invoice {
 
         double totalDiscount = 0.0;
         List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
-                .sorted((a, b) -> Integer.compare(a.getActionOrder(), b.getActionOrder()))
+                .sorted(Comparator.comparingInt(PromotionAction::getActionOrder))
                 .toList();
 
         for (PromotionAction action : sortedActionOrderList) {
@@ -419,12 +355,11 @@ public class Invoice {
         return totalDiscount;
     }
 
-    /**
-     * Calculate discount for product-targeted promotion action
-     */
+    /** Calculate discount for product-targeted promotion action */
     private double calculateProductDiscount(PromotionAction action) {
         double discount = 0.0;
-        Product targetProduct = action.getProduct();
+        Product targetProduct = (action.getProductUOM() != null && action.getProductUOM().getProduct() != null)
+                ? action.getProductUOM().getProduct() : null;
 
         if (targetProduct == null)
             return 0.0;
@@ -434,10 +369,12 @@ public class Invoice {
             if (line.getProduct().getId().equals(targetProduct.getId())) {
                 double lineSubtotalWithVat = line.calculateTotalAmount();
 
+                double primaryValue = (action.getValue() != null) ? action.getValue().doubleValue() : 0.0;
+
                 if (action.getType() == PromotionEnum.ActionType.FIXED_DISCOUNT) {
-                    discount += action.getPrimaryValue();
+                    discount += primaryValue;
                 } else if (action.getType() == PromotionEnum.ActionType.PERCENT_DISCOUNT) {
-                    discount += lineSubtotalWithVat * (action.getPrimaryValue() / 100);
+                    discount += lineSubtotalWithVat * (primaryValue / 100);
                 }
                 // Note: PRODUCT_GIFT is handled separately, not as a discount
             }
@@ -446,29 +383,23 @@ public class Invoice {
         return discount;
     }
 
-    /**
-     * Calculate discount for order subtotal-targeted promotion action
-     */
+    /** Calculate discount for order subtotal-targeted promotion action */
     private double calculateOrderDiscount(PromotionAction action) {
         double discount = 0.0;
         double subtotalWithVat = calculateSubtotalWithVat();
 
+        double primaryValue = (action.getValue() != null) ? action.getValue().doubleValue() : 0.0;
+
         if (action.getType() == PromotionEnum.ActionType.FIXED_DISCOUNT) {
-            discount = action.getPrimaryValue();
+            discount = primaryValue;
         } else if (action.getType() == PromotionEnum.ActionType.PERCENT_DISCOUNT) {
-            discount = subtotalWithVat * (action.getPrimaryValue() / 100);
+            discount = subtotalWithVat * (primaryValue / 100);
         }
 
         return discount;
     }
 
-    /**
-     * @author Bùi Quốc Trụ
-     *
-     * Calculate the total amount of the invoice after applying promotions.
-     *
-     * @return The total amount.
-     */
+    /** Calculate the total amount of the invoice after applying promotions. */
     public double calculateTotal() {
         return Math.ceil(calculateSubtotalWithVat() - calculatePromotion());
     }
