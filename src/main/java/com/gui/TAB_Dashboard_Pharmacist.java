@@ -16,8 +16,6 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -26,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 /**
@@ -63,7 +62,6 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     // Shift management labels
     private JLabel lblShiftId;
     private JLabel lblCurrentCash;
-    private JLabel lblNotificationIcon;
 
     private JButton btnRefresh;
     private JButton btnCloseShift;
@@ -115,7 +113,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         headerPanel.setBackground(AppColors.WHITE);
         headerPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
 
-        // Top section: Title + Search Bar + Right Section (Shift Widget + Notification + Close Shift)
+        // Top section: Title + Right Section (Shift Widget + Close Shift)
         JPanel topSection = new JPanel(new BorderLayout(10, 0));
         topSection.setBackground(AppColors.WHITE);
 
@@ -124,48 +122,13 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitle.setForeground(AppColors.PRIMARY);
 
-        // Search Bar (Center)
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        searchPanel.setBackground(AppColors.WHITE);
-        JTextField txtSearch = new JTextField(30);
-        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        txtSearch.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(AppColors.SECONDARY, 1),
-            new EmptyBorder(5, 10, 5, 10)
-        ));
-        txtSearch.setToolTipText("Tìm kiếm sản phẩm, khuyến mãi...");
-        JButton btnSearch = new JButton("🔍");
-        btnSearch.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        btnSearch.setBackground(AppColors.SECONDARY);
-        btnSearch.setForeground(Color.WHITE);
-        btnSearch.setFocusPainted(false);
-        btnSearch.setBorderPainted(false);
-        btnSearch.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnSearch.setPreferredSize(new Dimension(45, 35));
-        searchPanel.add(txtSearch);
-        searchPanel.add(btnSearch);
-
-        // Right section: Shift Widget + Notification + Close Shift Button
+        // Right section: Shift Widget + Close Shift Button
         JPanel rightSection = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         rightSection.setBackground(AppColors.WHITE);
 
         // Shift Info Widget
         JPanel shiftWidget = createShiftWidget();
         rightSection.add(shiftWidget);
-
-        // Notification Bell Icon
-        lblNotificationIcon = new JLabel("🔔");
-        lblNotificationIcon.setFont(new Font("Segoe UI", Font.PLAIN, 24));
-        lblNotificationIcon.setForeground(AppColors.WARNING);
-        lblNotificationIcon.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        lblNotificationIcon.setToolTipText("Thông báo hệ thống");
-        lblNotificationIcon.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                showNotifications();
-            }
-        });
-        rightSection.add(lblNotificationIcon);
 
         // Close Shift Button
         btnCloseShift = new JButton("Đóng ca");
@@ -180,7 +143,6 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         rightSection.add(btnCloseShift);
 
         topSection.add(lblTitle, BorderLayout.WEST);
-        topSection.add(searchPanel, BorderLayout.CENTER);
         topSection.add(rightSection, BorderLayout.EAST);
 
         // Bottom section: Date + Refresh button
@@ -327,26 +289,6 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                     JOptionPane.INFORMATION_MESSAGE);
             }
         }
-    }
-
-    private void showNotifications() {
-        int lowStockCount = lowStockModel.getRowCount() - (lowStockModel.getRowCount() > 0 &&
-            lowStockModel.getValueAt(lowStockModel.getRowCount() - 1, 0) == null ? 1 : 0);
-        int expiringCount = expiringSoonModel.getRowCount() - (expiringSoonModel.getRowCount() > 0 &&
-            expiringSoonModel.getValueAt(expiringSoonModel.getRowCount() - 1, 0) == null ? 1 : 0);
-
-        String message = String.format(
-            "📊 THÔNG BÁO HỆ THỐNG\n\n" +
-            "🔴 Thuốc sắp hết hàng: %d sản phẩm\n" +
-            "🟡 Thuốc sắp hết hạn: %d lô hàng\n\n" +
-            "Vui lòng kiểm tra và xử lý kịp thời!",
-            lowStockCount, expiringCount
-        );
-
-        JOptionPane.showMessageDialog(this,
-            message,
-            "Thông Báo Hệ Thống",
-            JOptionPane.INFORMATION_MESSAGE);
     }
 
     private JPanel createLowStockPanel() {

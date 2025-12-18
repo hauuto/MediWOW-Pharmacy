@@ -18,8 +18,6 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -65,7 +63,6 @@ public class TAB_Dashboard_Manager extends JPanel {
     // Shift management labels
     private JLabel lblShiftId;
     private JLabel lblCurrentCash;
-    private JLabel lblNotificationIcon;
 
     private JButton btnRefresh;
     private JButton btnShift;
@@ -139,7 +136,7 @@ public class TAB_Dashboard_Manager extends JPanel {
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitle.setForeground(AppColors.PRIMARY);
 
-        // Right section: Shift Widget + Notification + Shift Button + Controls
+        // Right section: Shift Widget + Shift Button + Controls
         JPanel rightSection = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         rightSection.setBackground(AppColors.WHITE);
 
@@ -147,19 +144,6 @@ public class TAB_Dashboard_Manager extends JPanel {
         JPanel shiftWidget = createShiftWidget();
         rightSection.add(shiftWidget);
 
-        // Notification Bell Icon
-        lblNotificationIcon = new JLabel("🔔");
-        lblNotificationIcon.setFont(new Font("Segoe UI", Font.PLAIN, 24));
-        lblNotificationIcon.setForeground(AppColors.WARNING);
-        lblNotificationIcon.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        lblNotificationIcon.setToolTipText("Thông báo hệ thống");
-        lblNotificationIcon.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                showNotifications();
-            }
-        });
-        rightSection.add(lblNotificationIcon);
 
         // Shift Button (Mở ca / Đóng ca)
         btnShift = new JButton("Mở ca");
@@ -337,25 +321,6 @@ public class TAB_Dashboard_Manager extends JPanel {
                     JOptionPane.INFORMATION_MESSAGE);
             }
         }
-    }
-
-    private void showNotifications() {
-        // For manager dashboard, show business alerts
-        String message = String.format(
-            "📊 THÔNG BÁO QUẢN LÝ\n\n" +
-            "💰 Doanh thu hôm nay: %s\n" +
-            "📈 Lợi nhuận hôm nay: %s\n" +
-            "🧾 Số hóa đơn: %s\n\n" +
-            "Kiểm tra dashboard để xem chi tiết!",
-            lblTodayRevenue.getText(),
-            lblTodayProfit.getText(),
-            lblTodayInvoiceCount.getText()
-        );
-
-        JOptionPane.showMessageDialog(this,
-            message,
-            "Thông Báo Hệ Thống",
-            JOptionPane.INFORMATION_MESSAGE);
     }
 
     private JPanel createStatisticsPanel() {
