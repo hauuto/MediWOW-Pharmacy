@@ -19,4 +19,5 @@ public class AppColors {
     public static final Color BACKGROUND = Color.decode("#DDDDDD");
     public static final Color PLACEHOLDER_TEXT = Color.decode("#808080");
     public static final Color TEXT = Color.decode("#000000");
+    public static final Color MOMO = Color.decode("#D82D8B");
 }
