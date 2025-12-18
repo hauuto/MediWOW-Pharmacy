@@ -8,6 +8,7 @@ import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LotStatus;
 import com.enums.PromotionEnum;
+import com.interfaces.ShiftChangeListener;
 import com.utils.AppColors;
 
 import javax.swing.*;
@@ -47,6 +48,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     // Current staff and shift
     private Staff currentStaff;
     private Shift currentShift;
+    private ShiftChangeListener shiftChangeListener;
 
     // Tables
     private JTable tblLowStock;
@@ -298,8 +300,14 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
             // Update button and shift info if shift was closed
             if (closeShiftDialog.isConfirmed()) {
+                Shift closedShift = currentShift;
                 currentShift = null;
                 loadShiftData();
+
+                // Notify listener that shift was closed
+                if (shiftChangeListener != null) {
+                    shiftChangeListener.onShiftClosed(closedShift);
+                }
 
                 JOptionPane.showMessageDialog(this,
                     "Ca làm việc đã được đóng thành công!",
@@ -373,6 +381,11 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         if (openShiftDialog.getOpenedShift() != null) {
             currentShift = openShiftDialog.getOpenedShift();
             loadShiftData();
+
+            // Notify listener that shift was opened
+            if (shiftChangeListener != null) {
+                shiftChangeListener.onShiftOpened(currentShift);
+            }
 
             JOptionPane.showMessageDialog(this,
                 "Ca làm việc đã được mở thành công!",
@@ -819,6 +832,13 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
      */
     public void refresh() {
         loadData();
+    }
+
+    /**
+     * Set shift change listener to notify when shift is opened/closed
+     */
+    public void setShiftChangeListener(ShiftChangeListener listener) {
+        this.shiftChangeListener = listener;
     }
 
     private void loadTopSellingProducts() {

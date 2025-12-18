@@ -85,6 +85,11 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         TAB_Dashboard dashboard = new TAB_Dashboard(currentStaff);
         invoiceMenu = new GUI_InvoiceMenu(currentStaff);
         shiftChangeListener = invoiceMenu; // Set invoiceMenu as the shift change listener
+
+        // Set this GUI_MainMenu as the listener for dashboard shift changes
+        // so they can be forwarded to the invoice menu
+        dashboard.setShiftChangeListener(this);
+
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();
