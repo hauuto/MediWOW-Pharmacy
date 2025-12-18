@@ -21,10 +21,10 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 /**
@@ -215,10 +215,18 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     }
 
     private void loadShiftData() {
-        // Get current shift status
+        // First, check if there's ANY open shift on this workstation
+        String workstation = busShift.getCurrentWorkstation();
+        Shift workstationShift = busShift.getOpenShiftOnWorkstation(workstation);
+
+        // Then check staff's personal shift
+        Shift staffShift = null;
         if (currentStaff != null) {
-            currentShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+            staffShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
         }
+
+        // Use workstation shift if it exists, otherwise use staff shift
+        currentShift = workstationShift != null ? workstationShift : staffShift;
 
         // Set common button properties
         btnCloseShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -234,8 +242,15 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             BigDecimal currentCash = busShift.calculateSystemCashForShift(currentShift);
             lblCurrentCash.setText(currencyFormat.format(currentCash));
 
+            // Check if this is the staff's own shift
+            boolean isOwnShift = currentStaff != null &&
+                currentShift.getStaff() != null &&
+                currentShift.getStaff().getId().equals(currentStaff.getId());
+
             btnCloseShift.setText("Đóng ca");
-            btnCloseShift.setToolTipText("Nhấn để đóng ca làm việc");
+            btnCloseShift.setToolTipText(isOwnShift ?
+                "Nhấn để đóng ca làm việc" :
+                "Đóng ca của: " + currentShift.getStaff().getFullName());
             btnCloseShift.setBackground(new Color(220, 53, 69)); // Red color for close
             btnCloseShift.setEnabled(true);
         } else {
@@ -271,23 +286,77 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                     JOptionPane.INFORMATION_MESSAGE);
             }
         } else {
-            // Open shift
-            DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(
-                (Frame) SwingUtilities.getWindowAncestor(this),
-                currentStaff
-            );
-            openShiftDialog.setVisible(true);
+            // Open shift - check for existing shift on workstation
+            String workstation = busShift.getCurrentWorkstation();
+            Shift existingShift = busShift.getOpenShiftOnWorkstation(workstation);
 
-            // Update button and shift info if shift was opened
-            if (openShiftDialog.getOpenedShift() != null) {
-                currentShift = openShiftDialog.getOpenedShift();
-                loadShiftData();
-
-                JOptionPane.showMessageDialog(this,
-                    "Ca làm việc đã được mở thành công!",
-                    "Thông báo",
-                    JOptionPane.INFORMATION_MESSAGE);
+            if (existingShift != null && !existingShift.getStaff().getId().equals(currentStaff.getId())) {
+                // Another staff has an open shift - show takeover dialog
+                handleExistingShift(existingShift);
+            } else {
+                // No existing shift or same staff - open new shift
+                openNewShift();
             }
+        }
+    }
+
+    private void handleExistingShift(Shift existingShift) {
+        String message = String.format(
+            "Hiện đang có ca do nhân viên %s mở từ %s.\n\n" +
+            "Bạn có muốn tiếp tục ca này không?\n\n" +
+            "Lưu ý: Nếu chọn 'Có', bạn sẽ không thể bán hàng cho đến khi đóng ca này.",
+            existingShift.getStaff().getFullName(),
+            existingShift.getStartTime().format(dateTimeFormatter)
+        );
+
+        int choice = JOptionPane.showConfirmDialog(
+            this,
+            message,
+            "Ca làm việc đang mở",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (choice == JOptionPane.YES_OPTION) {
+            // User wants to continue existing shift
+            currentShift = existingShift;
+            loadShiftData();
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Bạn đã chọn tiếp tục ca hiện tại.\n" +
+                "Lưu ý: Bạn KHÔNG THỂ bán hàng khi chưa đóng ca này.",
+                "Thông báo",
+                JOptionPane.WARNING_MESSAGE
+            );
+        } else {
+            // User does not want to continue
+            JOptionPane.showMessageDialog(
+                this,
+                "Không thể mở ca mới khi đã có ca đang mở trên máy này.\n" +
+                "Vui lòng đóng ca hiện tại trước.",
+                "Không thể mở ca",
+                JOptionPane.WARNING_MESSAGE
+            );
+        }
+    }
+
+    private void openNewShift() {
+        DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(
+            (Frame) SwingUtilities.getWindowAncestor(this),
+            currentStaff
+        );
+        openShiftDialog.setVisible(true);
+
+        // Update button and shift info if shift was opened
+        if (openShiftDialog.getOpenedShift() != null) {
+            currentShift = openShiftDialog.getOpenedShift();
+            loadShiftData();
+
+            JOptionPane.showMessageDialog(this,
+                "Ca làm việc đã được mở thành công!",
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE);
         }
     }
 

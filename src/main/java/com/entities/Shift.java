@@ -41,6 +41,16 @@ public class Shift {
     @Column(name = "notes", columnDefinition = "NVARCHAR(MAX)")
     private String notes;
 
+    @Column(name = "workstation", length = 100)
+    private String workstation; // Máy tính/Workstation mở ca
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "closedBy")
+    private Staff closedBy; // Nhân viên đóng ca (có thể khác người mở)
+
+    @Column(name = "closeReason", columnDefinition = "NVARCHAR(500)")
+    private String closeReason; // Lý do đóng ca (nếu không phải người mở)
+
     // Constructors
     public Shift() {}
 
@@ -69,4 +79,10 @@ public class Shift {
     public void setStatus(ShiftStatus status) { this.status = status; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public String getWorkstation() { return workstation; }
+    public void setWorkstation(String workstation) { this.workstation = workstation; }
+    public Staff getClosedBy() { return closedBy; }
+    public void setClosedBy(Staff closedBy) { this.closedBy = closedBy; }
+    public String getCloseReason() { return closeReason; }
+    public void setCloseReason(String closeReason) { this.closeReason = closeReason; }
 }

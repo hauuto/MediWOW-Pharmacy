@@ -131,7 +131,9 @@ CREATE TABLE Shift (
                        systemCash DECIMAL(18,2),              -- Tiền mặt hệ thống tính toán (Lưu lại để đối chiếu)
                        status NVARCHAR(20) NOT NULL CHECK (status IN ('OPEN', 'CLOSED')),
                        notes NVARCHAR(MAX),
-
+                       workstation NVARCHAR(100) NULL,
+                       closedBy NVARCHAR(50) NULL,
+                       closeReason NVARCHAR(500) NULL,
                        FOREIGN KEY (staff) REFERENCES Staff(id)
 );
 
