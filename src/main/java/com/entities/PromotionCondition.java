@@ -2,7 +2,6 @@ package com.entities;
 
 import com.enums.PromotionEnum.*;
 import jakarta.persistence.*;
-import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
@@ -13,7 +12,7 @@ public class PromotionCondition {
 
     @Id
     @UuidGenerator
-    @Column(name = "id",insertable = false, updatable = false, nullable = false, length = 50)
+    @Column(name = "id", insertable = false, updatable = false, nullable = false, length = 50)
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,8 +36,8 @@ public class PromotionCondition {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumns({
-            @JoinColumn(name = "product", referencedColumnName = "product"),
-            @JoinColumn(name = "unitOfMeasure", referencedColumnName = "name")
+            @JoinColumn(name = "product", referencedColumnName = "product", insertable = true, updatable = true),
+            @JoinColumn(name = "unitOfMeasure", referencedColumnName = "name", insertable = true, updatable = true)
     })
     private UnitOfMeasure productUOM;
 
@@ -91,7 +90,6 @@ public class PromotionCondition {
     public Product getProduct() {
         return (productUOM != null) ? productUOM.getProduct() : null;
     }
-
 
     public double getPrimaryValue() {
         return (value == null) ? 0.0 : value.doubleValue();
