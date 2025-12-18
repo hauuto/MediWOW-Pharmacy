@@ -7,7 +7,6 @@ import com.enums.PromotionEnum.Target; // Import thêm để code gọn hơn
 import com.enums.PromotionEnum.ConditionType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -21,7 +20,6 @@ import java.util.Set;
 @Table(name = "Invoice")
 public class Invoice {
     @Id
-    @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false, length = 50)
     private String id;
 

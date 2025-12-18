@@ -14,7 +14,7 @@ import java.util.Objects;
 @Table(name = "InvoiceLine")
 public class InvoiceLine {
     @Id
-    @Column(name = "id", length = 50)
+    @Column(name = "id", updatable = false, nullable = false, length = 50)
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -43,6 +43,21 @@ public class InvoiceLine {
 
     protected InvoiceLine() {}
 
+    /**
+     * Constructor without ID - Hibernate will auto-generate UUID
+     */
+    public InvoiceLine(Product product, Invoice invoice, String unitOfMeasure, LineType lineType, int quantity, double unitPrice) {
+        this.product = product;
+        this.invoice = invoice;
+        this.unitOfMeasure = unitOfMeasure;
+        this.lineType = lineType;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+    }
+
+    /**
+     * Constructor with ID - for cases where ID is already known
+     */
     public InvoiceLine(String id, Product product, Invoice invoice, String unitOfMeasure, LineType lineType, int quantity, double unitPrice) {
         this.id = id;
         this.product = product;
