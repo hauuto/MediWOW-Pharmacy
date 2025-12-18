@@ -2,6 +2,7 @@ package com.gui;
 
 import com.entities.Staff;
 import com.enums.Role;
+import com.interfaces.ShiftChangeListener;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,6 +17,7 @@ import java.awt.*;
 public class TAB_Dashboard extends JPanel {
     private Staff currentStaff;
     private JPanel contentPanel;
+    private ShiftChangeListener shiftChangeListener;
 
     public TAB_Dashboard() {
         this(null);
@@ -51,6 +53,18 @@ public class TAB_Dashboard extends JPanel {
             ((TAB_Dashboard_Manager) contentPanel).refresh();
         } else if (contentPanel instanceof TAB_Dashboard_Pharmacist) {
             ((TAB_Dashboard_Pharmacist) contentPanel).refresh();
+        }
+    }
+
+    /**
+     * Set shift change listener and propagate to child dashboard
+     */
+    public void setShiftChangeListener(ShiftChangeListener listener) {
+        this.shiftChangeListener = listener;
+        if (contentPanel instanceof TAB_Dashboard_Manager) {
+            ((TAB_Dashboard_Manager) contentPanel).setShiftChangeListener(listener);
+        } else if (contentPanel instanceof TAB_Dashboard_Pharmacist) {
+            ((TAB_Dashboard_Pharmacist) contentPanel).setShiftChangeListener(listener);
         }
     }
 }
