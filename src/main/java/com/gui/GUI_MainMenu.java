@@ -172,16 +172,27 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
             setActiveButton(btnGuideLine);
 
         } else if (src == btnLogout) {
-            // Check if there's an open shift
-            Shift openShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+            // Check if there's an open shift on this workstation
+            String workstation = busShift.getCurrentWorkstation();
+            Shift openShift = busShift.getOpenShiftOnWorkstation(workstation);
 
             if (openShift != null) {
+                // Check if it's current staff's shift or another staff's shift
+                boolean isOwnShift = currentStaff != null &&
+                    openShift.getStaff() != null &&
+                    openShift.getStaff().getId().equals(currentStaff.getId());
+
+                String warningMessage = isOwnShift ?
+                    "CẢNH BÁO: Bạn đang có ca làm việc chưa đóng!\n\n" +
+                    "Vui lòng chọn một trong các hành động sau:" :
+                    "CẢNH BÁO: Máy này đang có ca mở bởi nhân viên " + openShift.getStaff().getFullName() + "!\n\n" +
+                    "Vui lòng chọn một trong các hành động sau:";
+
                 // Show warning with 3 options: Close Shift, Logout Anyway, Cancel
                 Object[] options = {"Đóng ca", "Đăng xuất", "Hủy"};
                 int choice = JOptionPane.showOptionDialog(
                         pnlMainMenu,
-                        "CẢNH BÁO: Bạn đang có ca làm việc chưa đóng!\n\n" +
-                                "Vui lòng chọn một trong các hành động sau:",
+                        warningMessage,
                         "Xác nhận đăng xuất",
                         JOptionPane.YES_NO_CANCEL_OPTION,
                         JOptionPane.WARNING_MESSAGE,

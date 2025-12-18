@@ -70,11 +70,14 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private Shift ensureCurrentShift() {
-        Shift shift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+        // Check if there's ANY open shift on current workstation (not just current staff's shift)
+        String workstation = busShift.getCurrentWorkstation();
+        Shift shift = busShift.getOpenShiftOnWorkstation(workstation);
+
         while (shift == null) {
             Object[] options = {"Mở ca", "Hủy"};
             int choice = JOptionPane.showOptionDialog(parentWindow,
-                "Bạn chưa mở ca làm việc. Vui lòng mở ca trước khi tạo hóa đơn.",
+                "Chưa có ca làm việc nào đang mở trên máy này. Vui lòng mở ca trước khi tạo hóa đơn.",
                 "Yêu cầu mở ca", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE,
                 null, options, options[0]);
             if (choice != JOptionPane.YES_OPTION) {
