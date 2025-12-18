@@ -3,7 +3,7 @@ package com.gui.invoice_options;
 import com.bus.*;
 import com.entities.*;
 import com.enums.*;
-import com.gui.MoMoQRCodeDialog;
+import com.gui.DIALOG_MomoQRCode;
 import com.interfaces.ShiftChangeListener;
 import com.utils.*;
 import javax.swing.*;
@@ -16,7 +16,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.beans.*;
 import java.io.File;
-import java.math.BigDecimal;
 import java.text.*;
 import java.util.*;
 import java.util.List;
@@ -70,11 +69,14 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     }
 
     private Shift ensureCurrentShift() {
-        Shift shift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+        // Check if there's ANY open shift on current workstation (not just current staff's shift)
+        String workstation = busShift.getCurrentWorkstation();
+        Shift shift = busShift.getOpenShiftOnWorkstation(workstation);
+
         while (shift == null) {
             Object[] options = {"Mở ca", "Hủy"};
             int choice = JOptionPane.showOptionDialog(parentWindow,
-                "Bạn chưa mở ca làm việc. Vui lòng mở ca trước khi tạo hóa đơn.",
+                "Chưa có ca làm việc nào đang mở trên máy này. Vui lòng mở ca trước khi tạo hóa đơn.",
                 "Yêu cầu mở ca", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE,
                 null, options, options[0]);
             if (choice != JOptionPane.YES_OPTION) {
@@ -850,7 +852,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             String orderInfo = "Thanh toán hóa đơn MediWOW Pharmacy";
             Window owner = SwingUtilities.getWindowAncestor(pnlSalesInvoice);
 
-            boolean paymentSuccess = MoMoQRCodeDialog.showAndPay(owner, total, orderInfo);
+            boolean paymentSuccess = DIALOG_MomoQRCode.showAndPay(owner, total, orderInfo);
 
             if (paymentSuccess) {
                 // MoMo payment successful - complete the sale
