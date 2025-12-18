@@ -68,7 +68,7 @@ public class MoMoQRCodeDialog extends JDialog {
 
         JLabel lblTitle = new JLabel("Quét mã QR để thanh toán", SwingConstants.CENTER);
         lblTitle.setFont(new Font("Arial", Font.BOLD, 20));
-        lblTitle.setForeground(new Color(166, 32, 128)); // MoMo pink color
+        lblTitle.setForeground(AppColors.TEXT);
         headerPanel.add(lblTitle, BorderLayout.NORTH);
 
         JLabel lblAmount = new JLabel(formatCurrency(amount), SwingConstants.CENTER);
@@ -100,13 +100,13 @@ public class MoMoQRCodeDialog extends JDialog {
 
         lblStatus = new JLabel("Đang chờ thanh toán...", SwingConstants.CENTER);
         lblStatus.setFont(new Font("Arial", Font.ITALIC, 14));
-        lblStatus.setForeground(new Color(255, 153, 0)); // Orange for waiting
+        lblStatus.setForeground(AppColors.PLACEHOLDER_TEXT);
         bottomPanel.add(lblStatus, BorderLayout.NORTH);
 
         btnCancel = new JButton("Hủy thanh toán");
         btnCancel.setFont(new Font("Arial", Font.BOLD, 16));
         btnCancel.setForeground(Color.WHITE);
-        btnCancel.setBackground(new Color(220, 53, 69)); // Red
+        btnCancel.setBackground(AppColors.DANGER);
         btnCancel.setFocusPainted(false);
         btnCancel.setBorderPainted(false);
         btnCancel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -121,7 +121,7 @@ public class MoMoQRCodeDialog extends JDialog {
         // MoMo branding
         JLabel lblMoMo = new JLabel("Powered by MoMo", SwingConstants.CENTER);
         lblMoMo.setFont(new Font("Arial", Font.PLAIN, 12));
-        lblMoMo.setForeground(new Color(166, 32, 128));
+        lblMoMo.setForeground(AppColors.MOMO);
         bottomPanel.add(lblMoMo, BorderLayout.SOUTH);
 
         mainPanel.add(bottomPanel, BorderLayout.SOUTH);
@@ -274,9 +274,9 @@ public class MoMoQRCodeDialog extends JDialog {
                         paymentSuccess = true;
                         stopPolling();
                         lblStatus.setText("Thanh toán thành công!");
-                        lblStatus.setForeground(new Color(40, 167, 69)); // Green
+                        lblStatus.setForeground(AppColors.SUCCESS);
                         btnCancel.setText("Đóng");
-                        btnCancel.setBackground(new Color(40, 167, 69));
+                        btnCancel.setBackground(AppColors.PRIMARY);
 
                         // Auto close after 2 seconds
                         Timer closeTimer = new Timer(2000, evt -> dispose());
@@ -323,7 +323,7 @@ public class MoMoQRCodeDialog extends JDialog {
      */
     private void showError(String message) {
         lblStatus.setText(message);
-        lblStatus.setForeground(new Color(220, 53, 69)); // Red
+        lblStatus.setForeground(AppColors.WARNING);
         btnCancel.setText("Đóng");
     }
 
