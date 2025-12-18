@@ -3,7 +3,9 @@ package com.gui;
 import com.bus.BUS_Product;
 import com.bus.BUS_Promotion;
 import com.bus.BUS_Shift;
+import com.bus.BUS_Invoice;
 import com.entities.*;
+import com.enums.InvoiceType;
 import com.enums.LotStatus;
 import com.enums.PromotionEnum;
 import com.utils.AppColors;
@@ -40,6 +42,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     private final BUS_Product busProduct;
     private final BUS_Promotion busPromotion;
     private final BUS_Shift busShift;
+    private final BUS_Invoice busInvoice;
 
     // Current staff and shift
     private Staff currentStaff;
@@ -49,14 +52,21 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     private JTable tblLowStock;
     private JTable tblExpiringSoon;
     private JTable tblActivePromotions;
+    private JTable tblTopSelling;
 
     private DefaultTableModel lowStockModel;
     private DefaultTableModel expiringSoonModel;
     private DefaultTableModel promotionModel;
+    private DefaultTableModel topSellingModel;
 
-    // Labels for statistics
-    private JLabel lblLowStockCount;
+    // Summary card labels
+    private JLabel lblCardExpiringCount;
+    private JLabel lblCardLowStockCount;
+    private JLabel lblCardShiftRevenue;
+
+    // Table header labels
     private JLabel lblExpiringCount;
+    private JLabel lblLowStockCount;
     private JLabel lblActivePromotionCount;
 
     // Shift management labels
@@ -68,6 +78,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
     // Constants
     private static final int LOW_STOCK_THRESHOLD = 100; // Định mức tồn kho thấp
+    private static final int CRITICAL_STOCK_THRESHOLD = 10; // Ngưỡng tồn kho nguy hiểm
     private static final int EXPIRY_WARNING_DAYS = 90; // Cảnh báo thuốc còn 90 ngày hết hạn
     private static final int EXPIRY_DANGER_DAYS = 30; // Cảnh báo nguy hiểm còn 30 ngày
 
@@ -84,6 +95,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         this.busProduct = new BUS_Product();
         this.busPromotion = new BUS_Promotion();
         this.busShift = new BUS_Shift();
+        this.busInvoice = new BUS_Invoice();
         initComponents();
         loadData();
         loadShiftData();
@@ -97,15 +109,24 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         // Header
         add(createHeaderPanel(), BorderLayout.NORTH);
 
-        // Main content
-        JPanel mainPanel = new JPanel(new GridLayout(3, 1, 10, 10));
+        // Main content with summary cards
+        JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
+        contentPanel.setBackground(AppColors.WHITE);
+
+        // Summary Cards at top
+        contentPanel.add(createSummaryCardsPanel(), BorderLayout.NORTH);
+
+        // Tables and info panels
+        JPanel mainPanel = new JPanel(new GridLayout(4, 1, 10, 10));
         mainPanel.setBackground(AppColors.WHITE);
 
         mainPanel.add(createExpiringSoonPanel());
         mainPanel.add(createLowStockPanel());
+        mainPanel.add(createTopSellingPanel());
         mainPanel.add(createPromotionPanel());
 
-        add(mainPanel, BorderLayout.CENTER);
+        contentPanel.add(mainPanel, BorderLayout.CENTER);
+        add(contentPanel, BorderLayout.CENTER);
     }
 
     private JPanel createHeaderPanel() {
@@ -390,6 +411,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         };
 
         tblLowStock = createStyledTable(lowStockModel);
+        tblLowStock.getTableHeader().setReorderingAllowed(false);
         tblLowStock.getColumnModel().getColumn(2).setCellRenderer(new LowStockCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(tblLowStock);
@@ -432,6 +454,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         };
 
         tblExpiringSoon = createStyledTable(expiringSoonModel);
+        tblExpiringSoon.getTableHeader().setReorderingAllowed(false);
 
         // Apply conditional row coloring
         tblExpiringSoon.setDefaultRenderer(Object.class, new ExpiringRowRenderer());
@@ -489,6 +512,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         };
 
         tblActivePromotions = createStyledTable(promotionModel);
+        tblActivePromotions.getTableHeader().setReorderingAllowed(false);
 
         // Adjust column widths
         tblActivePromotions.getColumnModel().getColumn(0).setPreferredWidth(80);  // Mã KM
@@ -498,6 +522,58 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblActivePromotions.getColumnModel().getColumn(4).setPreferredWidth(300); // Điều kiện
 
         JScrollPane scrollPane = new JScrollPane(tblActivePromotions);
+        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
+
+        panel.add(headerPanel, BorderLayout.NORTH);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private JPanel createTopSellingPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
+
+        // Header
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(AppColors.WHITE);
+
+        JLabel lblTitle = new JLabel("TOP 5 BÁN CHẠY CA HIỆN TẠI");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(AppColors.PRIMARY);
+
+        JLabel lblSubtitle = new JLabel("Để chuẩn bị hàng nhanh hơn");
+        lblSubtitle.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        lblSubtitle.setForeground(AppColors.PLACEHOLDER_TEXT);
+
+        headerPanel.add(lblTitle, BorderLayout.WEST);
+        headerPanel.add(lblSubtitle, BorderLayout.EAST);
+
+        // Table
+        String[] columns = {"Top", "Mã SP", "Tên sản phẩm", "Đã bán", "Đơn vị"};
+        topSellingModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        tblTopSelling = createStyledTable(topSellingModel);
+        tblTopSelling.getTableHeader().setReorderingAllowed(false);
+
+        // Adjust column widths
+        tblTopSelling.getColumnModel().getColumn(0).setPreferredWidth(50);  // Top
+        tblTopSelling.getColumnModel().getColumn(1).setPreferredWidth(100); // Mã SP
+        tblTopSelling.getColumnModel().getColumn(2).setPreferredWidth(300); // Tên SP
+        tblTopSelling.getColumnModel().getColumn(3).setPreferredWidth(80);  // Đã bán
+        tblTopSelling.getColumnModel().getColumn(4).setPreferredWidth(80);  // Đơn vị
+
+        // Custom renderer for Top column
+        tblTopSelling.getColumnModel().getColumn(0).setCellRenderer(new TopRankCellRenderer());
+
+        JScrollPane scrollPane = new JScrollPane(tblTopSelling);
         scrollPane.setPreferredSize(new Dimension(0, 180));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
@@ -530,6 +606,8 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             loadExpiringSoonLots();
             loadLowStockProducts();
             loadActivePromotions();
+            loadTopSellingProducts();
+            updateSummaryCards();
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(this,
@@ -557,7 +635,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                 }
             }
 
-            if (totalStock <= LOW_STOCK_THRESHOLD && totalStock > 0) {
+            if (totalStock <= LOW_STOCK_THRESHOLD) {
                 lowStockProducts.add(product);
             }
         }
@@ -578,7 +656,8 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                 .filter(l -> l.getStatus() == LotStatus.AVAILABLE)
                 .mapToInt(Lot::getQuantity).sum();
 
-            String status = totalStock == 0 ? "HẾT HÀNG" : "SẮP HẾT";
+            String status = totalStock == 0 ? "HẾT HÀNG" :
+                           totalStock <= CRITICAL_STOCK_THRESHOLD ? "NGUY HIỂM" : "SẮP HẾT";
 
             lowStockModel.addRow(new Object[]{
                 product.getId(),
@@ -590,6 +669,9 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         }
 
         lblLowStockCount.setText(lowStockProducts.size() + " sản phẩm");
+
+        // Apply row-level color renderer
+        tblLowStock.setDefaultRenderer(Object.class, new LowStockRowRenderer());
     }
 
     private void loadExpiringSoonLots() {
@@ -737,6 +819,84 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
      */
     public void refresh() {
         loadData();
+    }
+
+    private void loadTopSellingProducts() {
+        topSellingModel.setRowCount(0);
+
+        if (currentShift == null) {
+            // No active shift - show empty or placeholder message
+            return;
+        }
+
+        // Get all invoices for current shift
+        List<Invoice> allInvoices = busInvoice.getAllInvoices();
+        if (allInvoices == null) return;
+
+        // Filter invoices by current shift
+        List<Invoice> shiftInvoices = allInvoices.stream()
+            .filter(inv -> inv.getShift() != null && inv.getShift().getId().equals(currentShift.getId()))
+            .filter(inv -> inv.getType() == InvoiceType.SALES)
+            .collect(Collectors.toList());
+
+        // Count quantities sold per product
+        Map<Product, Integer> productSalesMap = new HashMap<>();
+
+        for (Invoice invoice : shiftInvoices) {
+            if (invoice.getInvoiceLineList() != null) {
+                for (InvoiceLine line : invoice.getInvoiceLineList()) {
+                    Product product = line.getProduct();
+                    int quantity = line.getQuantity();
+                    productSalesMap.merge(product, quantity, Integer::sum);
+                }
+            }
+        }
+
+        // Sort by quantity sold (descending) and take top 5
+        List<Map.Entry<Product, Integer>> topProducts = productSalesMap.entrySet().stream()
+            .sorted((e1, e2) -> Integer.compare(e2.getValue(), e1.getValue()))
+            .limit(5)
+            .collect(Collectors.toList());
+
+        // Add to table
+        int rank = 1;
+        for (Map.Entry<Product, Integer> entry : topProducts) {
+            Product product = entry.getKey();
+            int quantity = entry.getValue();
+
+            topSellingModel.addRow(new Object[]{
+                rank++,
+                product.getId(),
+                product.getName(),
+                quantity,
+                product.getBaseUnitOfMeasure()
+            });
+        }
+    }
+
+    private void updateSummaryCards() {
+        // Card 1: Expiring Products (RED - CRITICAL)
+        int expiringCount = expiringSoonModel.getRowCount();
+        lblCardExpiringCount.setText(String.valueOf(expiringCount));
+
+        // Card 2: Low Stock Products (ORANGE - WARNING)
+        int lowStockCount = lowStockModel.getRowCount();
+        lblCardLowStockCount.setText(String.valueOf(lowStockCount));
+
+        // Card 3: Current Shift Revenue (GREEN - PERFORMANCE)
+        BigDecimal shiftRevenue = BigDecimal.ZERO;
+        if (currentShift != null) {
+            List<Invoice> allInvoices = busInvoice.getAllInvoices();
+            if (allInvoices != null) {
+                double revenueSum = allInvoices.stream()
+                    .filter(inv -> inv.getShift() != null && inv.getShift().getId().equals(currentShift.getId()))
+                    .filter(inv -> inv.getType() == InvoiceType.SALES)
+                    .map(Invoice::calculateTotal)
+                    .reduce(0.0, Double::sum);
+                shiftRevenue = BigDecimal.valueOf(revenueSum);
+            }
+        }
+        lblCardShiftRevenue.setText(currencyFormat.format(shiftRevenue));
     }
 
     // Custom Cell Renderers
@@ -963,5 +1123,180 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             return c;
         }
     }
-}
 
+    /**
+     * Row-level color renderer for Low Stock Table
+     * Colors entire row based on stock quantity:
+     * - Dark Red/Gray: stock = 0 (out of stock)
+     * - Yellow: stock <= CRITICAL_STOCK_THRESHOLD (critical)
+     */
+    private class LowStockRowRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                     boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            // Get stock quantity from column 2
+            Object stockObj = table.getValueAt(row, 2);
+            if (stockObj != null && stockObj instanceof Integer) {
+                int stock = (Integer) stockObj;
+
+                if (!isSelected) {
+                    if (stock == 0) {
+                        // Dark red/gray for out of stock
+                        c.setBackground(new Color(128, 128, 128)); // Gray
+                        c.setForeground(Color.WHITE);
+                    } else if (stock <= CRITICAL_STOCK_THRESHOLD) {
+                        // Yellow for critical stock
+                        c.setBackground(new Color(255, 255, 200));
+                        c.setForeground(Color.BLACK);
+                    } else {
+                        c.setBackground(Color.WHITE);
+                        c.setForeground(Color.BLACK);
+                    }
+                }
+
+                // Bold font for stock quantity and status columns
+                if (column == 2 || column == 4) {
+                    setFont(getFont().deriveFont(Font.BOLD));
+                } else {
+                    setFont(getFont().deriveFont(Font.PLAIN));
+                }
+            }
+
+            setHorizontalAlignment(column == 2 ? CENTER : LEFT);
+            return c;
+        }
+    }
+
+    /**
+     * Custom renderer for Top Rank column in Top Selling table
+     * Highlights top 3 with medals/badges
+     */
+    private static class TopRankCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                     boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            if (value instanceof Integer) {
+                int rank = (Integer) value;
+                setFont(getFont().deriveFont(Font.BOLD, 14f));
+                setHorizontalAlignment(CENTER);
+
+                if (!isSelected) {
+                    switch (rank) {
+                        case 1:
+                            c.setBackground(new Color(255, 215, 0)); // Gold
+                            c.setForeground(Color.BLACK);
+                            setText(String.valueOf(rank));
+                            break;
+                        case 2:
+                            c.setBackground(new Color(192, 192, 192)); // Silver
+                            c.setForeground(Color.BLACK);
+                            setText(String.valueOf(rank));
+                            break;
+                        case 3:
+                            c.setBackground(new Color(205, 127, 50)); // Bronze
+                            c.setForeground(Color.BLACK);
+                            setText(String.valueOf(rank));
+                            break;
+                        default:
+                            c.setBackground(Color.WHITE);
+                            c.setForeground(Color.BLACK);
+                            setText(String.valueOf(rank));
+                            break;
+                    }
+                }
+            }
+
+            return c;
+        }
+    }
+
+    private JPanel createSummaryCardsPanel() {
+        JPanel panel = new JPanel(new GridLayout(1, 3, 15, 0));
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(new EmptyBorder(0, 0, 20, 0));
+
+        // Card 1: Expiring Products (RED - CRITICAL)
+        JPanel cardExpiring = createSummaryCard(
+            "Thuốc Sắp Hết Hạn",
+            "0",
+            "lô hàng cần xử lý",
+            new Color(220, 53, 69), // Red
+            ""
+        );
+        lblCardExpiringCount = (JLabel) ((JPanel) cardExpiring.getComponent(0)).getComponent(0);
+
+        // Card 2: Low Stock Products (ORANGE - WARNING)
+        JPanel cardLowStock = createSummaryCard(
+            "Thuốc Sắp Hết Hàng",
+            "0",
+            "sản phẩm cần nhập",
+            new Color(255, 143, 0), // Orange
+            ""
+        );
+        lblCardLowStockCount = (JLabel) ((JPanel) cardLowStock.getComponent(0)).getComponent(0);
+
+        // Card 3: Current Shift Revenue (GREEN - PERFORMANCE)
+        JPanel cardRevenue = createSummaryCard(
+            "Doanh Thu Ca Hiện Tại",
+            "0 đ",
+            "từ đầu ca đến hiện tại",
+            new Color(40, 167, 69), // Green
+            ""
+        );
+        lblCardShiftRevenue = (JLabel) ((JPanel) cardRevenue.getComponent(0)).getComponent(0);
+
+        panel.add(cardExpiring);
+        panel.add(cardLowStock);
+        panel.add(cardRevenue);
+
+        return panel;
+    }
+
+    private JPanel createSummaryCard(String title, String value, String subtitle, Color color, String icon) {
+        JPanel card = new JPanel(new BorderLayout(10, 10));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(color, 2),
+            new EmptyBorder(20, 20, 20, 20)
+        ));
+
+        // Top section: Value only (no icon)
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setBackground(Color.WHITE);
+
+        JLabel lblValue = new JLabel(value);
+        lblValue.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        lblValue.setForeground(color);
+        lblValue.setHorizontalAlignment(SwingConstants.CENTER);
+
+        topPanel.add(lblValue, BorderLayout.CENTER);
+
+        // Bottom section: Title + Subtitle
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
+        bottomPanel.setBackground(Color.WHITE);
+
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblTitle.setForeground(AppColors.DARK);
+        lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel lblSubtitle = new JLabel(subtitle);
+        lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblSubtitle.setForeground(AppColors.PLACEHOLDER_TEXT);
+        lblSubtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        bottomPanel.add(lblTitle);
+        bottomPanel.add(Box.createVerticalStrut(5));
+        bottomPanel.add(lblSubtitle);
+
+        card.add(topPanel, BorderLayout.CENTER);
+        card.add(bottomPanel, BorderLayout.SOUTH);
+
+        return card;
+    }
+}
