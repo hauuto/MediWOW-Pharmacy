@@ -3,9 +3,10 @@ package com.entities;
 import com.enums.InvoiceType;
 import com.enums.PaymentMethod;
 import com.enums.PromotionEnum;
+import com.enums.PromotionEnum.Target; // Import thêm để code gọn hơn
+import com.enums.PromotionEnum.ConditionType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,7 +21,6 @@ import java.util.Set;
 @Table(name = "Invoice")
 public class Invoice {
     @Id
-    @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false, length = 50)
     private String id;
 
@@ -61,17 +61,32 @@ public class Invoice {
     @JoinColumn(name = "referencedInvoice")
     private Invoice referencedInvoice;
 
+    // --- UPDATE: QUẢN LÝ CA (SHIFT MANAGEMENT) ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "shift", nullable = true) // Có thể null nếu là data cũ, nhưng logic mới nên bắt buộc
+    private Shift shift;
+    // ---------------------------------------------
+
     protected Invoice() {}
 
-    public Invoice(InvoiceType type, Staff creator) {
+    /**
+     * Updated Constructor to include Shift
+     * @author Bùi Quốc Trụ
+     */
+    public Invoice(InvoiceType type, Staff creator, Shift shift) {
         // Don't set id manually - let Hibernate's @UuidGenerator handle it
         this.type = type;
         this.creationDate = LocalDateTime.now();
         this.creator = creator;
+        this.shift = shift; // Gán ca làm việc hiện tại
         this.invoiceLineList = new ArrayList<>();
     }
 
-    public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator, PrescribedCustomer prescribedCustomer, String notes, String prescriptionCode, List<InvoiceLine> invoiceLineList, Promotion promotion, PaymentMethod paymentMethod, Invoice referencedInvoice) {
+    // Full constructor updated
+    public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator,
+                   PrescribedCustomer prescribedCustomer, String notes, String prescriptionCode,
+                   List<InvoiceLine> invoiceLineList, Promotion promotion,
+                   PaymentMethod paymentMethod, Invoice referencedInvoice, Shift shift) {
         this.id = id;
         this.type = type;
         this.creationDate = creationDate;
@@ -83,7 +98,18 @@ public class Invoice {
         this.promotion = promotion;
         this.paymentMethod = paymentMethod;
         this.referencedInvoice = referencedInvoice;
+        this.shift = shift;
     }
+
+    // --- Getters and Setters for Shift ---
+    public Shift getShift() {
+        return shift;
+    }
+
+    public void setShift(Shift shift) {
+        this.shift = shift;
+    }
+    // -------------------------------------
 
     public String getId() {
         return id;
@@ -161,6 +187,8 @@ public class Invoice {
         this.referencedInvoice = referencedInvoice;
     }
 
+    // ... (Giữ nguyên toàn bộ các phương thức xử lý nghiệp vụ bên dưới của bạn: addInvoiceLine, calculateSubtotal, v.v...)
+
     /**
      * Adds an InvoiceLine to the invoice if it does not already exist.
      */
@@ -183,11 +211,10 @@ public class Invoice {
         if (newInvoiceLine == null)
             return false;
 
-        // Find and remove the old invoice line
         InvoiceLine oldLine = null;
         for (InvoiceLine line : invoiceLineList) {
             if (line.getProduct().getId().equals(oldProductId) &&
-                line.getUnitOfMeasure().equals(oldUomName)) {
+                    line.getUnitOfMeasure().equals(oldUomName)) {
                 oldLine = line;
                 break;
             }
@@ -195,25 +222,20 @@ public class Invoice {
 
         if (oldLine != null) {
             invoiceLineList.remove(oldLine);
-
-            // Check if the new line already exists (after UOM change)
             boolean exists = false;
             for (InvoiceLine existingLine : invoiceLineList) {
                 if (existingLine.getProduct().getId().equals(newInvoiceLine.getProduct().getId()) &&
-                    existingLine.getUnitOfMeasure().equals(newInvoiceLine.getUnitOfMeasure())) {
-                    // Merge quantities
+                        existingLine.getUnitOfMeasure().equals(newInvoiceLine.getUnitOfMeasure())) {
                     existingLine.setQuantity(existingLine.getQuantity() + newInvoiceLine.getQuantity());
                     exists = true;
                     break;
                 }
             }
-
             if (!exists) {
                 invoiceLineList.add(newInvoiceLine);
             }
             return true;
         }
-
         return false;
     }
 
@@ -223,29 +245,25 @@ public class Invoice {
     public boolean removeInvoiceLine(String productId, String unitOfMeasureName) {
         return invoiceLineList.removeIf(line ->
                 line.getProduct().getId().equals(productId) &&
-                line.getUnitOfMeasure().equals(unitOfMeasureName)
+                        line.getUnitOfMeasure().equals(unitOfMeasureName)
         );
     }
 
     /** Calculate the subtotal amount of the invoice. */
     public double calculateSubtotal() {
         double subtotal = 0.0;
-
         for (InvoiceLine line : invoiceLineList) {
             subtotal += line.calculateSubtotal();
         }
-
         return subtotal;
     }
 
     /** Calculate the total VAT amount of the invoice. */
     public double calculateVatAmount() {
         double vatAmount = 0.0;
-
         for (InvoiceLine line : invoiceLineList) {
             vatAmount += line.calculateVatAmount();
         }
-
         return vatAmount;
     }
 
@@ -261,23 +279,20 @@ public class Invoice {
 
         List<PromotionCondition> conditions = promotion.getConditions();
         if (conditions == null || conditions.isEmpty())
-            return true; // No conditions means promotion is always applicable
-
-        // All conditions must be satisfied
+            return true;
         for (PromotionCondition condition : conditions) {
             if (!checkSingleCondition(condition)) {
                 return false;
             }
         }
-
         return true;
     }
 
     /** Check if a single promotion condition is satisfied */
     private boolean checkSingleCondition(PromotionCondition condition) {
-        if (condition.getTarget() == PromotionEnum.Target.PRODUCT) {
+        if (condition.getTarget() == Target.PRODUCT) {
             return checkProductCondition(condition);
-        } else if (condition.getTarget() == PromotionEnum.Target.ORDER_SUBTOTAL) {
+        } else if (condition.getTarget() == Target.ORDER_SUBTOTAL) {
             return checkOrderCondition(condition);
         }
         return false;
@@ -288,30 +303,24 @@ public class Invoice {
         Product targetProduct = condition.getProduct();
         if (targetProduct == null)
             return false;
-
-        // Calculate total quantity of target product in invoice
         int totalQuantity = 0;
         for (InvoiceLine line : invoiceLineList) {
             if (line.getProduct().getId().equals(targetProduct.getId())) {
                 totalQuantity += line.getQuantity();
             }
         }
-
-        // Compare based on condition type and comparator
-        if (condition.getConditionType() == PromotionEnum.ConditionType.PRODUCT_QTY) {
+        if (condition.getConditionType() == ConditionType.PRODUCT_QTY) {
             return compareValues(totalQuantity, condition.getPrimaryValue(), condition.getComparator());
         }
-
         return false;
     }
 
     /** Check order subtotal condition (e.g., order total >= X) */
     private boolean checkOrderCondition(PromotionCondition condition) {
-        if (condition.getConditionType() == PromotionEnum.ConditionType.ORDER_SUBTOTAL) {
+        if (condition.getConditionType() == ConditionType.ORDER_SUBTOTAL) {
             double subtotalWithVat = calculateSubtotalWithVat();
             return compareValues(subtotalWithVat, condition.getPrimaryValue(), condition.getComparator());
         }
-
         return false;
     }
 
@@ -330,12 +339,8 @@ public class Invoice {
 
     /** Calculate the total discount applied to the invoice. */
     public double calculatePromotion() {
-        if (promotion == null)
-            return 0.0;
-
-        // Check if conditions are satisfied before calculating discount
-        if (!checkPromotionConditions())
-            return 0.0;
+        if (promotion == null) return 0.0;
+        if (!checkPromotionConditions()) return 0.0;
 
         double totalDiscount = 0.0;
         List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
@@ -343,15 +348,12 @@ public class Invoice {
                 .toList();
 
         for (PromotionAction action : sortedActionOrderList) {
-            if (action.getTarget() == PromotionEnum.Target.PRODUCT) {
-                // Apply discount to specific product(s)
+            if (action.getTarget() == Target.PRODUCT) {
                 totalDiscount += calculateProductDiscount(action);
-            } else if (action.getTarget() == PromotionEnum.Target.ORDER_SUBTOTAL) {
-                // Apply discount to order subtotal with VAT
+            } else if (action.getTarget() == Target.ORDER_SUBTOTAL) {
                 totalDiscount += calculateOrderDiscount(action);
             }
         }
-
         return totalDiscount;
     }
 
@@ -361,10 +363,6 @@ public class Invoice {
         Product targetProduct = (action.getProductUOM() != null && action.getProductUOM().getProduct() != null)
                 ? action.getProductUOM().getProduct() : null;
 
-        if (targetProduct == null)
-            return 0.0;
-
-        // Find matching invoice lines for the target product
         for (InvoiceLine line : invoiceLineList) {
             if (line.getProduct().getId().equals(targetProduct.getId())) {
                 double lineSubtotalWithVat = line.calculateTotalAmount();
@@ -376,10 +374,8 @@ public class Invoice {
                 } else if (action.getType() == PromotionEnum.ActionType.PERCENT_DISCOUNT) {
                     discount += lineSubtotalWithVat * (primaryValue / 100);
                 }
-                // Note: PRODUCT_GIFT is handled separately, not as a discount
             }
         }
-
         return discount;
     }
 
@@ -395,7 +391,6 @@ public class Invoice {
         } else if (action.getType() == PromotionEnum.ActionType.PERCENT_DISCOUNT) {
             discount = subtotalWithVat * (primaryValue / 100);
         }
-
         return discount;
     }
 

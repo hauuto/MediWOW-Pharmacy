@@ -4,6 +4,9 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.utils.AppColors;
 import com.entities.Staff;
+import com.entities.Shift;
+import com.bus.BUS_Shift;
+import com.interfaces.ShiftChangeListener;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -15,7 +18,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-public class GUI_MainMenu implements ActionListener {
+public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     JPanel pnlMainMenu;
     private JPanel pnlLeftHeader;
     private JLabel lblLogo;
@@ -38,8 +41,13 @@ public class GUI_MainMenu implements ActionListener {
     private JTextField txtSearch;
     private JLabel lblSearch;
     private JComboBox comboBox1;
+    private JButton btnShift;
     private CardLayout cardLayout;
     private Staff currentStaff;
+    private BUS_Shift busShift;
+    private Shift currentShift;
+    private GUI_InvoiceMenu invoiceMenu;
+    private ShiftChangeListener shiftChangeListener;
 
 
     /**
@@ -48,6 +56,7 @@ public class GUI_MainMenu implements ActionListener {
 
     public GUI_MainMenu(Staff staff) {
         this.currentStaff = staff;
+        this.busShift = new BUS_Shift();
 
         pnlSearch.setBackground(AppColors.LIGHT);
         pnlLeftHeader.setBackground(AppColors.LIGHT);
@@ -68,11 +77,14 @@ public class GUI_MainMenu implements ActionListener {
         btnLogout.addActionListener(this);
         btnCustomer.addActionListener(this);
 
+        // Check and update shift status
+
         //testing rules
 
 
-        TAB_Dashboard dashboard = new TAB_Dashboard();
-        GUI_InvoiceMenu invoiceMenu = new GUI_InvoiceMenu(currentStaff);
+        TAB_Dashboard dashboard = new TAB_Dashboard(currentStaff);
+        invoiceMenu = new GUI_InvoiceMenu(currentStaff);
+        shiftChangeListener = invoiceMenu; // Set invoiceMenu as the shift change listener
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();
@@ -109,7 +121,7 @@ public class GUI_MainMenu implements ActionListener {
         cardLayout.show(pnlMain, "dashboard");
 
         Locale locale = Locale.of("vi", "VN");
-        DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss E, dd/MM/yyyy", locale);
+        DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss EEEE, dd/MM/yyyy", locale);
         Timer timer = new Timer(1000, e -> {
             LocalDateTime now = LocalDateTime.now();
             lblTime.setText(timeFormat.format(now));
@@ -118,6 +130,8 @@ public class GUI_MainMenu implements ActionListener {
 
 
     }
+
+
 
 
     @Override
@@ -130,6 +144,8 @@ public class GUI_MainMenu implements ActionListener {
         } else if (src == btnSales) {
             setActiveButton(btnSales);
             cardLayout.show(pnlMain, "invoiceMenu");
+            // Ensure the current tab in invoice menu is initialized
+            invoiceMenu.ensureCurrentTabInitialized();
 
         } else if (src == btnProduct) {
             setActiveButton(btnProduct);
@@ -151,20 +167,100 @@ public class GUI_MainMenu implements ActionListener {
             setActiveButton(btnGuideLine);
 
         } else if (src == btnLogout) {
-            int choice = JOptionPane.showConfirmDialog(pnlMainMenu, "Bạn có chắc chắn muốn đăng xuất?", "Xác nhận đăng xuất", JOptionPane.YES_NO_OPTION);
-            if (choice == JOptionPane.YES_OPTION) {
-                // Close current main menu window
-                JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
-                topFrame.dispose();
+            // Check if there's an open shift
+            Shift openShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
 
-                // Open login window
-                JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
-                loginFrame.setContentPane(new GUI_Login().pnlLogin);
-                loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                loginFrame.setSize(1080, 600);
-                loginFrame.setLocationRelativeTo(null);
-                loginFrame.setResizable(false);
-                loginFrame.setVisible(true);
+            if (openShift != null) {
+                // Show warning with 3 options: Close Shift, Logout Anyway, Cancel
+                Object[] options = {"Đóng ca", "Đăng xuất", "Hủy"};
+                int choice = JOptionPane.showOptionDialog(
+                        pnlMainMenu,
+                        "CẢNH BÁO: Bạn đang có ca làm việc chưa đóng!\n\n" +
+                                "Vui lòng chọn một trong các hành động sau:",
+                        "Xác nhận đăng xuất",
+                        JOptionPane.YES_NO_CANCEL_OPTION,
+                        JOptionPane.WARNING_MESSAGE,
+                        null,
+                        options,
+                        options[0]); // Default to "Đóng ca"
+
+                if (choice == 0) {
+                    // Close shift first
+                    JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                    DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(parentFrame, openShift, currentStaff);
+                    closeShiftDialog.setVisible(true);
+
+                    // If shift was closed successfully, ask again to logout
+                    if (closeShiftDialog.isConfirmed()) {
+                        Shift closedShift = currentShift;
+                        currentShift = null;
+
+                        // Notify listener that shift was closed
+                        if (shiftChangeListener != null) {
+                            shiftChangeListener.onShiftClosed(closedShift);
+                        }
+
+                        int logoutChoice = JOptionPane.showConfirmDialog(
+                                pnlMainMenu,
+                                "Ca làm việc đã được đóng thành công!\n\nBạn có muốn đăng xuất không?",
+                                "Xác nhận đăng xuất",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.QUESTION_MESSAGE);
+
+                        if (logoutChoice == JOptionPane.YES_OPTION) {
+                            // Close current main menu window
+                            JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                            topFrame.dispose();
+
+                            // Open login window
+                            JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
+                            loginFrame.setContentPane(new GUI_Login().pnlLogin);
+                            loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                            loginFrame.setSize(1080, 600);
+                            loginFrame.setLocationRelativeTo(null);
+                            loginFrame.setResizable(false);
+                            loginFrame.setVisible(true);
+                        }
+                    }
+                } else if (choice == 1) {
+                    // Logout without closing shift
+                    // Close current main menu window
+                    JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                    topFrame.dispose();
+
+                    // Open login window
+                    JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
+                    loginFrame.setContentPane(new GUI_Login().pnlLogin);
+                    loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                    loginFrame.setSize(1080, 600);
+                    loginFrame.setLocationRelativeTo(null);
+                    loginFrame.setResizable(false);
+                    loginFrame.setVisible(true);
+                }
+                // If choice == 2 (Hủy) or dialog closed, do nothing
+            } else {
+                // No open shift, normal logout confirmation
+                int choice = JOptionPane.showConfirmDialog(
+                        pnlMainMenu,
+                        "Bạn có chắc chắn muốn đăng xuất không?",
+                        "Xác nhận đăng xuất",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+
+                if (choice == JOptionPane.YES_OPTION) {
+                    // Close current main menu window
+                    JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlMainMenu);
+                    topFrame.dispose();
+
+                    // Open login window
+                    JFrame loginFrame = new JFrame("MediWOW - Đăng nhập");
+                    loginFrame.setContentPane(new GUI_Login().pnlLogin);
+                    loginFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                    loginFrame.setSize(1080, 600);
+                    loginFrame.setLocationRelativeTo(null);
+                    loginFrame.setResizable(false);
+                    loginFrame.setVisible(true);
+                }
             }
 
         } else if (src == btnCustomer) {
@@ -191,6 +287,31 @@ public class GUI_MainMenu implements ActionListener {
     private void setStyleButton(JButton button) {
         button.setBackground(AppColors.BACKGROUND);
         button.setBorderPainted(false);
+    }
+
+    // Implement ShiftChangeListener methods
+    @Override
+    public void onShiftOpened(Shift shift) {
+        currentShift = shift;
+
+        // Forward event to invoice menu
+        if (invoiceMenu != null) {
+            invoiceMenu.onShiftOpened(shift);
+        }
+
+        // Don't show message here - DIALOG_OpenShift already shows success message
+    }
+
+    @Override
+    public void onShiftClosed(Shift shift) {
+        currentShift = null;
+
+        // Forward event to invoice menu
+        if (invoiceMenu != null) {
+            invoiceMenu.onShiftClosed(shift);
+        }
+
+        // Don't show message here - DIALOG_CloseShift already shows success message
     }
 
 
@@ -575,7 +696,7 @@ public class GUI_MainMenu implements ActionListener {
         lblTime.setText("");
         pnlRightHeader.add(lblTime, BorderLayout.CENTER);
         pnlSearch = new JPanel();
-        pnlSearch.setLayout(new GridLayoutManager(1, 3, new Insets(0, 300, 0, 0), -1, -1));
+        pnlSearch.setLayout(new GridLayoutManager(1, 3, new Insets(0, 100, 0, 0), -1, -1));
         pnlSearch.setAlignmentX(0.0f);
         pnlSearch.setBackground(new Color(-16724789));
         pnlRightHeader.add(pnlSearch, BorderLayout.WEST);

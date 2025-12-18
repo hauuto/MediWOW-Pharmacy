@@ -52,7 +52,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private Box createInvoiceSearchBar() {
         Box v = Box.createVerticalBox(), h = Box.createHorizontalBox();
-        v.setOpaque(true); v.setBackground(AppColors.WHITE);
+        v.setOpaque(true); v.setBackground(AppColors.BACKGROUND);
         v.add(Box.createVerticalStrut(5)); v.add(h); v.add(Box.createVerticalStrut(5));
         h.add(Box.createHorizontalStrut(5));
         txtInvoiceSearch = new JTextField();
@@ -116,17 +116,17 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private JPanel createLeftPanel() {
         JPanel left = new JPanel(new BorderLayout());
-        left.setBackground(Color.WHITE); left.setMinimumSize(new Dimension(LEFT_MIN, 0));
+        left.setBackground(AppColors.WHITE); left.setMinimumSize(new Dimension(LEFT_MIN, 0));
         JSplitPane verticalSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, createUpperSection(), createLowerSection());
         verticalSplit.setBackground(AppColors.WHITE);
-        verticalSplit.setDividerLocation(300); verticalSplit.setResizeWeight(0.5);
+        verticalSplit.setDividerLocation(TOP_MIN); verticalSplit.setResizeWeight(0.5);
         left.add(verticalSplit, BorderLayout.CENTER);
         return left;
     }
 
     private JPanel createUpperSection() {
         JPanel upper = new JPanel(new BorderLayout());
-        upper.setBackground(Color.WHITE); upper.setMinimumSize(new Dimension(0, TOP_MIN));
+        upper.setBackground(AppColors.WHITE); upper.setMinimumSize(new Dimension(0, TOP_MIN));
         Box titleBox = Box.createVerticalBox(), titleH = Box.createHorizontalBox();
         JLabel title = new JLabel("CHI TIẾT HÓA ĐƠN GỐC");
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
@@ -140,9 +140,9 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private JPanel createLowerSection() {
         JPanel lower = new JPanel(new BorderLayout());
-        lower.setBackground(Color.WHITE); lower.setMinimumSize(new Dimension(0, BOTTOM_MIN));
+        lower.setBackground(AppColors.WHITE); lower.setMinimumSize(new Dimension(0, BOTTOM_MIN));
         JPanel topSection = new JPanel(new BorderLayout());
-        topSection.setBackground(Color.WHITE);
+        topSection.setBackground(AppColors.WHITE);
         Box titleBox = Box.createVerticalBox(), titleH = Box.createHorizontalBox();
         JLabel title = new JLabel("CHI TIẾT HÓA ĐƠN ĐỔI HÀNG");
         title.setFont(new Font("Arial", Font.BOLD, 20)); title.setForeground(AppColors.DARK);
@@ -159,7 +159,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private Box createProductSearchBar() {
         Box v = Box.createVerticalBox(), h = Box.createHorizontalBox();
-        v.setOpaque(true); v.setBackground(Color.WHITE);
+        v.setOpaque(true); v.setBackground(AppColors.WHITE);
         v.add(Box.createVerticalStrut(5)); v.add(h); v.add(Box.createVerticalStrut(5));
         h.add(Box.createHorizontalStrut(5));
         txtProductSearch = new JTextField();
@@ -219,7 +219,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     }
 
     private void updateBarcodeScanButtonAppearance() {
-        btnBarcodeScan.setBackground(barcodeScanningEnabled ? new Color(46, 204, 113) : Color.WHITE);
+        btnBarcodeScan.setBackground(barcodeScanningEnabled ? AppColors.PRIMARY : AppColors.WHITE);
     }
 
     private void toggleBarcodeScanning() {
@@ -250,15 +250,15 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private void styleTable(JTable table) {
         table.setFont(new Font("Arial", Font.PLAIN, 16));
-        table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setReorderingAllowed(false); table.setBackground(AppColors.WHITE);
         table.setRowHeight(35);
         table.getTableHeader().setBackground(AppColors.PRIMARY);
-        table.getTableHeader().setForeground(Color.WHITE);
+        table.getTableHeader().setForeground(AppColors.WHITE);
         table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 16));
         DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
             public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int row, int col) {
                 Component c = super.getTableCellRendererComponent(t, v, s, f, row, col);
-                c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(240, 240, 240));
+                c.setBackground(row % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
                 if (s) c.setBackground(t.getSelectionBackground());
                 return c;
             }
@@ -272,7 +272,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     }
 
     private JPanel createExchangeTableButtons() {
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(Color.WHITE);
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.RIGHT)); p.setBackground(AppColors.WHITE);
         JButton removeAll = createStyledButton("Xóa tất cả"), remove = createStyledButton("Xóa sản phẩm");
         removeAll.setName("btnRemoveAllExchangeItems"); removeAll.addActionListener(this);
         remove.setName("btnRemoveExchangeItem"); remove.addActionListener(this);
@@ -295,7 +295,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private JPanel createRightPanel() {
         JPanel right = new JPanel(new BorderLayout());
-        right.setBackground(AppColors.WHITE);
+        right.setBackground(AppColors.BACKGROUND);
         right.setMinimumSize(new Dimension(RIGHT_MIN, 0));
         right.add(createInvoice(), BorderLayout.NORTH);
         return right;
@@ -356,7 +356,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private JPanel createCashOptionsPanel() {
         JPanel p = new JPanel(new GridLayout(0, 3, 10, 10));
-        p.setBackground(Color.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
+        p.setBackground(AppColors.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
         for (long inc : new long[]{1000L, 2000L, 5000L, 10000L, 20000L, 50000L, 100000L, 200000L, 500000L}) p.add(createCashButton(inc));
         return p;
     }
@@ -368,11 +368,25 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     }
 
     private JButton createStyledButton(String text) {
-        JButton b = new JButton(text);
-        b.setMargin(new Insets(10,10,10,10)); b.setBorderPainted(false);
-        b.setFont(new Font("Arial", Font.BOLD, 16)); b.setForeground(new Color(11, 110, 217));
-        b.setOpaque(true); b.setBackground(text.equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
-        b.setCursor(new Cursor(Cursor.HAND_CURSOR)); b.setName(text); b.addMouseListener(this);
+        int arc = 12;
+        boolean isPaymentBtn = text.equalsIgnoreCase("Thanh toán");
+        Color defaultBg = isPaymentBtn ? AppColors.BACKGROUND : AppColors.WHITE;
+        Color rolloverBg = isPaymentBtn ? AppColors.WHITE : AppColors.BACKGROUND;
+        Color pressedBg = AppColors.LIGHT;
+        JButton b = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                ButtonModel model = getModel();
+                Color fill = model.isPressed() ? pressedBg : (model.isRollover() ? rolloverBg : getBackground());
+                g2.setColor(fill); g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc); g2.dispose(); super.paintComponent(g);
+            }
+        };
+        b.setContentAreaFilled(false); b.setOpaque(false); b.setBorderPainted(false); b.setFocusPainted(false); b.setRolloverEnabled(true);
+        b.setMargin(new Insets(10, 10, 10, 10)); b.setFont(new Font("Arial", Font.BOLD, 16));
+        b.setForeground(AppColors.PRIMARY); b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setName(text); b.setBackground(defaultBg);
         return b;
     }
 
@@ -458,31 +472,10 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         else if (e.getSource() == productSearchResultsList && productSearchResultsList.getSelectedIndex() != -1) selectProduct(productSearchResultsList.getSelectedIndex());
     }
 
-    @Override public void mousePressed(MouseEvent e) { if (e.getSource() instanceof JButton) ((JButton) e.getSource()).setBackground(AppColors.LIGHT); }
-
-    @Override public void mouseReleased(MouseEvent e) {
-        if (e.getSource() instanceof JButton) {
-            JButton b = (JButton) e.getSource();
-            if ("btnBarcodeScan".equals(b.getName())) updateBarcodeScanButtonAppearance();
-            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
-        }
-    }
-
-    @Override public void mouseEntered(MouseEvent e) {
-        if (e.getSource() instanceof JButton) {
-            JButton b = (JButton) e.getSource();
-            if (!"btnBarcodeScan".equals(b.getName()) || !barcodeScanningEnabled)
-                b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? Color.WHITE : AppColors.WHITE);
-        }
-    }
-
-    @Override public void mouseExited(MouseEvent e) {
-        if (e.getSource() instanceof JButton) {
-            JButton b = (JButton) e.getSource();
-            if ("btnBarcodeScan".equals(b.getName())) updateBarcodeScanButtonAppearance();
-            else b.setBackground(b.getText().equalsIgnoreCase("Thanh toán") ? AppColors.WHITE : Color.WHITE);
-        }
-    }
+    @Override public void mousePressed(MouseEvent e) {}
+    @Override public void mouseReleased(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e) {}
+    @Override public void mouseExited(MouseEvent e) {}
 
     @Override public void focusGained(FocusEvent e) {
         if (e.getSource() instanceof JTextField) {

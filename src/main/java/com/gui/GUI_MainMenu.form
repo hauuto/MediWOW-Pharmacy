@@ -2,7 +2,7 @@
 <form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="com.gui.GUI_MainMenu">
   <grid id="27dc6" binding="pnlMainMenu" layout-manager="GridBagLayout">
     <constraints>
-      <xy x="20" y="20" width="1617" height="741"/>
+      <xy x="20" y="20" width="1725" height="741"/>
     </constraints>
     <properties>
       <background color="-2236963"/>
@@ -419,7 +419,7 @@
             </properties>
           </component>
           <grid id="b5522" binding="pnlSearch" layout-manager="GridLayoutManager" row-count="1" column-count="3" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
-            <margin top="0" left="300" bottom="0" right="0"/>
+            <margin top="0" left="100" bottom="0" right="0"/>
             <constraints border-constraint="West"/>
             <properties>
               <alignmentX value="0.0"/>
