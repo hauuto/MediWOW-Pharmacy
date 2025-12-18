@@ -8,27 +8,27 @@ USE MediWOW
 
 -- 1. Staff Table
 CREATE TABLE Staff (
-   id NVARCHAR(50) PRIMARY KEY,
-   username NVARCHAR(255) NOT NULL UNIQUE,
-   password NVARCHAR(255) NOT NULL,
-   fullName NVARCHAR(255) NOT NULL,
-   licenseNumber NVARCHAR(100),
-   phoneNumber NVARCHAR(10),
-   email NVARCHAR(255),
-   hireDate DATE NOT NULL,
-   isActive BIT NOT NULL DEFAULT 1,
-   role NVARCHAR(50) NOT NULL CHECK (role IN ('MANAGER', 'PHARMACIST')),
-   isFirstLogin BIT NOT NULL DEFAULT 1,
-   mustChangePassword BIT NOT NULL DEFAULT 1
+                       id NVARCHAR(50) PRIMARY KEY,
+                       username NVARCHAR(255) NOT NULL UNIQUE,
+                       password NVARCHAR(255) NOT NULL,
+                       fullName NVARCHAR(255) NOT NULL,
+                       licenseNumber NVARCHAR(100),
+                       phoneNumber NVARCHAR(10),
+                       email NVARCHAR(255),
+                       hireDate DATE NOT NULL,
+                       isActive BIT NOT NULL DEFAULT 1,
+                       role NVARCHAR(50) NOT NULL CHECK (role IN ('MANAGER', 'PHARMACIST')),
+                       isFirstLogin BIT NOT NULL DEFAULT 1,
+                       mustChangePassword BIT NOT NULL DEFAULT 1
 );
 
 -- 2. Customer Table
 CREATE TABLE PrescribedCustomer (
-        id NVARCHAR(50) PRIMARY KEY,
-        name NVARCHAR(255) NOT NULL,
-        phoneNumber NVARCHAR(20),
-        address NVARCHAR(500),
-        creationDate DATETIME NOT NULL DEFAULT GETDATE()
+                                    id NVARCHAR(50) PRIMARY KEY,
+                                    name NVARCHAR(255) NOT NULL,
+                                    phoneNumber NVARCHAR(20),
+                                    address NVARCHAR(500),
+                                    creationDate DATETIME NOT NULL DEFAULT GETDATE()
 );
 
 -- 3. Product Table
@@ -93,48 +93,36 @@ CREATE TABLE Promotion (
 
 -- 8. PromotionCondition Table
 CREATE TABLE PromotionCondition (
-                                    id NVARCHAR(50) NOT NULL PRIMARY KEY,
+                                    id NVARCHAR(50) PRIMARY KEY,
                                     promotion NVARCHAR(50) NOT NULL,
-                                    type NVARCHAR(50) NOT NULL CHECK (type IN ('PRODUCT_ID', 'PRODUCT_QTY', 'ORDER_SUBTOTAL')),
-                                    comparator NVARCHAR(50) NOT NULL CHECK (comparator IN ('GREATER_EQUAL', 'LESS_EQUAL', 'GREATER', 'LESS', 'EQUAL', 'BETWEEN')),
-                                    target NVARCHAR(50) NOT NULL CHECK (target IN ('PRODUCT', 'ORDER_SUBTOTAL')),
-                                    primaryValue DECIMAL(18,2) NOT NULL, -- Sửa thành Decimal
-                                    secondaryValue DECIMAL(18,2),        -- Sửa thành Decimal
+                                    type NVARCHAR(50) NOT NULL,
+                                    comparator NVARCHAR(50) NOT NULL,
+                                    target NVARCHAR(50) NOT NULL,
+                                    value DECIMAL(18,2),
                                     product NVARCHAR(50),
+                                    unitOfMeasure NVARCHAR(100),
 
-                                    FOREIGN KEY (promotion) REFERENCES Promotion(id) ON DELETE CASCADE,
-                                    FOREIGN KEY (product) REFERENCES Product(id)
+                                    FOREIGN KEY (promotion) REFERENCES Promotion(id),
+                                    FOREIGN KEY (product, unitOfMeasure)
+                                        REFERENCES UnitOfMeasure(product, name)
 );
+
+
 
 -- 9. PromotionAction Table
 CREATE TABLE PromotionAction (
-                                 id NVARCHAR(50) NOT NULL PRIMARY KEY,
+                                 id NVARCHAR(50) PRIMARY KEY,
                                  promotion NVARCHAR(50) NOT NULL,
                                  actionOrder INT NOT NULL,
-                                 type NVARCHAR(50) NOT NULL CHECK (type IN ('PERCENT_DISCOUNT', 'FIXED_DISCOUNT', 'PRODUCT_GIFT')),
-                                 target NVARCHAR(50) NOT NULL CHECK (target IN ('PRODUCT', 'ORDER_SUBTOTAL')),
-                                 primaryValue DECIMAL(18,2) NOT NULL, -- Sửa thành Decimal
-                                 secondaryValue DECIMAL(18,2),        -- Sửa thành Decimal
+                                 type NVARCHAR(50) NOT NULL,
+                                 target NVARCHAR(50) NOT NULL,
+                                 value DECIMAL(18,2),
                                  product NVARCHAR(50),
+                                 unitOfMeasure NVARCHAR(100),
 
-                                 FOREIGN KEY (promotion) REFERENCES Promotion(id) ON DELETE CASCADE,
-                                 FOREIGN KEY (product) REFERENCES Product(id)
-);
-
-CREATE TABLE Shift (
-                       id NVARCHAR(50) PRIMARY KEY,
-                       staff NVARCHAR(50) NOT NULL,           -- Nhân viên trực ca
-                       startTime DATETIME NOT NULL DEFAULT GETDATE(),
-                       endTime DATETIME,                      -- Null nếu đang mở ca
-                       startCash DECIMAL(18,2) NOT NULL,      -- Tiền mặt đầu ca (Nhập tay)
-                       endCash DECIMAL(18,2),                 -- Tiền mặt thực tế đếm được khi kết ca (Nhập tay)
-                       systemCash DECIMAL(18,2),              -- Tiền mặt hệ thống tính toán (Lưu lại để đối chiếu)
-                       status NVARCHAR(20) NOT NULL CHECK (status IN ('OPEN', 'CLOSED')),
-                       notes NVARCHAR(MAX),
-                       workstation NVARCHAR(100) NULL,
-                       closedBy NVARCHAR(50) NULL,
-                       closeReason NVARCHAR(500) NULL,
-                       FOREIGN KEY (staff) REFERENCES Staff(id)
+                                 FOREIGN KEY (promotion) REFERENCES Promotion(id),
+                                 FOREIGN KEY (product, unitOfMeasure)
+                                     REFERENCES UnitOfMeasure(product, name)
 );
 
 -- 10. Invoice Table
@@ -149,13 +137,11 @@ CREATE TABLE Invoice (
                          promotion NVARCHAR(50),
                          paymentMethod NVARCHAR(50) NOT NULL CHECK (paymentMethod IN ('CASH', 'BANK_TRANSFER')),
                          notes NVARCHAR(MAX),
-                         shift NVARCHAR(50),
 
                          FOREIGN KEY (creator) REFERENCES Staff(id),
                          FOREIGN KEY (prescribedCustomer) REFERENCES PrescribedCustomer(id),
                          FOREIGN KEY (referencedInvoice) REFERENCES Invoice(id),
-                         FOREIGN KEY (promotion) REFERENCES Promotion(id),
-                         FOREIGN KEY (shift) REFERENCES Shift(id)
+                         FOREIGN KEY (promotion) REFERENCES Promotion(id)
 );
 
 -- 11. InvoiceLine Table (Display & Pricing Info)
@@ -186,8 +172,6 @@ CREATE TABLE LotAllocation (
                                FOREIGN KEY (invoiceLine) REFERENCES InvoiceLine(id) ON DELETE CASCADE,
                                FOREIGN KEY (lot) REFERENCES Lot(id)
 );
-
-
 
 -- Indexes for performance
 CREATE INDEX idx_staff_username ON Staff(username);

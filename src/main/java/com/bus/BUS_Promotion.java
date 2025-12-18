@@ -29,10 +29,6 @@ public class BUS_Promotion implements IPromotion {
     public boolean addPromotion(Promotion p) {
 
         // ===== VALIDATION =====
-        if (p.getId() == null || p.getId().isBlank()) {
-            System.err.println("❌ Mã khuyến mãi không được để trống");
-            return false;
-        }
 
         if (p.getName() == null || p.getName().isBlank()) {
             System.err.println("❌ Tên khuyến mãi không được để trống");

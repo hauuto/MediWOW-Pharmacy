@@ -6,9 +6,13 @@ import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.Hibernate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * @author Nguyễn Thanh Khôi
@@ -26,43 +30,53 @@ public class DAO_Promotion implements IPromotion {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            // Fetch promotion with conditions first
-            Promotion promotion = session.createQuery(
-                "SELECT DISTINCT p FROM Promotion p " +
-                "LEFT JOIN FETCH p.conditions " +
-                "WHERE p.id = :id",
-                Promotion.class
-            ).setParameter("id", id).uniqueResult();
+            Promotion promotion = session.get(Promotion.class, id);
+            if (promotion == null) return null;
 
-            // Then fetch actions for the same promotion
-            if (promotion != null) {
-                session.createQuery(
-                    "SELECT DISTINCT p FROM Promotion p " +
-                    "LEFT JOIN FETCH p.actions " +
-                    "WHERE p.id = :id",
-                    Promotion.class
-                ).setParameter("id", id).uniqueResult();
+            Hibernate.initialize(promotion.getConditions());
+            Hibernate.initialize(promotion.getActions());
 
-                // Fetch products referenced in conditions
-                session.createQuery(
-                    "SELECT DISTINCT pc FROM PromotionCondition pc " +
-                    "LEFT JOIN FETCH pc.product " +
-                    "WHERE pc.promotion.id = :id",
-                    PromotionCondition.class
-                ).setParameter("id", id).list();
-
-                // Fetch products referenced in actions
-                session.createQuery(
-                    "SELECT DISTINCT pa FROM PromotionAction pa " +
-                    "LEFT JOIN FETCH pa.product " +
-                    "WHERE pa.promotion.id = :id",
-                    PromotionAction.class
-                ).setParameter("id", id).list();
+            // Initialize nested references
+            for (PromotionCondition pc : promotion.getConditions()) {
+                if (pc.getProductUOM() != null) {
+                    Hibernate.initialize(pc.getProductUOM());
+                    if (pc.getProductUOM().getProduct() != null) Hibernate.initialize(pc.getProductUOM().getProduct());
+                }
+            }
+            for (PromotionAction pa : promotion.getActions()) {
+                if (pa.getProductUOM() != null) {
+                    Hibernate.initialize(pa.getProductUOM());
+                    if (pa.getProductUOM().getProduct() != null) Hibernate.initialize(pa.getProductUOM().getProduct());
+                }
             }
 
             return promotion;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("❌ Lỗi khi load promotion by id: " + e.getMessage());
+            return null;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
+    public Promotion getLastPromotion() {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+
+            // Ưu tiên sort theo creationDate nếu có
+
+            return session.createQuery(
+                            "FROM Promotion p ORDER BY p.id DESC",
+                            Promotion.class
+                    )
+                    .setMaxResults(1)
+                    .uniqueResult();
+
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi khi getLastPromotion: " + e.getMessage());
             return null;
         } finally {
             if (session != null && session.isOpen()) {
@@ -72,46 +86,80 @@ public class DAO_Promotion implements IPromotion {
     }
 
 
-    @Override
     public boolean addPromotion(Promotion p) {
+        Transaction tx = null;
         Session session = null;
-        Transaction transaction = null;
-        try {
+        try{
             session = sessionFactory.openSession();
-            transaction = session.beginTransaction();
-
-            // Quan trọng: đảm bảo quan hệ 2 chiều
-            if (p.getConditions() != null) {
-                p.getConditions().forEach(c -> c.setPromotion(p));
-            }
-            if (p.getActions() != null) {
-                p.getActions().forEach(a -> a.setPromotion(p));
-            }
-
+            tx = session.beginTransaction();
             session.persist(p);
-            transaction.commit();
+            tx.commit();
 
-            System.out.println("✅ Đã lưu promotion thành công: " + p.getId());
-            return true;
-
-        } catch (Exception e) {
-            if (transaction != null && transaction.isActive()) {
-                try {
-                    transaction.rollback();
-                    System.err.println("⚠️ Đã rollback transaction");
-                } catch (Exception rollbackEx) {
-                    System.err.println("❌ Lỗi khi rollback: " + rollbackEx.getMessage());
-                }
+            Promotion last = getLastPromotion();
+            if (last != null) {
+                p.setId(last.getId());
+                System.out.println("Last Promotion ID: " + last.getId());
             }
-            System.err.println("❌ Lỗi khi thêm promotion: " + e.getMessage());
+
+            if (addPromotionDetail(p)){
+                return true;
+            }
+
+            System.err.println("⚠️ Transaction rolled back!");
+            return false;
+        }
+        catch (Exception e) {
+            if (tx != null && tx.isActive()) {
+                tx.rollback();
+                System.err.println("⚠️ Transaction rolled back!");
+            }
             e.printStackTrace();
             return false;
         } finally {
-            if (session != null && session.isOpen()) {
+            if(session != null && session.isOpen()) {
                 session.close();
             }
         }
     }
+
+    private boolean addPromotionDetail(Promotion p) {
+        Transaction tx = null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            tx = session.beginTransaction();
+
+            // Conditions
+            for (PromotionCondition c : p.getConditions()) {
+                c.setPromotion(p); // FK
+                session.persist(c); // trigger sẽ sinh ID
+            }
+
+            // Actions
+            for (PromotionAction a : p.getActions()) {
+                a.setPromotion(p); // FK
+                session.persist(a); // trigger sẽ sinh ID
+            }
+
+            tx.commit();
+            System.out.println("🎯 Saved "
+                    + p.getConditions().size() + " conditions and "
+                    + p.getActions().size() + " actions!");
+
+            return true;
+
+        } catch (Exception e) {
+            if (tx != null && tx.isActive()) {
+                tx.rollback();
+                System.err.println("⚠️ Rollback detail insert!");
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if(session != null && session.isOpen()) session.close();
+        }
+    }
+
 
 
     @Override
@@ -120,33 +168,27 @@ public class DAO_Promotion implements IPromotion {
         try {
             session = sessionFactory.openSession();
 
-            // Fetch promotions với JOIN FETCH để load cả conditions và actions
+            // Load promotions without fetching collections
             List<Promotion> promotions = session.createQuery(
-                "SELECT DISTINCT p FROM Promotion p " +
-                "LEFT JOIN FETCH p.conditions " +
-                "LEFT JOIN FETCH p.actions",
-                Promotion.class
+                    "FROM Promotion",
+                    Promotion.class
             ).getResultList();
 
-            // Force initialize tất cả lazy collections trước khi đóng session
+            // Initialize collections per promotion to avoid multiple bag fetch
             for (Promotion p : promotions) {
-                // Initialize conditions và product của condition
-                if (p.getConditions() != null) {
-                    p.getConditions().size(); // Force initialize
-                    for (PromotionCondition cond : p.getConditions()) {
-                        if (cond.getProduct() != null) {
-                            cond.getProduct().getId(); // Force load product
-                        }
+                Hibernate.initialize(p.getConditions());
+                Hibernate.initialize(p.getActions());
+
+                for (PromotionCondition cond : p.getConditions()) {
+                    if (cond.getProductUOM() != null) {
+                        Hibernate.initialize(cond.getProductUOM());
+                        if (cond.getProductUOM().getProduct() != null) Hibernate.initialize(cond.getProductUOM().getProduct());
                     }
                 }
-
-                // Initialize actions và product của action
-                if (p.getActions() != null) {
-                    p.getActions().size(); // Force initialize
-                    for (PromotionAction act : p.getActions()) {
-                        if (act.getProduct() != null) {
-                            act.getProduct().getId(); // Force load product
-                        }
+                for (PromotionAction act : p.getActions()) {
+                    if (act.getProductUOM() != null) {
+                        Hibernate.initialize(act.getProductUOM());
+                        if (act.getProductUOM().getProduct() != null) Hibernate.initialize(act.getProductUOM().getProduct());
                     }
                 }
             }
@@ -154,7 +196,6 @@ public class DAO_Promotion implements IPromotion {
             return promotions;
         } catch (Exception e) {
             System.err.println("❌ Lỗi khi load promotions: " + e.getMessage());
-            e.printStackTrace();
             return new ArrayList<>();
         } finally {
             if (session != null && session.isOpen()) {
@@ -169,10 +210,11 @@ public class DAO_Promotion implements IPromotion {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            // Fetch actions with product references
+            // Fetch actions with productUOM and product references
             List<PromotionAction> actions = session.createQuery(
                 "SELECT DISTINCT a FROM PromotionAction a " +
-                "LEFT JOIN FETCH a.product " +
+                "LEFT JOIN FETCH a.productUOM pu " +
+                "LEFT JOIN FETCH pu.product " +
                 "WHERE a.promotion.id = :promotionId " +
                 "ORDER BY a.actionOrder ASC",
                 PromotionAction.class
@@ -190,7 +232,7 @@ public class DAO_Promotion implements IPromotion {
 
             return actions;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("❌ Lỗi khi load actions by promotionId: " + e.getMessage());
             return null;
         } finally {
             if (session != null && session.isOpen()) {
@@ -205,10 +247,11 @@ public class DAO_Promotion implements IPromotion {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            // Fetch conditions with product references
+            // Fetch conditions with productUOM and product references
             List<PromotionCondition> conditions = session.createQuery(
                 "SELECT DISTINCT c FROM PromotionCondition c " +
-                "LEFT JOIN FETCH c.product " +
+                "LEFT JOIN FETCH c.productUOM pu " +
+                "LEFT JOIN FETCH pu.product " +
                 "WHERE c.promotion.id = :promotionId",
                 PromotionCondition.class
             ).setParameter("promotionId", promotionId).list();
@@ -225,7 +268,7 @@ public class DAO_Promotion implements IPromotion {
 
             return conditions;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("❌ Lỗi khi load conditions by promotionId: " + e.getMessage());
             return null;
         } finally {
             if (session != null && session.isOpen()) {
@@ -235,70 +278,100 @@ public class DAO_Promotion implements IPromotion {
     }
 
     @Override
-    public boolean updatePromotion(Promotion p) {
-        Session session = null;
-        Transaction transaction = null;
-        try {
-            session = sessionFactory.openSession();
-            transaction = session.beginTransaction();
+    public boolean updatePromotion(Promotion detached) {
+        Transaction tx = null;
 
-            // Load existing promotion
-            Promotion existing = session.get(Promotion.class, p.getId());
-            if (existing == null) {
-                System.err.println("❌ Không tìm thấy promotion với ID: " + p.getId());
-                return false;
-            }
+        try (Session session = sessionFactory.openSession()) {
+            tx = session.beginTransaction();
 
-            // Clear existing conditions and actions
-            existing.getConditions().clear();
-            existing.getActions().clear();
+            Promotion existing = session.find(Promotion.class, detached.getId());
+            if (existing == null) return false;
+
+            // Update scalar
+            existing.setName(detached.getName());
+            existing.setDescription(detached.getDescription());
+            existing.setEffectiveDate(detached.getEffectiveDate());
+            existing.setEndDate(detached.getEndDate());
+            existing.setIsActive(detached.getIsActive());
+
+            // Update detail without deleting
+            mergeConditions(session, existing, detached.getConditions());
+            mergeActions(session, existing, detached.getActions());
+
             session.flush();
-
-            // Update basic fields
-            existing.setName(p.getName());
-            existing.setDescription(p.getDescription());
-            existing.setEffectiveDate(p.getEffectiveDate());
-            existing.setEndDate(p.getEndDate());
-            existing.setIsActive(p.getIsActive());
-
-            // Add new conditions and actions
-            if (p.getConditions() != null) {
-                for (PromotionCondition c : p.getConditions()) {
-                    c.setPromotion(existing);
-                    existing.getConditions().add(c);
-                }
-            }
-            if (p.getActions() != null) {
-                for (PromotionAction a : p.getActions()) {
-                    a.setPromotion(existing);
-                    existing.getActions().add(a);
-                }
-            }
-
-            session.merge(existing);
-            transaction.commit();
-
-            System.out.println("✅ Đã cập nhật promotion thành công: " + p.getId());
+            tx.commit();
             return true;
 
         } catch (Exception e) {
-            if (transaction != null && transaction.isActive()) {
-                try {
-                    transaction.rollback();
-                    System.err.println("⚠️ Đã rollback transaction");
-                } catch (Exception rollbackEx) {
-                    System.err.println("❌ Lỗi khi rollback: " + rollbackEx.getMessage());
-                }
-            }
-            System.err.println("❌ Lỗi khi cập nhật promotion: " + e.getMessage());
+            if (tx != null && tx.isActive()) tx.rollback();
             e.printStackTrace();
             return false;
-        } finally {
-            if (session != null && session.isOpen()) {
-                session.close();
+        }
+    }
+
+    private void mergeConditions(Session session, Promotion existing, List<PromotionCondition> incomingList) {
+        if (incomingList == null) return;
+
+        for (PromotionCondition incoming : incomingList) {
+            if (incoming.getId() == null || incoming.getId().isBlank()) {
+                // New condition
+                PromotionCondition c = new PromotionCondition();
+                c.setPromotion(existing);
+                c.setTarget(incoming.getTarget());
+                c.setComparator(incoming.getComparator());
+                c.setConditionType(incoming.getConditionType());
+                c.setValue(incoming.getValue());
+                c.setProductUOM(incoming.getProductUOM());
+
+                session.persist(c);
+            } else {
+                // Update existing
+                PromotionCondition existingCond =
+                        session.find(PromotionCondition.class, incoming.getId());
+
+                if (existingCond != null) {
+                    existingCond.setTarget(incoming.getTarget());
+                    existingCond.setComparator(incoming.getComparator());
+                    existingCond.setConditionType(incoming.getConditionType());
+                    existingCond.setValue(incoming.getValue());
+                    existingCond.setProductUOM(incoming.getProductUOM());
+                }
             }
         }
     }
+
+    private void mergeActions(Session session, Promotion existing, List<PromotionAction> incomingList) {
+        if (incomingList == null) return;
+
+        for (PromotionAction incoming : incomingList) {
+            if (incoming.getId() == null || incoming.getId().isBlank()) {
+                PromotionAction a = new PromotionAction();
+                a.setPromotion(existing);
+                a.setActionOrder(incoming.getActionOrder());
+                a.setType(incoming.getType());
+                a.setTarget(incoming.getTarget());
+                a.setValue(incoming.getValue());
+                a.setProductUOM(incoming.getProductUOM());
+
+                session.persist(a);
+            } else {
+                PromotionAction existingAct =
+                        session.find(PromotionAction.class, incoming.getId());
+
+                if (existingAct != null) {
+                    existingAct.setActionOrder(incoming.getActionOrder());
+                    existingAct.setType(incoming.getType());
+                    existingAct.setTarget(incoming.getTarget());
+                    existingAct.setValue(incoming.getValue());
+                    existingAct.setProductUOM(incoming.getProductUOM());
+                }
+            }
+        }
+    }
+
+
+
+
 
 
     @Override
@@ -309,31 +382,26 @@ public class DAO_Promotion implements IPromotion {
 
             String searchPattern = "%" + keyword.toLowerCase() + "%";
             List<Promotion> promotions = session.createQuery(
-                "SELECT DISTINCT p FROM Promotion p " +
-                "LEFT JOIN FETCH p.conditions " +
-                "LEFT JOIN FETCH p.actions " +
-                "WHERE LOWER(p.name) LIKE :keyword " +
-                "OR LOWER(p.id) LIKE :keyword " +
-                "OR LOWER(p.description) LIKE :keyword",
-                Promotion.class
+                    "FROM Promotion p WHERE LOWER(p.name) LIKE :keyword " +
+                            "OR LOWER(p.id) LIKE :keyword " +
+                            "OR LOWER(p.description) LIKE :keyword",
+                    Promotion.class
             ).setParameter("keyword", searchPattern).getResultList();
 
-            // Force initialize lazy collections
             for (Promotion p : promotions) {
-                if (p.getConditions() != null) {
-                    p.getConditions().size();
-                    for (PromotionCondition cond : p.getConditions()) {
-                        if (cond.getProduct() != null) {
-                            cond.getProduct().getId();
-                        }
+                Hibernate.initialize(p.getConditions());
+                Hibernate.initialize(p.getActions());
+
+                for (PromotionCondition cond : p.getConditions()) {
+                    if (cond.getProductUOM() != null) {
+                        Hibernate.initialize(cond.getProductUOM());
+                        if (cond.getProductUOM().getProduct() != null) Hibernate.initialize(cond.getProductUOM().getProduct());
                     }
                 }
-                if (p.getActions() != null) {
-                    p.getActions().size();
-                    for (PromotionAction act : p.getActions()) {
-                        if (act.getProduct() != null) {
-                            act.getProduct().getId();
-                        }
+                for (PromotionAction act : p.getActions()) {
+                    if (act.getProductUOM() != null) {
+                        Hibernate.initialize(act.getProductUOM());
+                        if (act.getProductUOM().getProduct() != null) Hibernate.initialize(act.getProductUOM().getProduct());
                     }
                 }
             }
@@ -341,7 +409,6 @@ public class DAO_Promotion implements IPromotion {
             return promotions;
         } catch (Exception e) {
             System.err.println("❌ Lỗi khi tìm kiếm promotions: " + e.getMessage());
-            e.printStackTrace();
             return new ArrayList<>();
         } finally {
             if (session != null && session.isOpen()) {
@@ -356,17 +423,10 @@ public class DAO_Promotion implements IPromotion {
         try {
             session = sessionFactory.openSession();
 
-            StringBuilder queryStr = new StringBuilder(
-                "SELECT DISTINCT p FROM Promotion p " +
-                "LEFT JOIN FETCH p.conditions " +
-                "LEFT JOIN FETCH p.actions " +
-                "WHERE 1=1"
-            );
-
+            StringBuilder queryStr = new StringBuilder("FROM Promotion p WHERE 1=1");
             if (isActive != null) {
                 queryStr.append(" AND p.isActive = :isActive");
             }
-
             if (isValid != null) {
                 if (isValid) {
                     queryStr.append(" AND p.endDate >= CURRENT_DATE AND p.effectiveDate <= CURRENT_DATE");
@@ -376,29 +436,26 @@ public class DAO_Promotion implements IPromotion {
             }
 
             var query = session.createQuery(queryStr.toString(), Promotion.class);
-
             if (isActive != null) {
                 query.setParameter("isActive", isActive);
             }
 
             List<Promotion> promotions = query.getResultList();
 
-            // Force initialize lazy collections
             for (Promotion p : promotions) {
-                if (p.getConditions() != null) {
-                    p.getConditions().size();
-                    for (PromotionCondition cond : p.getConditions()) {
-                        if (cond.getProduct() != null) {
-                            cond.getProduct().getId();
-                        }
+                Hibernate.initialize(p.getConditions());
+                Hibernate.initialize(p.getActions());
+
+                for (PromotionCondition cond : p.getConditions()) {
+                    if (cond.getProductUOM() != null) {
+                        Hibernate.initialize(cond.getProductUOM());
+                        if (cond.getProductUOM().getProduct() != null) Hibernate.initialize(cond.getProductUOM().getProduct());
                     }
                 }
-                if (p.getActions() != null) {
-                    p.getActions().size();
-                    for (PromotionAction act : p.getActions()) {
-                        if (act.getProduct() != null) {
-                            act.getProduct().getId();
-                        }
+                for (PromotionAction act : p.getActions()) {
+                    if (act.getProductUOM() != null) {
+                        Hibernate.initialize(act.getProductUOM());
+                        if (act.getProductUOM().getProduct() != null) Hibernate.initialize(act.getProductUOM().getProduct());
                     }
                 }
             }
@@ -406,7 +463,6 @@ public class DAO_Promotion implements IPromotion {
             return promotions;
         } catch (Exception e) {
             System.err.println("❌ Lỗi khi lọc promotions: " + e.getMessage());
-            e.printStackTrace();
             return new ArrayList<>();
         } finally {
             if (session != null && session.isOpen()) {
@@ -414,4 +470,76 @@ public class DAO_Promotion implements IPromotion {
             }
         }
     }
+
+    private void syncActions(Session session, Promotion existing, Promotion detached) {
+        Map<String, PromotionAction> existingMap = existing.getActions().stream()
+                .collect(Collectors.toMap(PromotionAction::getId, a -> a));
+
+        if (detached.getActions() != null) {
+            for (PromotionAction incoming : detached.getActions()) {
+                if (incoming.getId() == null || incoming.getId().isBlank() || incoming.getId().startsWith("TEMP-")) {
+                    PromotionAction a = new PromotionAction();
+                    a.setPromotion(existing);
+                    a.setActionOrder(incoming.getActionOrder());
+                    a.setType(incoming.getType());
+                    a.setTarget(incoming.getTarget());
+                    a.setValue(incoming.getValue());
+                    a.setProductUOM(incoming.getProductUOM());
+                    a.setId("TEMP-" + UUID.randomUUID());
+
+                    existing.getActions().add(a);
+                } else {
+                    PromotionAction a = existingMap.remove(incoming.getId());
+                    if (a == null) {
+                        // Skip unknown IDs
+                        continue;
+                    }
+                    a.setActionOrder(incoming.getActionOrder());
+                    a.setType(incoming.getType());
+                    a.setTarget(incoming.getTarget());
+                    a.setValue(incoming.getValue());
+                    a.setProductUOM(incoming.getProductUOM());
+                }
+            }
+        }
+
+        for (PromotionAction orphan : existingMap.values()) {
+            existing.getActions().remove(orphan);
+        }
+    }
+
+    private void syncConditions(Session session, Promotion existing, Promotion detached) {
+        Map<String, PromotionCondition> existingMap = existing.getConditions().stream()
+                .collect(Collectors.toMap(PromotionCondition::getId, c -> c));
+
+        if (detached.getConditions() != null) {
+            for (PromotionCondition incoming : detached.getConditions()) {
+                if (incoming.getId() == null || incoming.getId().isBlank() || incoming.getId().startsWith("TEMP-")) {
+                    PromotionCondition c = new PromotionCondition();
+                    c.setPromotion(existing);
+                    c.setTarget(incoming.getTarget());
+                    c.setComparator(incoming.getComparator());
+                    c.setConditionType(incoming.getConditionType());
+                    c.setValue(incoming.getValue());
+                    c.setProductUOM(incoming.getProductUOM());
+                    c.setId("TEMP-" + UUID.randomUUID());
+                    existing.getConditions().add(c);
+                } else {
+                    PromotionCondition c = existingMap.remove(incoming.getId());
+                    if (c == null) continue;
+                    c.setTarget(incoming.getTarget());
+                    c.setComparator(incoming.getComparator());
+                    c.setConditionType(incoming.getConditionType());
+                    c.setValue(incoming.getValue());
+                    c.setProductUOM(incoming.getProductUOM());
+                }
+            }
+        }
+
+        for (PromotionCondition orphan : existingMap.values()) {
+            existing.getConditions().remove(orphan);
+        }
+    }
+
+
 }

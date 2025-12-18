@@ -1,33 +1,27 @@
 package com.entities;
 
-import com.enums.PromotionEnum;
+import jakarta.persistence.*;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
-import com.enums.PromotionEnum.*;
-import jakarta.persistence.*;
-/*
-@author Nguyễn Thanh Khôi
- */
 
 @Entity
 @Table(name = "Promotion")
 public class Promotion {
 
     @Id
-    @Column(length = 50, name="id")
+    @UuidGenerator
+    @Column(name = "id",insertable = false, updatable = false, nullable = false, length = 50)
     private String id;
 
-    @Column(nullable = false, name="name")
+    @Column(nullable = false, name = "name")
     private String name;
 
-    @Column(length = 300, name="description")
+    @Column(length = 300, name = "description")
     private String description;
-
 
     @Column(name = "effectiveDate")
     private LocalDate effectiveDate;
@@ -38,80 +32,83 @@ public class Promotion {
     @Column(name = "isActive")
     private boolean isActive;
 
+    @OneToMany(mappedBy = "promotion",
+            cascade = {},
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    private List<PromotionCondition> conditions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "promotion", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Set<PromotionCondition> conditions = new HashSet<>();
+    @OneToMany(mappedBy = "promotion",
+            cascade = {},
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    @OrderBy("actionOrder ASC")
+    private List<PromotionAction> actions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "promotion", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private Set<PromotionAction> actions = new HashSet<>();
-
-
+    // ======================
+    // Constructors
+    // ======================
     public Promotion() {}
-    public Promotion(String id, String name, LocalDate s, LocalDate e, boolean st, String desc){
-        this.id=id; this.name=name; effectiveDate=s; endDate=e; isActive=st; description=desc;
-    }
 
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
+    public Promotion(String name, LocalDate start, LocalDate end, boolean active, String desc) {
         this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public LocalDate getEffectiveDate() {
-        return effectiveDate;
-    }
-
-    public void setEffectiveDate(LocalDate effectiveDate) {
-        this.effectiveDate = effectiveDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(LocalDate end) {
+        this.description = desc;
+        this.effectiveDate = start;
         this.endDate = end;
+        this.isActive = active;
     }
 
-    public boolean getIsActive() {
-        return isActive;
+    // ======================
+    // Getters / Setters
+    // ======================
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public LocalDate getEffectiveDate() { return effectiveDate; }
+    public void setEffectiveDate(LocalDate effectiveDate) { this.effectiveDate = effectiveDate; }
+
+    public LocalDate getEndDate() { return endDate; }
+    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+
+    public boolean getIsActive() { return isActive; }
+    public void setIsActive(boolean active) { this.isActive = active; }
+
+    public List<PromotionCondition> getConditions() { return conditions; }
+    public void setConditions(List<PromotionCondition> conditions) { this.conditions = conditions; }
+
+    public List<PromotionAction> getActions() { return actions; }
+    public void setActions(List<PromotionAction> actions) { this.actions = actions; }
+
+    // ======================
+    // Convenience helpers for bidirectional management
+    // ======================
+    public void addCondition(PromotionCondition condition) {
+        if (condition == null) return;
+        condition.setPromotion(this);
+        this.conditions.add(condition);
     }
 
-    public void setIsActive(boolean isActive) {
-        this.isActive = isActive;
+    public void removeCondition(PromotionCondition condition) {
+        if (condition == null) return;
+        this.conditions.remove(condition);
+        condition.setPromotion(null);
     }
 
-    public Set<PromotionCondition> getConditions() {
-        return conditions;
+    public void addAction(PromotionAction action) {
+        if (action == null) return;
+        action.setPromotion(this);
+        this.actions.add(action);
     }
 
-    public Set<PromotionAction> getActions() {
-        return actions;
-    }
-
-    public void setConditions(Set<PromotionCondition> conditions) {
-        this.conditions = conditions;
-    }
-
-    public void setActions(Set<PromotionAction> actions) {
-        this.actions = actions;
+    public void removeAction(PromotionAction action) {
+        if (action == null) return;
+        this.actions.remove(action);
+        action.setPromotion(null);
     }
 }

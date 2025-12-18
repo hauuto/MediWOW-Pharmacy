@@ -8,11 +8,13 @@ import com.entities.PromotionAction;
 import com.entities.PromotionCondition;
 import com.entities.Product;
 import com.dao.DAO_Product;
+import com.entities.UnitOfMeasure;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -22,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.math.BigDecimal;
 
 /**
  * Giao diện quản lý khuyến mãi
@@ -53,6 +56,15 @@ public class TAB_Promotion extends JPanel {
     // Giữ tham chiếu JTable danh sách và cache promotion để map row -> promotion
     private JTable table;
     private final List<Promotion> promotionCache = new ArrayList<>();
+    private final List<Promotion> allPromotions = new ArrayList<>(); // Store all promotions for pagination
+
+    // Pagination fields
+    private int currentPage = 0;
+    private int itemsPerPage = 10; // Default 10 items per page
+    private JLabel lblPageInfo;
+    private JButton btnPrevPage;
+    private JButton btnNextPage;
+    private JComboBox<Integer> cbPageSize;
 
     // Các table editable trong phần điều kiện/hành động (lưu tham chiếu để enable/disable)
     private JTable condTable;
@@ -77,9 +89,7 @@ public class TAB_Promotion extends JPanel {
     private JPanel detailCards; // CardLayout container
     private final String CARD_PLACEHOLDER = "placeholder";
     private final String CARD_DETAIL = "detail";
-    private JLabel placeholderLabel;
 
-    private JButton topAddButton;
     private JButton bottomPrimaryButton;   // Cập nhật / Thêm mới
     private JButton bottomSecondaryButton; // Hủy
 
@@ -138,11 +148,11 @@ public class TAB_Promotion extends JPanel {
         JButton btnRefresh = new JButton("Làm mới");
 
         // Thêm nút Thêm mới lên top theo yêu cầu
-        topAddButton = new JButton("Thêm mới");
-        styleButton(topAddButton, new Color(40, 167, 69), Color.WHITE);
+        JButton topAddButton = new JButton("Thêm mới");
+        styleButton(topAddButton, new Color(40, 167, 69));
 
-        styleButton(btnSearch, AppColors.PRIMARY, Color.WHITE);
-        styleButton(btnRefresh, AppColors.PRIMARY, Color.WHITE);
+        styleButton(btnSearch, AppColors.PRIMARY);
+        styleButton(btnRefresh, AppColors.PRIMARY);
 
         // Sự kiện tìm kiếm
         btnSearch.addActionListener(e -> handleSearch());
@@ -221,6 +231,39 @@ public class TAB_Promotion extends JPanel {
         scroll.setBorder(BorderFactory.createLineBorder(new Color(220, 230, 240)));
         mainLeft.add(scroll, BorderLayout.CENTER);
 
+        // -------------------- PAGINATION CONTROLS --------------------
+        JPanel paginationPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        paginationPanel.setBackground(new Color(245, 250, 250));
+        paginationPanel.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+        btnPrevPage = new JButton("« Trang trước");
+        btnNextPage = new JButton("Trang tiếp »");
+        cbPageSize = new JComboBox<>(new Integer[]{5, 10, 20, 50});
+
+        lblPageInfo = new JLabel();
+        lblPageInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblPageInfo.setForeground(new Color(100, 100, 100));
+
+        // Style buttons
+        styleButton(btnPrevPage, AppColors.PRIMARY);
+        styleButton(btnNextPage, AppColors.PRIMARY);
+
+        // Sự kiện cho pagination
+        btnPrevPage.addActionListener(e -> changePage(currentPage - 1));
+        btnNextPage.addActionListener(e -> changePage(currentPage + 1));
+        cbPageSize.addActionListener(e -> {
+            itemsPerPage = (int) cbPageSize.getSelectedItem();
+            currentPage = 0; // Reset về trang 1
+            loadPromotions();
+        });
+
+        paginationPanel.add(btnPrevPage);
+        paginationPanel.add(btnNextPage);
+        paginationPanel.add(cbPageSize);
+        paginationPanel.add(lblPageInfo);
+
+        mainLeft.add(paginationPanel, BorderLayout.SOUTH);
+
         return mainLeft;
     }
 
@@ -231,10 +274,10 @@ public class TAB_Promotion extends JPanel {
         // Placeholder card
         JPanel placeholderCard = new JPanel(new BorderLayout());
         placeholderCard.setBackground(new Color(245, 250, 250));
-        placeholderLabel = new JLabel("Bấm vào 1 khuyến mãi bất kỳ để xem chi tiết", SwingConstants.CENTER);
-        placeholderLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        placeholderLabel.setForeground(new Color(180, 180, 180));
-        placeholderCard.add(placeholderLabel, BorderLayout.CENTER);
+        JLabel placeholderLabelLocal = new JLabel("Bấm vào 1 khuyến mãi bất kỳ để xem chi tiết", SwingConstants.CENTER);
+        placeholderLabelLocal.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        placeholderLabelLocal.setForeground(new Color(180, 180, 180));
+        placeholderCard.add(placeholderLabelLocal, BorderLayout.CENTER);
 
         // Real detail card
         JPanel mainPanel = new JPanel(new BorderLayout(0, 10));
@@ -248,9 +291,9 @@ public class TAB_Promotion extends JPanel {
         mainPanel.setBackground(new Color(240, 250, 250));
 
         condModel = new DefaultTableModel(
-                new String[]{"Mục tiêu", "Toán tử", "Giá trị 1", "Giá trị 2", "Sản phẩm"}, 0);
+                new String[]{"Mục tiêu", "Sản phẩm", "Đơn vị", "Toán tử", "Giá trị"}, 0);
         actModel = new DefaultTableModel(
-                new String[]{"Loại hành động", "Mục tiêu", "Giá trị 1", "Giá trị 2", "Sản phẩm"}, 0);
+                new String[]{"Loại hành động", "Mục tiêu", "Giá trị", "Sản phẩm", "Đơn vị"}, 0);
 
         JPanel infoPanel = createInfoPanel();
         JPanel tablesPanel = createTablesPanel();
@@ -268,9 +311,9 @@ public class TAB_Promotion extends JPanel {
         buttonPanel.setBackground(new Color(245, 250, 250));
 
         bottomPrimaryButton = new JButton("Cập nhật");
-        styleButton(bottomPrimaryButton, new Color(255, 193, 7), Color.WHITE);
+        styleButton(bottomPrimaryButton, new Color(255, 193, 7));
         bottomSecondaryButton = new JButton("Hủy");
-        styleButton(bottomSecondaryButton, AppColors.PRIMARY, Color.WHITE);
+        styleButton(bottomSecondaryButton, AppColors.PRIMARY);
 
         // Default listeners will be replaced dynamically in flows
         bottomPrimaryButton.addActionListener(e -> {
@@ -280,7 +323,7 @@ public class TAB_Promotion extends JPanel {
                 if (!addConfirmPending) {
                     addConfirmPending = true;
                     bottomPrimaryButton.setText("Xác nhận");
-                    styleButton(bottomPrimaryButton, new Color(255, 87, 34), Color.WHITE);
+                    styleButton(bottomPrimaryButton, new Color(255, 87, 34));
                     return;
                 }
 
@@ -294,7 +337,7 @@ public class TAB_Promotion extends JPanel {
                     // user cancelled -> revert the confirm pending state
                     addConfirmPending = false;
                     bottomPrimaryButton.setText("Thêm mới");
-                    styleButton(bottomPrimaryButton, new Color(40, 167, 69), Color.WHITE);
+                    styleButton(bottomPrimaryButton, new Color(40, 167, 69));
                 }
             } else if (isViewing) {
                 // Update flow: if fields not editable -> enable editing; else perform update (handleUpdate already asks confirm)
@@ -382,14 +425,14 @@ public class TAB_Promotion extends JPanel {
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(5, 10, 5, 10));
 
-        panel.add(createEditableSection("Điều kiện áp dụng", condModel));
+        panel.add(createEditableSection("Điều kiện áp dụng", condModel, true));
         panel.add(Box.createVerticalStrut(12));
-        panel.add(createEditableSection("Hành động khuyến mãi", actModel));
+        panel.add(createEditableSection("Hành động khuyến mãi", actModel, false));
 
         return panel;
     }
 
-    private JPanel createEditableSection(String title, DefaultTableModel model) {
+    private JPanel createEditableSection(String title, DefaultTableModel model, boolean isCondition) {
         JPanel section = new JPanel(new BorderLayout(5, 5));
         section.setBackground(new Color(250, 252, 252));
         section.setBorder(BorderFactory.createTitledBorder(
@@ -397,24 +440,24 @@ public class TAB_Promotion extends JPanel {
                 title, 0, 0, new Font("Segoe UI", Font.BOLD, 13), AppColors.PRIMARY
         ));
 
-        JTable table = createEditableTable(model);
+        JTable table = createEditableTable(model, isCondition);
 
         // Keep references to editable tables for enable/disable
         if (model == condModel) condTable = table;
         else if (model == actModel) actTable = table;
 
         // Set combo box cell editors cho các cột enum
-        if (model == condModel) {
+        if (isCondition) {
             try {
                 javax.swing.table.TableColumnModel cm = table.getColumnModel();
-                // cột 0: Target, cột 1: Comparator
+                // cột 0: Target, cột 3: Comparator (đã đổi vị trí)
                 cm.getColumn(0).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Target.values())));
-                cm.getColumn(1).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Comp.values())));
+                cm.getColumn(3).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Comp.values())));
             } catch (Exception ignored) {}
-        } else if (model == actModel) {
+        } else {
             try {
                 javax.swing.table.TableColumnModel cm = table.getColumnModel();
-                // cột 0: ActionType, cột 1: Target
+                // cột 0: ActionType, cột 1: Target (đã đổi vị trí từ 3 -> 1)
                 cm.getColumn(0).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.ActionType.values())));
                 cm.getColumn(1).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Target.values())));
             } catch (Exception ignored) {}
@@ -429,26 +472,209 @@ public class TAB_Promotion extends JPanel {
     }
 
     /** Bảng editable tự thêm dòng và click 1 lần vào cột "Sản phẩm" để chọn sản phẩm */
-    private JTable createEditableTable(DefaultTableModel model) {
+    private JTable createEditableTable(DefaultTableModel model, boolean isCondition) {
         JTable table = new JTable(model) {
             @Override
-            public boolean isCellEditable(int row, int column) { return true; }
+            public boolean isCellEditable(int row, int column) {
+                // Kiểm tra logic ẩn/hiện dựa trên các trường khác
+                if (isCondition) {
+                    // Với điều kiện: nếu Target = ORDER_SUBTOTAL -> disable cột Sản phẩm (1) và Đơn vị (2)
+                    Object targetObj = model.getValueAt(row, 0);
+                    if (targetObj != null && (column == 1 || column == 2)) {
+                        PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                            ? (PromotionEnum.Target) targetObj
+                            : PromotionEnum.Target.valueOf(targetObj.toString());
+                        if (target == PromotionEnum.Target.ORDER_SUBTOTAL) {
+                            return false; // Không cho edit Sản phẩm và Đơn vị
+                        }
+                    }
+                    // Yêu cầu 2: Chỉ cho phép chỉnh sửa sản phẩm khi Target = PRODUCT
+                    if (column == 1) { // Cột sản phẩm
+                        if (targetObj == null) return false;
+                        PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                            ? (PromotionEnum.Target) targetObj
+                            : PromotionEnum.Target.valueOf(targetObj.toString());
+                        return target == PromotionEnum.Target.PRODUCT;
+                    }
+                } else {
+                    // Với hành động: logic phức tạp hơn
+                    // NEW ORDER: 0=ActionType, 1=Target, 2=Value, 3=Product, 4=UOM
+                    Object typeObj = model.getValueAt(row, 0);
+                    Object targetObj = model.getValueAt(row, 1);
+
+                    if (typeObj != null) {
+                        PromotionEnum.ActionType actionType = (typeObj instanceof PromotionEnum.ActionType)
+                            ? (PromotionEnum.ActionType) typeObj
+                            : PromotionEnum.ActionType.valueOf(typeObj.toString());
+
+                        // PERCENT_DISCOUNT, FIXED_DISCOUNT: không cho nhập Sản phẩm (3) và Đơn vị (4)
+                        if ((actionType == PromotionEnum.ActionType.PERCENT_DISCOUNT ||
+                             actionType == PromotionEnum.ActionType.FIXED_DISCOUNT) &&
+                            (column == 3 || column == 4)) {
+                            return false;
+                        }
+
+                        // PRODUCT_GIFT: Target (cột 1) phải là PRODUCT và không cho đổi
+                        if (actionType == PromotionEnum.ActionType.PRODUCT_GIFT && column == 1) {
+                            // Auto set to PRODUCT
+                            if (model.getValueAt(row, 1) == null ||
+                                !model.getValueAt(row, 1).equals(PromotionEnum.Target.PRODUCT)) {
+                                model.setValueAt(PromotionEnum.Target.PRODUCT, row, 1);
+                            }
+                            return false;
+                        }
+
+                        // PRODUCT_GIFT: cho phép chọn sản phẩm và đơn vị
+                        if (actionType == PromotionEnum.ActionType.PRODUCT_GIFT && (column == 3 || column == 4)) {
+                            return true;
+                        }
+                    }
+
+                    // Chỉ cho phép chỉnh sửa sản phẩm khi Target = PRODUCT
+                    if (column == 3) { // Cột sản phẩm
+                        if (targetObj == null) return false;
+                        PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                            ? (PromotionEnum.Target) targetObj
+                            : PromotionEnum.Target.valueOf(targetObj.toString());
+                        return target == PromotionEnum.Target.PRODUCT;
+                    }
+
+                    // Chỉ cho phép chỉnh sửa đơn vị khi Target = PRODUCT
+                    if (column == 4) { // Cột đơn vị
+                        if (targetObj == null) return false;
+                        PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                            ? (PromotionEnum.Target) targetObj
+                            : PromotionEnum.Target.valueOf(targetObj.toString());
+                        return target == PromotionEnum.Target.PRODUCT;
+                    }
+
+                    // Nếu Target = ORDER_SUBTOTAL -> disable Sản phẩm và Đơn vị
+                    if (targetObj != null && (column == 3 || column == 4)) {
+                        PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                            ? (PromotionEnum.Target) targetObj
+                            : PromotionEnum.Target.valueOf(targetObj.toString());
+                        if (target == PromotionEnum.Target.ORDER_SUBTOTAL) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
         };
+
         styleTable(table);
+
+        // VÔ HIỆU HÓA KÉO THẢ CỘT
+        table.getTableHeader().setReorderingAllowed(false);
 
         table.putClientProperty("terminateEditOnFocusLost", true);
         table.setForeground(Color.BLACK);
         table.setSelectionForeground(Color.BLACK); // Màu chữ khi cell được chọn
 
-        TableModelListener listener = e -> {
-            if (model.getRowCount() == 0) return; // Tránh lỗi khi bảng rỗng
-            int last = model.getRowCount() - 1;
-            boolean filled = false;
-            for (int c = 0; c < model.getColumnCount(); c++) {
-                Object val = model.getValueAt(last, c);
-                if (val != null && !val.toString().trim().isEmpty()) { filled = true; break; }
+        // Yêu cầu 4: Các ô bị disable nên có màu xám
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+                if (!table.isCellEditable(row, column)) {
+                    c.setBackground(new Color(240, 240, 240)); // Màu xám nhạt cho ô disabled
+                    c.setForeground(new Color(150, 150, 150)); // Chữ xám
+                } else if (isSelected) {
+                    c.setBackground(new Color(200, 230, 255));
+                    c.setForeground(Color.BLACK);
+                } else {
+                    c.setBackground(Color.WHITE);
+                    c.setForeground(Color.BLACK);
+                }
+                return c;
             }
-            if (filled) model.addRow(new Object[model.getColumnCount()]);
+        });
+
+        TableModelListener listener = e -> {
+            // Yêu cầu 5: Chỉ thêm hàng mới khi hàng cuối được điền đầy đủ
+            if (model.getRowCount() == 0) {
+                model.addRow(new Object[model.getColumnCount()]);
+                return;
+            }
+
+            int last = model.getRowCount() - 1;
+            boolean isLastRowComplete = true;
+
+            // Kiểm tra xem hàng cuối có được điền đầy đủ không
+            for (int c = 0; c < model.getColumnCount(); c++) {
+                // Bỏ qua các cột bị disable
+                if (!table.isCellEditable(last, c)) continue;
+
+                Object val = model.getValueAt(last, c);
+                if (val == null || val.toString().trim().isEmpty()) {
+                    isLastRowComplete = false;
+                    break;
+                }
+            }
+
+            // Chỉ thêm hàng mới nếu hàng cuối đã hoàn thành
+            if (isLastRowComplete) {
+                model.addRow(new Object[model.getColumnCount()]);
+            }
+
+            // Validation logic khi thay đổi
+            int row = e.getFirstRow();
+            int col = e.getColumn();
+            if (row >= 0 && col >= 0) {
+                if (!isCondition) {
+                    // Action table: kiểm tra ActionType
+                    // NEW ORDER: 0=ActionType, 1=Target, 2=Value, 3=Product, 4=UOM
+                    if (col == 0) { // ActionType changed
+                        Object typeObj = model.getValueAt(row, 0);
+                        if (typeObj != null) {
+                            PromotionEnum.ActionType actionType = (typeObj instanceof PromotionEnum.ActionType)
+                                ? (PromotionEnum.ActionType) typeObj
+                                : PromotionEnum.ActionType.valueOf(typeObj.toString());
+
+                            if (actionType == PromotionEnum.ActionType.PRODUCT_GIFT) {
+                                // Tự động set Target = PRODUCT
+                                model.setValueAt(PromotionEnum.Target.PRODUCT, row, 1);
+                            } else if (actionType == PromotionEnum.ActionType.PERCENT_DISCOUNT ||
+                                       actionType == PromotionEnum.ActionType.FIXED_DISCOUNT) {
+                                // Xóa Sản phẩm và Đơn vị
+                                model.setValueAt("", row, 3);
+                                model.setValueAt("", row, 4);
+                            }
+                        }
+                    }
+                }
+
+                // Cả 2 bảng: kiểm tra Target
+                int targetCol = isCondition ? 0 : 1;
+                if (col == targetCol) {
+                    Object targetObj = model.getValueAt(row, targetCol);
+                    if (targetObj != null) {
+                        PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                            ? (PromotionEnum.Target) targetObj
+                            : PromotionEnum.Target.valueOf(targetObj.toString());
+
+                        if (target == PromotionEnum.Target.ORDER_SUBTOTAL) {
+                            // Xóa Sản phẩm và Đơn vị
+                            int prodCol = isCondition ? 1 : 3;
+                            int uomCol = isCondition ? 2 : 4;
+                            model.setValueAt("", row, prodCol);
+                            model.setValueAt("", row, uomCol);
+                        }
+                    }
+                }
+
+                // Yêu cầu 3: Khi thay đổi sản phẩm, xóa đơn vị
+                int prodCol = isCondition ? 1 : 3;
+                int uomCol = isCondition ? 2 : 4;
+                if (col == prodCol) {
+                    model.setValueAt("", row, uomCol);
+                }
+
+                // Refresh table to update disabled cell rendering
+                table.repaint();
+            }
         };
         model.addTableModelListener(listener);
 
@@ -465,14 +691,71 @@ public class TAB_Promotion extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
-                if (row >= 0 && col == 4) { // cột "Sản phẩm"
-                    Window owner = SwingUtilities.getWindowAncestor(table);
-                    DIALOG_ProductPicker picker = new DIALOG_ProductPicker(owner);
-                    picker.setVisible(true);
-                    Product selected = picker.getSelectedProduct();
-                    if (selected != null) {
-                        // Điền mã sản phẩm (id) vào ô
-                        model.setValueAt(selected.getId(), row, col);
+                if (row >= 0) {
+                    // For action table: NEW ORDER is 0=ActionType, 1=Target, 2=Value, 3=Product, 4=UOM
+                    // For condition table: ORDER is 0=Target, 1=Product, 2=UOM, 3=Comparator, 4=Value
+                    int prodCol = isCondition ? 1 : 3;
+                    int uomCol = isCondition ? 2 : 4;
+
+                    if (col == prodCol) { // cột "Sản phẩm"
+                        // Kiểm tra xem có được phép edit không
+                        if (!table.isCellEditable(row, col)) {
+                            JOptionPane.showMessageDialog(table,
+                                "Vui lòng chọn Mục tiêu là 'Sản phẩm' trước!",
+                                "Thông báo",
+                                JOptionPane.INFORMATION_MESSAGE);
+                            return;
+                        }
+
+                        Window owner = SwingUtilities.getWindowAncestor(table);
+                        DIALOG_ProductPicker picker = new DIALOG_ProductPicker(owner);
+                        picker.setVisible(true);
+                        Product selected = picker.getSelectedProduct();
+                        if (selected != null) {
+                            // Yêu cầu 1: Điền tên sản phẩm vào thay vì mã sản phẩm
+                            model.setValueAt(selected.getName() + " (" + selected.getId() + ")", row, col);
+                            // Lưu ID thực tế vào client property của table để dùng khi lưu
+                            table.putClientProperty("product_" + row + "_" + col, selected.getId());
+                        }
+                    } else if (col == uomCol) { // cột "Đơn vị" (UOM)
+                        // Kiểm tra xem có được phép edit không
+                        if (!table.isCellEditable(row, col)) {
+                            return; // Bị disable
+                        }
+
+                        Object prodIdObj = model.getValueAt(row, prodCol);
+                        if (prodIdObj == null || prodIdObj.toString().trim().isEmpty()) {
+                            JOptionPane.showMessageDialog(table, "Vui lòng chọn sản phẩm trước khi chọn đơn vị tính.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                            return;
+                        }
+
+                        // Extract product ID from the stored property
+                        String productId = (String) table.getClientProperty("product_" + row + "_" + prodCol);
+                        if (productId == null) {
+                            JOptionPane.showMessageDialog(table, "Vui lòng chọn lại sản phẩm.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                            return;
+                        }
+
+                        Product p = daoProduct.getProductById(productId);
+                        if (p == null || p.getUnitOfMeasureList() == null || p.getUnitOfMeasureList().isEmpty()) {
+                            JOptionPane.showMessageDialog(table, "Không tìm thấy đơn vị tính cho sản phẩm đã chọn.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                            return;
+                        }
+
+                        // Yêu cầu 3: Combobox cho đơn vị
+                        java.util.List<String> names = new java.util.ArrayList<>();
+                        for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
+                            if (u != null && u.getName() != null) names.add(u.getName());
+                        }
+                        if (names.isEmpty()) {
+                            JOptionPane.showMessageDialog(table, "Sản phẩm chưa có đơn vị tính.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                            return;
+                        }
+
+                        Object selected = JOptionPane.showInputDialog(table, "Chọn đơn vị tính:", "Đơn vị tính", JOptionPane.PLAIN_MESSAGE, null, names.toArray(), names.get(0));
+                        if (selected != null) {
+                            model.setValueAt(selected.toString(), row, col);
+                        }
                     }
                 }
             }
@@ -498,9 +781,9 @@ public class TAB_Promotion extends JPanel {
 
         // Update bottom buttons
         bottomPrimaryButton.setText("Thêm mới");
-        styleButton(bottomPrimaryButton, new Color(40, 167, 69), Color.WHITE);
+        styleButton(bottomPrimaryButton, new Color(40, 167, 69));
         bottomSecondaryButton.setText("Hủy");
-        styleButton(bottomSecondaryButton, AppColors.PRIMARY, Color.WHITE);
+        styleButton(bottomSecondaryButton, AppColors.PRIMARY);
     }
 
     /** Xử lý thêm mới (thực tế lưu vào DB) */
@@ -521,7 +804,6 @@ public class TAB_Promotion extends JPanel {
         try {
             Promotion promotion = buildPromotionFromForm(true);
             if (promotion == null) return;
-
             // Lưu vào database
             boolean success = busPromotion.addPromotion(promotion);
 
@@ -540,7 +822,7 @@ public class TAB_Promotion extends JPanel {
             }
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            System.err.println("Lỗi khi thêm khuyến mãi: " + ex.toString());
             JOptionPane.showMessageDialog(this,
                 "❌ Lỗi khi thêm khuyến mãi: " + ex.getMessage(),
                 "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -604,7 +886,7 @@ public class TAB_Promotion extends JPanel {
             }
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            System.err.println("Lỗi khi cập nhật khuyến mãi: " + ex.toString());
             JOptionPane.showMessageDialog(this,
                 "❌ Lỗi khi cập nhật: " + ex.getMessage(),
                 "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -622,19 +904,31 @@ public class TAB_Promotion extends JPanel {
         LocalDate endDate = dpEndDate.getDate().toInstant()
                 .atZone(ZoneId.systemDefault()).toLocalDate();
 
-        String promoId = isNew ? generatePromotionId() : currentEditingId;
-
         boolean isActive = cbStatusField.getSelectedIndex() == 0;
 
-        Promotion promotion = new Promotion(promoId, name, startDate, endDate, isActive, description);
+        Promotion promotion;
+        if (isNew) {
+            // When adding new promotions, do not generate or set IDs here — DB trigger will assign IDs.
+            promotion = new Promotion();
+            promotion.setName(name);
+            promotion.setEffectiveDate(startDate);
+            promotion.setEndDate(endDate);
+            promotion.setIsActive(isActive);
+            promotion.setDescription(description);
+        } else {
+            String promoId = currentEditingId;
+            promotion = new Promotion(name, startDate, endDate, isActive, description);
+        }
 
         // Thu thập điều kiện từ bảng condModel
-        java.util.Set<PromotionCondition> conditions = new java.util.HashSet<>();
-        int condCounter = 1;
+        // THỨ TỰ CỘT: Mục tiêu(0), Sản phẩm(1), Đơn vị(2), Toán tử(3), Giá trị(4)
+        List<PromotionCondition> conditions = new ArrayList<>();
         for (int i = 0; i < condModel.getRowCount(); i++) {
-            Object targetObj = condModel.getValueAt(i, 0);
-            Object compObj = condModel.getValueAt(i, 1);
-            Object val1Obj = condModel.getValueAt(i, 2);
+            Object targetObj = condModel.getValueAt(i, 0);   // Mục tiêu
+            Object prodIdObj = condModel.getValueAt(i, 1);   // Sản phẩm
+            Object uomNameObj = condModel.getValueAt(i, 2);  // Đơn vị
+            Object compObj = condModel.getValueAt(i, 3);     // Toán tử
+            Object val1Obj = condModel.getValueAt(i, 4);     // Giá trị
 
             // Bỏ qua dòng trống
             if (targetObj == null && compObj == null && val1Obj == null) continue;
@@ -655,32 +949,34 @@ public class TAB_Promotion extends JPanel {
                 : PromotionEnum.Comp.valueOf(compObj.toString());
 
             Double val1 = parseDouble(val1Obj);
-            Double val2 = parseDouble(condModel.getValueAt(i, 3));
+            BigDecimal val1BD = val1 != null ? BigDecimal.valueOf(val1) : null;
 
-            Object prodIdObj = condModel.getValueAt(i, 4);
-            Product product = null;
-            if (prodIdObj != null && !prodIdObj.toString().trim().isEmpty()) {
-                String productId = prodIdObj.toString().trim();
-                product = daoProduct.getProductById(productId);
+            UnitOfMeasure uom = null;
+            if (target == PromotionEnum.Target.PRODUCT) {
+                // Extract product ID from client property
+                String productId = (String) condTable.getClientProperty("product_" + i + "_1");
+                if (productId != null && uomNameObj != null && !uomNameObj.toString().trim().isEmpty()) {
+                    String uomName = uomNameObj.toString().trim();
+                    uom = daoProduct.getUnitOfMeasureById(productId, uomName);
+                }
             }
 
             PromotionCondition cond = new PromotionCondition(
-                target, comp, PromotionEnum.ConditionType.PRODUCT_QTY, val1, val2, product
+                target, comp, PromotionEnum.ConditionType.PRODUCT_QTY, val1BD, uom
             );
-            // Generate ID cho condition
-            String condId = promoId.replace("PRM-", "PRMC-") + "-" + String.format("%02d", condCounter++);
-            cond.setId(condId);
 
             conditions.add(cond);
         }
 
         // Thu thập hành động từ bảng actModel
-        java.util.Set<PromotionAction> actions = new java.util.HashSet<>();
-        int actCounter = 1;
+        // THỨ TỰ CỘT MỚI: Loại hành động(0), Mục tiêu(1), Giá trị(2), Sản phẩm(3), Đơn vị(4)
+        List<PromotionAction> actions = new ArrayList<>();
         for (int i = 0; i < actModel.getRowCount(); i++) {
-            Object typeObj = actModel.getValueAt(i, 0);
-            Object targetObj = actModel.getValueAt(i, 1);
-            Object val1Obj = actModel.getValueAt(i, 2);
+            Object typeObj = actModel.getValueAt(i, 0);      // Loại hành động
+            Object targetObj = actModel.getValueAt(i, 1);    // Mục tiêu
+            Object val1Obj = actModel.getValueAt(i, 2);      // Giá trị
+            Object prodIdObj = actModel.getValueAt(i, 3);    // Sản phẩm
+            Object uomNameObj = actModel.getValueAt(i, 4);   // Đơn vị
 
             // Bỏ qua dòng trống
             if (typeObj == null && targetObj == null && val1Obj == null) continue;
@@ -701,21 +997,21 @@ public class TAB_Promotion extends JPanel {
                 : PromotionEnum.Target.valueOf(targetObj.toString());
 
             Double val1 = parseDouble(val1Obj);
-            Double val2 = parseDouble(actModel.getValueAt(i, 3));
+            BigDecimal val1BD = val1 != null ? BigDecimal.valueOf(val1) : null;
 
-            Object prodIdObj = actModel.getValueAt(i, 4);
-            Product product = null;
-            if (prodIdObj != null && !prodIdObj.toString().trim().isEmpty()) {
-                String productId = prodIdObj.toString().trim();
-                product = daoProduct.getProductById(productId);
+            UnitOfMeasure uom = null;
+            if (target == PromotionEnum.Target.PRODUCT && type == PromotionEnum.ActionType.PRODUCT_GIFT) {
+                // Extract product ID from client property
+                String productId = (String) actTable.getClientProperty("product_" + i + "_3");
+                if (productId != null && uomNameObj != null && !uomNameObj.toString().trim().isEmpty()) {
+                    String uomName = uomNameObj.toString().trim();
+                    uom = daoProduct.getUnitOfMeasureById(productId, uomName);
+                }
             }
 
             PromotionAction action = new PromotionAction(
-                type, target, val1, val2, product, i
+                type, target, val1BD, uom, i
             );
-            // Generate ID cho action
-            String actId = promoId.replace("PRM-", "PRMA-") + "-" + String.format("%02d", actCounter++);
-            action.setId(actId);
 
             actions.add(action);
         }
@@ -878,11 +1174,18 @@ public class TAB_Promotion extends JPanel {
 
         List<Promotion> promotions = busPromotion.getAllPromotions();
         if (promotions != null) {
-            for (Promotion p : promotions) {
+            allPromotions.clear();
+            allPromotions.addAll(promotions); // Store all promotions for pagination
+            // Chỉ lấy các phần tử trong khoảng currentPage * itemsPerPage
+            for (int i = currentPage * itemsPerPage; i < (currentPage + 1) * itemsPerPage && i < promotions.size(); i++) {
+                Promotion p = promotions.get(i);
                 promotionCache.add(p);
                 addPromotionToTable(p);
             }
         }
+
+        // Cập nhật thông tin phân trang
+        updatePaginationInfo();
     }
 
     /** Thêm promotion vào bảng */
@@ -924,37 +1227,69 @@ public class TAB_Promotion extends JPanel {
 
         cbStatusField.setSelectedIndex(promo.getIsActive() ? 0 : 1);
 
-        // Load conditions
+        // Load conditions - THỨ TỰ: Mục tiêu(0), Sản phẩm(1), Đơn vị(2), Toán tử(3), Giá trị(4)
         if (condListener != null) condModel.removeTableModelListener(condListener);
         condModel.setRowCount(0);
 
         if (promo.getConditions() != null) {
+            int rowIdx = 0;
             for (PromotionCondition cond : promo.getConditions()) {
+                String productDisplay = "";
+                String productId = null;
+
+                if (cond.getProductUOM() != null && cond.getProductUOM().getProduct() != null) {
+                    Product p = cond.getProductUOM().getProduct();
+                    productId = p.getId();
+                    productDisplay = p.getName() + " (" + productId + ")";
+                }
+
                 condModel.addRow(new Object[]{
-                    cond.getTarget(),
-                    cond.getComparator(),
-                    cond.getPrimaryValue(),
-                    cond.getSecondaryValue(),
-                    cond.getProduct() != null ? cond.getProduct().getId() : ""
+                    cond.getTarget(),  // 0: Mục tiêu
+                    productDisplay,  // 1: Sản phẩm (tên + mã)
+                    cond.getProductUOM() != null ? cond.getProductUOM().getName() : "",  // 2: Đơn vị
+                    cond.getComparator(),  // 3: Toán tử
+                    cond.getValue()  // 4: Giá trị
                 });
+
+                // Store product ID in client property
+                if (productId != null) {
+                    condTable.putClientProperty("product_" + rowIdx + "_1", productId);
+                }
+                rowIdx++;
             }
         }
         condModel.addRow(new Object[condModel.getColumnCount()]);
         if (condListener != null) condModel.addTableModelListener(condListener);
 
-        // Load actions
+        // Load actions - THỨ TỰ MỚI: Loại hành động(0), Mục tiêu(1), Giá trị(2), Sản phẩm(3), Đơn vị(4)
         if (actListener != null) actModel.removeTableModelListener(actListener);
         actModel.setRowCount(0);
 
         if (promo.getActions() != null) {
+            int rowIdx = 0;
             for (PromotionAction act : promo.getActions()) {
+                String productDisplay = "";
+                String productId = null;
+
+                if (act.getProductUOM() != null && act.getProductUOM().getProduct() != null) {
+                    Product p = act.getProductUOM().getProduct();
+                    productId = p.getId();
+                    productDisplay = p.getName() + " (" + productId + ")";
+                }
+
                 actModel.addRow(new Object[]{
-                    act.getType(),
-                    act.getTarget(),
-                    act.getPrimaryValue(),
-                    act.getSecondaryValue(),
-                    act.getProduct() != null ? act.getProduct().getId() : ""
+                    act.getType(),  // 0: Loại hành động
+                    act.getTarget(),  // 1: Mục tiêu
+                    act.getValue(),  // 2: Giá trị
+                    productDisplay,  // 3: Sản phẩm (tên + mã)
+                    act.getProductUOM() != null ? act.getProductUOM().getName() : ""  // 4: Đơn vị
                 });
+
+                // Store product ID in client property
+                if (productId != null) {
+                    actTable.putClientProperty("product_" + rowIdx + "_3", productId);
+                }
+                rowIdx++;
             }
         }
         actModel.addRow(new Object[actModel.getColumnCount()]);
@@ -963,9 +1298,9 @@ public class TAB_Promotion extends JPanel {
         // show detail card and set buttons to update/cancel
         showDetailCard();
         bottomPrimaryButton.setText("Cập nhật");
-        styleButton(bottomPrimaryButton, new Color(255, 193, 7), Color.WHITE);
+        styleButton(bottomPrimaryButton, new Color(255, 193, 7));
         bottomSecondaryButton.setText("Hủy");
-        styleButton(bottomSecondaryButton, AppColors.PRIMARY, Color.WHITE);
+        styleButton(bottomSecondaryButton, AppColors.PRIMARY);
 
         // Disable editing until user clicks cập nhật
         setFormEditable(false);
@@ -1024,9 +1359,9 @@ public class TAB_Promotion extends JPanel {
 
         // Reset bottom buttons text (not visible in placeholder but keep default)
         bottomPrimaryButton.setText("Cập nhật");
-        styleButton(bottomPrimaryButton, new Color(255, 193, 7), Color.WHITE);
+        styleButton(bottomPrimaryButton, new Color(255, 193, 7));
         bottomSecondaryButton.setText("Hủy");
-        styleButton(bottomSecondaryButton, AppColors.PRIMARY, Color.WHITE);
+        styleButton(bottomSecondaryButton, AppColors.PRIMARY);
     }
 
     /** Enable or disable form fields and editable tables */
@@ -1070,9 +1405,9 @@ public class TAB_Promotion extends JPanel {
     }
 
     /** Style button */
-    private void styleButton(JButton btn, Color bg, Color fg) {
+    private void styleButton(JButton btn, Color bg) {
         btn.setBackground(bg);
-        btn.setForeground(fg);
+        btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -1132,5 +1467,26 @@ public class TAB_Promotion extends JPanel {
         }
 
         return card;
+    }
+
+    /** Thay đổi trang hiển thị */
+    private void changePage(int newPage) {
+        // Kiểm tra giới hạn trang
+        if (newPage < 0 || newPage >= Math.ceil((double) allPromotions.size() / itemsPerPage)) {
+            return;
+        }
+        currentPage = newPage;
+        loadPromotions();
+    }
+
+    /** Cập nhật thông tin phân trang */
+    private void updatePaginationInfo() {
+        int totalItems = allPromotions.size();
+        int totalPages = (int) Math.ceil((double) totalItems / itemsPerPage);
+
+        lblPageInfo.setText("Trang " + (currentPage + 1) + " / " + totalPages + " (Tổng: " + totalItems + " khuyến mãi)");
+
+        btnPrevPage.setEnabled(currentPage > 0);
+        btnNextPage.setEnabled(currentPage < totalPages - 1);
     }
 }

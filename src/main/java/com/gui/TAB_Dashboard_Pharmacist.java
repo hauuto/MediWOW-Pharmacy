@@ -777,10 +777,10 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                 sb.append(" ");
                 sb.append(formatCurrency(condition.getPrimaryValue()));
 
-                if (condition.getComparator() == PromotionEnum.Comp.BETWEEN && condition.getSecondaryValue() != null) {
-                    sb.append(" - ");
-                    sb.append(formatCurrency(condition.getSecondaryValue()));
-                }
+//                if (condition.getComparator() == PromotionEnum.Comp.BETWEEN && condition.getSecondaryValue() != null) {
+//                    sb.append(" - ");
+//                    sb.append(formatCurrency(condition.getSecondaryValue()));
+//                }
             } else if (condition.getTarget() == PromotionEnum.Target.PRODUCT) {
                 if (condition.getConditionType() == PromotionEnum.ConditionType.PRODUCT_QTY) {
                     sb.append("Mua ");
@@ -790,7 +790,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                     }
                     sb.append(formatComparator(condition.getComparator()));
                     sb.append(" ");
-                    sb.append(condition.getPrimaryValue().intValue());
+//                    sb.append(condition.getPrimaryValue().intValue());
                     sb.append(" sản phẩm");
                 } else if (condition.getConditionType() == PromotionEnum.ConditionType.PRODUCT_ID) {
                     sb.append("Sản phẩm: ");

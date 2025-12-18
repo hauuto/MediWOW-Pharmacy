@@ -2,25 +2,26 @@ package com.entities;
 
 import com.enums.PromotionEnum.*;
 import jakarta.persistence.*;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.UuidGenerator;
 
-/*
-@author Nguyễn Thanh Khôi
- */
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "PromotionCondition")
 public class PromotionCondition {
 
     @Id
-    @Column(length = 50) // ID được DB trigger sinh tự động: PRMC-XXXXXX
+    @UuidGenerator
+    @Column(name = "id",insertable = false, updatable = false, nullable = false, length = 50)
     private String id;
 
-    // Many conditions → 1 Promotion
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion", nullable = false)
     private Promotion promotion;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, name="type")
+    @Column(nullable = false, name = "type")
     private ConditionType conditionType;
 
     @Enumerated(EnumType.STRING)
@@ -31,75 +32,68 @@ public class PromotionCondition {
     @Column(nullable = false)
     private Target target;
 
-    @Column(nullable = false, name="primaryValue")
-    private Double primaryValue;
-
-    @Column(nullable = true, name = "secondaryValue")
-    private Double secondaryValue;
+    @Column(name = "value", precision = 18, scale = 2)
+    private BigDecimal value;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product", nullable = true)
-    private Product product;
+    @JoinColumns({
+            @JoinColumn(name = "product", referencedColumnName = "product"),
+            @JoinColumn(name = "unitOfMeasure", referencedColumnName = "name")
+    })
+    private UnitOfMeasure productUOM;
 
+    // ======================
+    // Constructors
+    // ======================
     public PromotionCondition() {}
 
-    public PromotionCondition(Target target, Comp comparator, ConditionType type,
-                              Double primaryValue, Double secondaryValue, Product product) {
+    public PromotionCondition(
+            Target target,
+            Comp comparator,
+            ConditionType conditionType,
+            BigDecimal value,
+            UnitOfMeasure productUOM
+    ) {
         this.target = target;
         this.comparator = comparator;
-        this.conditionType = type;
-        this.primaryValue = primaryValue;
-        this.secondaryValue = secondaryValue;
-        this.product = product;
+        this.conditionType = conditionType;
+        this.value = value;
+        this.productUOM = productUOM;
     }
 
+    // ======================
+    // Getters / Setters
+    // ======================
     public String getId() { return id; }
-
     public void setId(String id) { this.id = id; }
 
-    public Target getTarget() { return target; }
-    public void setTarget(Target target) { this.target = target; }
+    public Promotion getPromotion() { return promotion; }
+    public void setPromotion(Promotion promotion) { this.promotion = promotion; }
+
+    public ConditionType getConditionType() { return conditionType; }
+    public void setConditionType(ConditionType conditionType) { this.conditionType = conditionType; }
 
     public Comp getComparator() { return comparator; }
     public void setComparator(Comp comparator) { this.comparator = comparator; }
 
-    public Promotion getPromotion() {
-        return promotion;
-    }
+    public Target getTarget() { return target; }
+    public void setTarget(Target target) { this.target = target; }
 
-    public void setPromotion(Promotion promotion) {
-        this.promotion = promotion;
-    }
+    public BigDecimal getValue() { return value; }
+    public void setValue(BigDecimal value) { this.value = value; }
 
-    public ConditionType getConditionType() {
-        return conditionType;
-    }
+    public UnitOfMeasure getProductUOM() { return productUOM; }
+    public void setProductUOM(UnitOfMeasure productUOM) { this.productUOM = productUOM; }
 
-    public void setConditionType(ConditionType conditionType) {
-        this.conditionType = conditionType;
-    }
-
-    public Double getPrimaryValue() {
-        return primaryValue;
-    }
-
-    public void setPrimaryValue(Double primaryValue) {
-        this.primaryValue = primaryValue;
-    }
-
-    public Double getSecondaryValue() {
-        return secondaryValue;
-    }
-
-    public void setSecondaryValue(Double secondaryValue) {
-        this.secondaryValue = secondaryValue;
-    }
-
+    // ======================
+    // Compatibility Helpers
+    // ======================
     public Product getProduct() {
-        return product;
+        return (productUOM != null) ? productUOM.getProduct() : null;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
+
+    public double getPrimaryValue() {
+        return (value == null) ? 0.0 : value.doubleValue();
     }
 }
