@@ -49,15 +49,20 @@ public class DIALOG_CloseShift extends JDialog {
             shift.getStaff() != null &&
             staff.getId().equals(shift.getStaff().getId());
 
-        // If not shift owner, require close reason (only manager can close)
+        // Check if staff is on the same workstation as the shift
+        boolean isSameWorkstation = shift != null && shift.getWorkstation() != null &&
+            shift.getWorkstation().equals(busShift.getCurrentWorkstation());
+
+        // If not shift owner, require close reason
         if (!isShiftOwner) {
             requireCloseReason = true;
 
-            // Verify permission
-            if (staff == null || staff.getRole() != Role.MANAGER) {
+            // Verify permission: manager or same workstation
+            boolean isManager = staff != null && staff.getRole() == Role.MANAGER;
+            if (!isManager && !isSameWorkstation) {
                 JOptionPane.showMessageDialog(parent,
                     "Bạn không có quyền đóng ca này.\n" +
-                    "Chỉ người mở ca hoặc Quản lý mới có thể đóng ca.",
+                    "Chỉ người mở ca, Quản lý hoặc nhân viên trên cùng máy mới có thể đóng ca.",
                     "Không có quyền",
                     JOptionPane.ERROR_MESSAGE);
                 dispose();
