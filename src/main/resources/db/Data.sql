@@ -23,3 +23,324 @@ VALUES ( 'MANAGER', 'admin',
         '$2a$12$vVXxXrKyAGhRge.lO0ihZ.0Nl7PghqZLqSpRwvpoDnC8qe3uZC1TK',
         N'Administrator', NULL, NULL, NULL,
         '2025-01-01', 1,0,0);
+
+-- =====================================================
+-- 2. PRESCRIBED CUSTOMER DATA
+-- =====================================================
+
+INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+VALUES ('CUS2025-0001', N'Nguyễn Văn An', '0901234567', N'123 Lê Lợi, Quận 1, TP.HCM', '2025-01-10');
+
+INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+VALUES ('CUS2025-0002', N'Trần Thị Bình', '0912345678', N'456 Nguyễn Huệ, Quận 3, TP.HCM', '2025-01-12');
+
+INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+VALUES ('CUS2025-0003', N'Lê Minh Châu', '0923456789', N'789 Trần Hưng Đạo, Quận 5, TP.HCM', '2025-01-15');
+
+INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+VALUES ('CUS2025-0004', N'Phạm Đức Dũng', '0934567890', N'321 Võ Văn Tần, Quận 10, TP.HCM', '2025-02-01');
+
+INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+VALUES ('CUS2025-0005', N'Hoàng Thị Em', '0945678901', NULL, '2025-02-15');
+
+-- =====================================================
+-- 3. PRODUCT DATA (2 OTC, 2 ETC, 1 Supplement)
+-- =====================================================
+
+-- Product 1: OTC - Paracetamol
+INSERT INTO Product (id, barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, creationDate, updateDate)
+VALUES ('PRO2025-0001', '8934567890123', 'OTC', 'SOLID', N'Paracetamol 500mg', N'Para 500', N'Pymepharco', N'Paracetamol', 10.00, '500mg', N'Thuốc giảm đau, hạ sốt', N'Viên', '2025-01-15', '2025-01-15');
+
+-- Product 2: OTC - Vitamin C
+INSERT INTO Product (id, barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, creationDate, updateDate)
+VALUES ('PRO2025-0002', '8934567890124', 'OTC', 'LIQUID_DOSAGE', N'Vitamin C 1000mg Syrup', N'Vit C Syrup', N'DHG Pharma', N'Ascorbic Acid', 10.00, '1000mg/5ml', N'Tăng cường sức đề kháng dạng siro', N'ml', '2025-01-16', '2025-01-16');
+
+-- Product 3: ETC - Amoxicillin
+INSERT INTO Product (id, barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, creationDate, updateDate)
+VALUES ('PRO2025-0003', '8934567890125', 'ETC', 'SOLID', N'Amoxicillin 500mg', N'Amoxi 500', N'Traphaco', N'Amoxicillin trihydrate', 10.00, '500mg', N'Kháng sinh điều trị nhiễm khuẩn', N'Viên', '2025-01-17', '2025-01-17');
+
+-- Product 4: ETC - Omeprazole
+INSERT INTO Product (id, barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, creationDate, updateDate)
+VALUES ('PRO2025-0004', '8934567890126', 'ETC', 'LIQUID_DOSAGE', N'Omeprazole 20mg Suspension', N'Ome Susp', N'Stella', N'Omeprazole', 10.00, '20mg/5ml', N'Điều trị loét dạ dày dạng hỗn dịch', N'ml', '2025-01-18', '2025-01-18');
+
+-- Product 5: Supplement - Omega 3
+INSERT INTO Product (id, barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, creationDate, updateDate)
+VALUES ('PRO2025-0005', '8934567890127', 'SUPPLEMENT', 'SOLID', N'Omega 3 Fish Oil', N'Omega 3', N'Blackmores', N'Fish Oil, EPA, DHA', 10.00, '1000mg', N'Bổ sung Omega 3 cho tim mạch', N'Viên', '2025-01-19', '2025-01-19');
+
+-- =====================================================
+-- 4. MEASUREMENT NAME DATA (Dictionary for UOM names)
+-- =====================================================
+
+INSERT INTO MeasurementName (name) VALUES (N'Viên');
+INSERT INTO MeasurementName (name) VALUES (N'Vỉ');
+INSERT INTO MeasurementName (name) VALUES (N'Hộp');
+INSERT INTO MeasurementName (name) VALUES (N'ml');
+INSERT INTO MeasurementName (name) VALUES (N'Chai');
+INSERT INTO MeasurementName (name) VALUES (N'Lọ');
+INSERT INTO MeasurementName (name) VALUES (N'Gói');
+INSERT INTO MeasurementName (name) VALUES (N'Ống');
+INSERT INTO MeasurementName (name) VALUES (N'Tuýp');
+
+-- =====================================================
+-- 5. UNIT OF MEASURE DATA
+-- =====================================================
+
+-- UOMs for Paracetamol (PRO2025-0001) - base unit: Viên
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0001', N'Viên', 200.00, 1.0000);
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0001', N'Vỉ', 2000.00, 0.1000);
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0001', N'Hộp', 20000.00, 0.0100);
+
+-- UOMs for Vitamin C (PRO2025-0002) - base unit: ml
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0002', N'ml', 100.00, 1.0000);
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0002', N'Chai', 10000.00, 0.0100);
+
+-- UOMs for Amoxicillin (PRO2025-0003) - base unit: Viên
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0003', N'Viên', 500.00, 1.0000);
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0003', N'Vỉ', 5000.00, 0.1000);
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0003', N'Hộp', 50000.00, 0.0100);
+
+-- UOMs for Omeprazole (PRO2025-0004) - base unit: ml
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0004', N'ml', 200.00, 1.0000);
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0004', N'Chai', 24000.00, 0.0083);
+
+-- UOMs for Omega 3 (PRO2025-0005) - base unit: Viên
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0005', N'Viên', 1500.00, 1.0000);
+INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0005', N'Lọ', 90000.00, 0.0167);
+
+-- =====================================================
+-- 6. LOT DATA (Each product has at least 2 lots, at least 2 lots are unavailable)
+-- =====================================================
+
+-- Lots for Paracetamol (PRO2025-0001)
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0001', 'PARA-2025-0001', 'PRO2025-0001', 5000, 120.00, '2026-12-31', 'AVAILABLE');
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0002', 'PARA-2024-0005', 'PRO2025-0001', 0, 110.00, '2025-01-15', 'EXPIRED');
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0003', 'PARA-2025-0002', 'PRO2025-0001', 3000, 125.00, '2027-06-30', 'AVAILABLE');
+
+-- Lots for Vitamin C (PRO2025-0002)
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0004', 'VITC-2025-0001', 'PRO2025-0002', 20000, 70.00, '2026-10-31', 'AVAILABLE');
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0005', 'VITC-2025-0002', 'PRO2025-0002', 15000, 65.00, '2027-03-31', 'AVAILABLE');
+
+-- Lots for Amoxicillin (PRO2025-0003)
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0006', 'AMOX-2025-0001', 'PRO2025-0003', 4000, 350.00, '2026-08-31', 'AVAILABLE');
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0007', 'AMOX-2024-012', 'PRO2025-0003', 100, 340.00, '2025-12-31', 'FAULTY');
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0008', 'AMOX-2025-0002', 'PRO2025-0003', 3500, 360.00, '2027-01-31', 'AVAILABLE');
+
+-- Lots for Omeprazole (PRO2025-0004)
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0009', 'OMEP-2025-0001', 'PRO2025-0004', 30000, 150.00, '2026-11-30', 'AVAILABLE');
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0010', 'OMEP-2025-0002', 'PRO2025-0004', 25000, 145.00, '2027-05-31', 'AVAILABLE');
+
+-- Lots for Omega 3 (PRO2025-0005)
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0011', 'OMEG-2025-0001', 'PRO2025-0005', 1000, 1000.00, '2026-09-30', 'AVAILABLE');
+INSERT INTO Lot (id, batchNumber, product, quantity, rawPrice, expiryDate, status)
+VALUES ('LOT2025-0012', 'OMEG-2025-0002', 'PRO2025-0005', 800, 980.00, '2027-02-28', 'AVAILABLE');
+
+-- =====================================================
+-- 7. PROMOTION DATA
+-- =====================================================
+
+-- Insert all Promotions first
+INSERT INTO Promotion (id, name, description, creationDate, effectiveDate, endDate, isActive)
+VALUES ('PMO2025-0001', N'Khuyến mãi Paracetamol - Giảm giá kép', N'Mua từ 2 hộp Paracetamol, giảm 10% tổng đơn và giảm thêm 20,000đ', '2025-01-20', '2025-01-20', '2025-12-31', 1);
+
+INSERT INTO Promotion (id, name, description, creationDate, effectiveDate, endDate, isActive)
+VALUES ('PMO2025-0002', N'Khuyến mãi hóa đơn - Tặng quà', N'Tặng 1 chai Vitamin C và giảm 5% tổng đơn cho hóa đơn trên 200.000 VNĐ', '2025-01-21', '2025-01-21', '2025-12-31', 1);
+
+INSERT INTO Promotion (id, name, description, creationDate, effectiveDate, endDate, isActive)
+VALUES ('PMO2025-0003', N'Khuyến mãi Amoxicillin - Tặng Omega 3', N'Mua từ 5 hộp Amoxicillin, tặng 1 lọ Omega 3', '2025-01-22', '2025-01-22', '2025-12-31', 1);
+
+-- Insert all PromotionConditions
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
+VALUES ('PRMC2025-0001', 'PMO2025-0001', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 2, NULL, 'PRO2025-0001');
+
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
+VALUES ('PRMC2025-0002', 'PMO2025-0002', 'ORDER_SUBTOTAL', 'GREATER_EQUAL', 'ORDER_SUBTOTAL', 200000, NULL, NULL);
+
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, primaryValue, secondaryValue, product)
+VALUES ('PRMC2025-0003', 'PMO2025-0003', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 5, NULL, 'PRO2025-0003');
+
+-- Insert all PromotionActions
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
+VALUES ('PRMA2025-0001', 'PMO2025-0001', 1, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 10, NULL, NULL);
+
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
+VALUES ('PRMA2025-0002', 'PMO2025-0001', 2, 'FIXED_DISCOUNT', 'ORDER_SUBTOTAL', 20000, NULL, NULL);
+
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
+VALUES ('PRMA2025-0003', 'PMO2025-0002', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, 'PRO2025-0002');
+
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
+VALUES ('PRMA2025-0004', 'PMO2025-0002', 2, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 5, NULL, NULL);
+
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, primaryValue, secondaryValue, product)
+VALUES ('PRMA2025-0005', 'PMO2025-0003', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, NULL, 'PRO2025-0005');
+
+-- =====================================================
+-- 8. SHIFT DATA
+-- =====================================================
+
+-- Shift 1: Completed morning shift
+INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
+VALUES ('SHF2025-0001', 'MAN2025-0001', '2025-01-22 08:00:00', '2025-01-22 14:00:00', 1000000.00, 1850000.00, 1845000.00, 'CLOSED', N'Ca sáng - Chênh lệch 5,000đ do tiền lẻ');
+
+-- Shift 2: Completed afternoon shift
+INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
+VALUES ('SHF2025-0002', 'MAN2025-0001', '2025-01-22 14:00:00', '2025-01-22 22:00:00', 500000.00, 1250000.00, 1250000.00, 'CLOSED', N'Ca chiều - Khớp tiền');
+
+-- Shift 3: Completed full day shift
+INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
+VALUES ('SHF2025-0003', 'MAN2025-0001', '2025-01-23 08:00:00', '2025-01-23 20:00:00', 2000000.00, 3500000.00, 3480000.00, 'CLOSED', N'Ca cả ngày');
+
+-- Shift 4: Open shift (currently working)
+INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
+VALUES ('SHF2025-0004', 'MAN2025-0001', '2025-01-26 08:00:00', NULL, 1500000.00, NULL, NULL, 'OPEN', N'Ca đang mở');
+
+-- =====================================================
+-- 9. INVOICE DATA (Various types for different test cases)
+-- =====================================================
+
+-- Invoice 1: SALES with Promotion 1 and Prescription Code (ETC product)
+INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0001', 'CUS2025-0001', 'MW001a3b5c7d-C', NULL, 'PMO2025-0001', 'CASH', N'Bán thuốc theo đơn, áp dụng khuyến mãi', 'SHF2025-0001');
+
+-- Invoice Lines for Invoice 1
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0001', 'INV2025-0001', 'PRO2025-0001', N'Hộp', 3, 20000.00, 'SALE');
+
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0002', 'INV2025-0001', 'PRO2025-0003', N'Viên', 20, 500.00, 'SALE');
+
+-- LotAllocation for Invoice 1 Lines
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0001', 'ILN2025-0001', 'LOT2025-0001', 3);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0002', 'ILN2025-0002', 'LOT2025-0006', 20);
+
+-- Invoice 2: SALES with Bank Transfer
+INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+VALUES ('INV2025-0002', 'SALES', '2025-01-22 10:15:00', 'MAN2025-0001', NULL, NULL, NULL, NULL, 'BANK_TRANSFER', N'Khách hàng thanh toán chuyển khoản', 'SHF2025-0001');
+
+-- Invoice Lines for Invoice 2
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0003', 'INV2025-0002', 'PRO2025-0002', N'Chai', 2, 10000.00, 'SALE');
+
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0004', 'INV2025-0002', 'PRO2025-0005', N'Viên', 30, 1500.00, 'SALE');
+
+-- LotAllocation for Invoice 2 Lines
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0003', 'ILN2025-0003', 'LOT2025-0004', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0004', 'ILN2025-0004', 'LOT2025-0011', 30);
+
+-- Invoice 3: SALES with Prescription Code (ETC) - Different customer
+INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+VALUES ('INV2025-0003', 'SALES', '2025-01-22 14:20:00', 'MAN2025-0001', 'CUS2025-0002', 'MW0019k2m4p6-H', NULL, NULL, 'CASH', N'Đơn thuốc hướng thần', 'SHF2025-0002');
+
+-- Invoice Lines for Invoice 3
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0005', 'INV2025-0003', 'PRO2025-0004', N'Chai', 2, 24000.00, 'SALE');
+
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0006', 'INV2025-0003', 'PRO2025-0001', N'Vỉ', 5, 2000.00, 'SALE');
+
+-- LotAllocation for Invoice 3 Lines
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0005', 'ILN2025-0005', 'LOT2025-0009', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0006', 'ILN2025-0006', 'LOT2025-0001', 5);
+
+-- Invoice 4: SALES - Large order
+INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+VALUES ('INV2025-0004', 'SALES', '2025-01-23 11:45:00', 'MAN2025-0001', 'CUS2025-0003', NULL, NULL, NULL, 'CASH', N'Đơn hàng lớn', 'SHF2025-0003');
+
+-- Invoice Lines for Invoice 4
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0007', 'INV2025-0004', 'PRO2025-0001', N'Hộp', 10, 20000.00, 'SALE');
+
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0008', 'INV2025-0004', 'PRO2025-0002', N'Chai', 5, 10000.00, 'SALE');
+
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0009', 'INV2025-0004', 'PRO2025-0005', N'Lọ', 3, 90000.00, 'SALE');
+
+-- LotAllocation for Invoice 4 Lines
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0007', 'ILN2025-0007', 'LOT2025-0001', 8);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0008', 'ILN2025-0007', 'LOT2025-0003', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0009', 'ILN2025-0008', 'LOT2025-0004', 5);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0010', 'ILN2025-0009', 'LOT2025-0011', 3);
+
+-- Invoice 5: SALES - Simple cash transaction
+INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0001', NULL, NULL, NULL, NULL, 'CASH', N'Khách hàng mua lẻ', 'SHF2025-0004');
+
+-- Invoice Lines for Invoice 5
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0010', 'INV2025-0005', 'PRO2025-0001', N'Viên', 20, 200.00, 'SALE');
+
+-- LotAllocation for Invoice 5 Lines
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0011', 'ILN2025-0010', 'LOT2025-0001', 20);
+
+-- Invoice 6: RETURN - Return from Invoice 2
+INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+VALUES ('INV2025-0006', 'RETURN', '2025-01-23 15:30:00', 'MAN2025-0001', NULL, NULL, 'INV2025-0002', NULL, 'CASH', N'Khách hàng đổi trả do sản phẩm hư', 'SHF2025-0003');
+
+-- Invoice Lines for Invoice 6 (Return)
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0011', 'INV2025-0006', 'PRO2025-0005', N'Viên', 10, 1500.00, 'RETURN');
+
+-- LotAllocation for Invoice 6 (Return - returning to lot)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0012', 'ILN2025-0011', 'LOT2025-0011', 10);
+
+-- Invoice 7: EXCHANGE - Exchange from Invoice 4
+INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+VALUES ('INV2025-0007', 'EXCHANGE', '2025-01-24 10:00:00', 'MAN2025-0001', 'CUS2025-0003', NULL, 'INV2025-0004', NULL, 'CASH', N'Đổi sản phẩm khác loại', 'SHF2025-0003');
+
+-- Invoice Lines for Invoice 7 (Exchange)
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0012', 'INV2025-0007', 'PRO2025-0001', N'Hộp', 2, 20000.00, 'EXCHANGE_OUT');
+
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0013', 'INV2025-0007', 'PRO2025-0003', N'Hộp', 1, 50000.00, 'EXCHANGE_IN');
+
+-- LotAllocation for Invoice 7 (Exchange)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0013', 'ILN2025-0012', 'LOT2025-0001', 2);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0014', 'ILN2025-0013', 'LOT2025-0006', 1);
+
+-- Invoice 8: SALES with Promotion 2 applied
+INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+VALUES ('INV2025-0008', 'SALES', '2025-01-26 17:30:00', 'MAN2025-0001', 'CUS2025-0004', NULL, NULL, 'PMO2025-0002', 'BANK_TRANSFER', N'Áp dụng khuyến mãi tặng quà', 'SHF2025-0004');
+
+-- Invoice Lines for Invoice 8
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0014', 'INV2025-0008', 'PRO2025-0005', N'Lọ', 3, 90000.00, 'SALE');
+
+INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+VALUES ('ILN2025-0015', 'INV2025-0008', 'PRO2025-0002', N'Chai', 1, 0.00, 'SALE');
+
+-- LotAllocation for Invoice 8
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0015', 'ILN2025-0014', 'LOT2025-0012', 3);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LA2025-0016', 'ILN2025-0015', 'LOT2025-0004', 1);
+
+GO
+
+-- =====================================================
+-- DATA GENERATION COMPLETE
+-- =====================================================
+PRINT 'Data generation completed successfully!';
+PRINT '- 1 Staff (admin) created';
+PRINT '- 5 PrescribedCustomers created';
+PRINT '- 5 Products created (2 OTC [1 LIQUID], 2 ETC [1 LIQUID], 1 Supplement)';
+PRINT '- 9 MeasurementNames created';
+PRINT '- 12 UnitOfMeasures created (with price and baseUnitConversionRate)';
+PRINT '- 12 Lots created (2 unavailable: 1 EXPIRED, 1 FAULTY)';
+PRINT '- 3 Promotions created (1 condition each, various actions)';
+PRINT '- 4 Shifts created (3 CLOSED, 1 OPEN)';
+PRINT '- 8 Invoices created (5 SALES, 1 RETURN, 1 EXCHANGE with different test cases)';
+PRINT '- 15 InvoiceLines created';
+PRINT '- 16 LotAllocations created';
+GO
