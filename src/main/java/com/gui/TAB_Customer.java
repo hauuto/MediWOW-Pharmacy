@@ -34,11 +34,13 @@ public class TAB_Customer extends JFrame implements ActionListener {
     private JButton btnRefresh;
     private JButton btnExport;
     private JButton btnClear;
+    private JLabel lblRecordCount;
 
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 800;
     private static final int RIGHT_PANEL_MINIMAL_WIDTH = 450;
+    private static final int MAX_ADDRESS_LENGTH = 255;
 
     private final BUS_Customer busCustomer = new BUS_Customer();
     private List<PrescribedCustomer> customerCache = new ArrayList<>();
@@ -54,6 +56,22 @@ public class TAB_Customer extends JFrame implements ActionListener {
 
         loadCustomerTable();
         setupSearchListener();
+        setupTableListeners();
+    }
+
+    private void setupTableListeners() {
+        // Double click to select row
+        tblCustomer.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    int row = tblCustomer.getSelectedRow();
+                    if (row >= 0) {
+                        fillFormRow(row);
+                    }
+                }
+            }
+        });
     }
 
     private void setupSearchListener() {
@@ -127,15 +145,28 @@ public class TAB_Customer extends JFrame implements ActionListener {
                 BorderFactory.createLineBorder(AppColors.LIGHT, 1),
                 new EmptyBorder(5, 10, 5, 10)
         ));
+        txtSearch.setToolTipText("Tìm kiếm theo mã, tên, số điện thoại hoặc địa chỉ");
+
+
 
         btnRefresh = createStyledButton("Làm mới", AppColors.SECONDARY);
+        btnRefresh.setToolTipText("Tải lại danh sách khách hàng");
+
         btnExport = createStyledButton("Xuất Excel", AppColors.DARK);
+        btnExport.setToolTipText("Xuất dữ liệu ra file Excel");
+
+        // Record count label
+        lblRecordCount = new JLabel("Tổng: 0 khách hàng");
+        lblRecordCount.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        lblRecordCount.setForeground(AppColors.DARK);
 
         searchBar.add(lblSearch);
         searchBar.add(txtSearch);
         searchBar.add(Box.createHorizontalStrut(20));
         searchBar.add(btnRefresh);
         searchBar.add(btnExport);
+        searchBar.add(Box.createHorizontalStrut(20));
+        searchBar.add(lblRecordCount);
 
         panel.add(lblTitle, BorderLayout.NORTH);
         panel.add(searchBar, BorderLayout.CENTER);
@@ -214,8 +245,13 @@ public class TAB_Customer extends JFrame implements ActionListener {
         buttonPanel.setBackground(AppColors.WHITE);
 
         btnAdd = createStyledButton("Thêm mới", AppColors.SUCCESS);
+        btnAdd.setToolTipText("Thêm khách hàng mới vào hệ thống");
+
         btnUpdate = createStyledButton("Cập nhật", AppColors.WARNING);
+        btnUpdate.setToolTipText("Cập nhật thông tin khách hàng đã chọn");
+
         btnClear = createStyledButton("Xóa trắng", AppColors.DARK);
+        btnClear.setToolTipText("Xóa các trường nhập liệu");
 
         buttonPanel.add(btnAdd);
         buttonPanel.add(btnUpdate);
@@ -265,6 +301,7 @@ public class TAB_Customer extends JFrame implements ActionListener {
         formContent.add(createLabel("Tên khách hàng: *"), gbc);
         gbc.gridx = 1;
         txtCustomerName = createTextField();
+        txtCustomerName.setToolTipText("Nhập tên đầy đủ của khách hàng");
         formContent.add(txtCustomerName, gbc);
 
         // Số điện thoại
@@ -273,6 +310,7 @@ public class TAB_Customer extends JFrame implements ActionListener {
         formContent.add(createLabel("Số điện thoại:"), gbc);
         gbc.gridx = 1;
         txtPhoneNumber = createTextField();
+        txtPhoneNumber.setToolTipText("Nhập số điện thoại 10 số (VD: 0912345678)");
         formContent.add(txtPhoneNumber, gbc);
 
         // Địa chỉ
@@ -290,6 +328,19 @@ public class TAB_Customer extends JFrame implements ActionListener {
                 BorderFactory.createLineBorder(AppColors.LIGHT, 1),
                 new EmptyBorder(5, 10, 5, 10)
         ));
+        txtAddress.setToolTipText("Nhập địa chỉ khách hàng (tối đa 255 ký tự)");
+
+        // Add document listener to limit address length
+        txtAddress.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                if (txtAddress.getText().length() >= MAX_ADDRESS_LENGTH) {
+                    e.consume();
+                    Toolkit.getDefaultToolkit().beep();
+                }
+            }
+        });
+
         JScrollPane scrollAddress = new JScrollPane(txtAddress);
         scrollAddress.setPreferredSize(new Dimension(250, 100));
         formContent.add(scrollAddress, gbc);
@@ -380,6 +431,15 @@ public class TAB_Customer extends JFrame implements ActionListener {
                 };
                 tableModel.addRow(row);
             }
+            updateRecordCount(customers.size());
+        } else {
+            updateRecordCount(0);
+        }
+    }
+
+    private void updateRecordCount(int count) {
+        if (lblRecordCount != null) {
+            lblRecordCount.setText("Tổng: " + count + " khách hàng");
         }
     }
 
@@ -409,6 +469,8 @@ public class TAB_Customer extends JFrame implements ActionListener {
         } else if (e.getSource() == btnRefresh) {
             loadCustomerTable();
             clearForm();
+            txtSearch.setText("");
+            performSearch();
         } else if (e.getSource() == btnExport) {
             handleExport();
         }
@@ -420,12 +482,33 @@ public class TAB_Customer extends JFrame implements ActionListener {
             String phone = txtPhoneNumber.getText().trim();
             String address = txtAddress.getText().trim();
 
+            // Validate name
             if (name.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
                         "Vui lòng nhập tên khách hàng",
                         "Thông báo",
                         JOptionPane.WARNING_MESSAGE);
                 txtCustomerName.requestFocus();
+                return;
+            }
+
+            // Validate phone number if provided
+            if (!phone.isEmpty() && !isValidPhoneNumber(phone)) {
+                JOptionPane.showMessageDialog(this,
+                        "Số điện thoại không hợp lệ!\nVui lòng nhập 10 chữ số (VD: 0912345678)",
+                        "Thông báo",
+                        JOptionPane.WARNING_MESSAGE);
+                txtPhoneNumber.requestFocus();
+                return;
+            }
+
+            // Validate address length
+            if (address.length() > MAX_ADDRESS_LENGTH) {
+                JOptionPane.showMessageDialog(this,
+                        "Địa chỉ không được vượt quá " + MAX_ADDRESS_LENGTH + " ký tự",
+                        "Thông báo",
+                        JOptionPane.WARNING_MESSAGE);
+                txtAddress.requestFocus();
                 return;
             }
 
@@ -466,6 +549,17 @@ public class TAB_Customer extends JFrame implements ActionListener {
         }
     }
 
+    /**
+     * Validate Vietnamese phone number format
+     * Must be 10 digits starting with 0
+     */
+    private boolean isValidPhoneNumber(String phone) {
+        if (phone == null || phone.isEmpty()) {
+            return true; // Phone is optional
+        }
+        return phone.matches("^0\\d{9}$");
+    }
+
     private void handleUpdate() {
         try {
             String id = txtCustomerId.getText().trim();
@@ -481,12 +575,33 @@ public class TAB_Customer extends JFrame implements ActionListener {
             String phone = txtPhoneNumber.getText().trim();
             String address = txtAddress.getText().trim();
 
+            // Validate name
             if (name.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
                         "Vui lòng nhập tên khách hàng",
                         "Thông báo",
                         JOptionPane.WARNING_MESSAGE);
                 txtCustomerName.requestFocus();
+                return;
+            }
+
+            // Validate phone number if provided
+            if (!phone.isEmpty() && !isValidPhoneNumber(phone)) {
+                JOptionPane.showMessageDialog(this,
+                        "Số điện thoại không hợp lệ!\nVui lòng nhập 10 chữ số (VD: 0912345678)",
+                        "Thông báo",
+                        JOptionPane.WARNING_MESSAGE);
+                txtPhoneNumber.requestFocus();
+                return;
+            }
+
+            // Validate address length
+            if (address.length() > MAX_ADDRESS_LENGTH) {
+                JOptionPane.showMessageDialog(this,
+                        "Địa chỉ không được vượt quá " + MAX_ADDRESS_LENGTH + " ký tự",
+                        "Thông báo",
+                        JOptionPane.WARNING_MESSAGE);
+                txtAddress.requestFocus();
                 return;
             }
 
@@ -534,6 +649,15 @@ public class TAB_Customer extends JFrame implements ActionListener {
 
     private void handleExport() {
         try {
+            // Check if there's data to export
+            if (tableModel.getRowCount() == 0) {
+                JOptionPane.showMessageDialog(this,
+                        "Không có dữ liệu để xuất!",
+                        "Thông báo",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setDialogTitle("Chọn nơi lưu file Excel");
             fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -551,13 +675,14 @@ public class TAB_Customer extends JFrame implements ActionListener {
                 List<String[]> data = new ArrayList<>();
                 data.add(new String[]{"Mã KH", "Tên khách hàng", "Số điện thoại", "Địa chỉ", "Ngày tạo"});
 
-                for (PrescribedCustomer customer : customerCache) {
+                // Export currently displayed data (respects search filter)
+                for (int i = 0; i < tableModel.getRowCount(); i++) {
                     data.add(new String[]{
-                            customer.getId(),
-                            customer.getName(),
-                            customer.getPhoneNumber() != null ? customer.getPhoneNumber() : "",
-                            customer.getAddress() != null ? customer.getAddress() : "",
-                            customer.getCreationDate() != null ? customer.getCreationDate().format(dtf) : ""
+                            tableModel.getValueAt(i, 0).toString(),
+                            tableModel.getValueAt(i, 1).toString(),
+                            tableModel.getValueAt(i, 2).toString(),
+                            tableModel.getValueAt(i, 3).toString(),
+                            tableModel.getValueAt(i, 4).toString()
                     });
                 }
 
