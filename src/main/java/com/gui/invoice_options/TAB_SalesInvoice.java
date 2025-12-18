@@ -3,7 +3,7 @@ package com.gui.invoice_options;
 import com.bus.*;
 import com.entities.*;
 import com.enums.*;
-import com.gui.MoMoQRCodeDialog;
+import com.gui.DIALOG_MomoQRCode;
 import com.interfaces.ShiftChangeListener;
 import com.utils.*;
 import javax.swing.*;
@@ -16,7 +16,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.beans.*;
 import java.io.File;
-import java.math.BigDecimal;
 import java.text.*;
 import java.util.*;
 import java.util.List;
@@ -853,7 +852,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             String orderInfo = "Thanh toán hóa đơn MediWOW Pharmacy";
             Window owner = SwingUtilities.getWindowAncestor(pnlSalesInvoice);
 
-            boolean paymentSuccess = MoMoQRCodeDialog.showAndPay(owner, total, orderInfo);
+            boolean paymentSuccess = DIALOG_MomoQRCode.showAndPay(owner, total, orderInfo);
 
             if (paymentSuccess) {
                 // MoMo payment successful - complete the sale

@@ -10,7 +10,6 @@ import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.Border;
-import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
@@ -30,7 +29,7 @@ import java.util.Date;
 public class InvoicePDFGenerator {
 
     private static final DecimalFormat CURRENCY_FORMAT;
-    private static PdfFont vietnameseFont;
+    private static final String FONT_PATH;
 
     static {
         DecimalFormatSymbols dfs = new DecimalFormatSymbols();
@@ -38,35 +37,42 @@ public class InvoicePDFGenerator {
         dfs.setDecimalSeparator(',');
         CURRENCY_FORMAT = new DecimalFormat("#,##0", dfs);
 
-        // Initialize Vietnamese font
-        try {
-            // Try to use Arial font from Windows fonts directory
-            String[] fontPaths = {
-                "C:/Windows/Fonts/arial.ttf",
-                "C:/Windows/Fonts/times.ttf",
-                "C:/Windows/Fonts/verdana.ttf"
-            };
+        // Find available font path
+        String[] fontPaths = {
+            "C:/Windows/Fonts/arial.ttf",
+            "C:/Windows/Fonts/times.ttf",
+            "C:/Windows/Fonts/verdana.ttf"
+        };
 
-            boolean fontLoaded = false;
-            for (String fontPath : fontPaths) {
-                try {
-                    vietnameseFont = PdfFontFactory.createFont(fontPath, PdfEncodings.IDENTITY_H);
-                    fontLoaded = true;
-                    System.out.println("Successfully loaded font: " + fontPath);
-                    break;
-                } catch (Exception e) {
-                    // Try next font
-                }
+        String foundPath = null;
+        for (String path : fontPaths) {
+            if (new File(path).exists()) {
+                foundPath = path;
+                System.out.println("Found font: " + path);
+                break;
             }
+        }
+        FONT_PATH = foundPath;
+    }
 
-            if (!fontLoaded) {
-                // Fallback to Helvetica (may not display Vietnamese correctly)
-                System.err.println("Warning: Could not load Vietnamese font. Vietnamese characters may not display correctly.");
-                vietnameseFont = PdfFontFactory.createFont("Helvetica", PdfEncodings.IDENTITY_H);
+    /**
+     * Create a new font instance for the current PDF document
+     * This is needed because iText font objects cannot be shared across PDF documents
+     */
+    private static PdfFont createFont() {
+        try {
+            if (FONT_PATH != null) {
+                return PdfFontFactory.createFont(FONT_PATH, PdfEncodings.IDENTITY_H);
+            } else {
+                return PdfFontFactory.createFont("Helvetica", PdfEncodings.IDENTITY_H);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("Error loading font: " + e.getMessage());
+            System.err.println("Error creating font: " + e.getMessage());
+            try {
+                return PdfFontFactory.createFont();
+            } catch (Exception ex) {
+                throw new RuntimeException("Could not create font", ex);
+            }
         }
     }
 
@@ -84,34 +90,35 @@ public class InvoicePDFGenerator {
         PdfDocument pdfDoc = new PdfDocument(writer);
         Document document = new Document(pdfDoc);
 
+        // Create a NEW font instance for this document (fonts cannot be shared across PDF documents)
+        PdfFont font = createFont();
+
         // Set default font for the document
-        if (vietnameseFont != null) {
-            document.setFont(vietnameseFont);
-        }
+        document.setFont(font);
 
         // Add header
-        addHeader(document, invoice);
+        addHeader(document, invoice, font);
 
         // Add spacing
         document.add(new Paragraph("\n"));
 
         // Add invoice info
-        addInvoiceInfo(document, invoice);
+        addInvoiceInfo(document, invoice, font);
 
         // Add spacing
         document.add(new Paragraph("\n"));
 
         // Add product table
-        addProductTable(document, invoice);
+        addProductTable(document, invoice, font);
 
         // Add spacing
         document.add(new Paragraph("\n"));
 
         // Add totals
-        addTotals(document, invoice);
+        addTotals(document, invoice, font);
 
         // Add footer
-        addFooter(document, invoice);
+        addFooter(document, invoice, font);
 
         // Close document
         document.close();
@@ -119,10 +126,10 @@ public class InvoicePDFGenerator {
         return new File(outputPath);
     }
 
-    private static void addHeader(Document document, Invoice invoice) {
+    private static void addHeader(Document document, Invoice invoice, PdfFont font) {
         // Company name
         Paragraph companyName = new Paragraph("MEDIWOW PHARMACY")
-                .setFont(vietnameseFont)
+                .setFont(font)
                 .setFontSize(20)
                 .setBold()
                 .setTextAlignment(TextAlignment.CENTER);
@@ -131,14 +138,14 @@ public class InvoicePDFGenerator {
         // Company details
         Paragraph companyDetails = new Paragraph("Địa chỉ: 12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP.HCM\n" +
                 "Điện thoại: (028) 3894 2345 | Email: info@mediwow.com")
-                .setFont(vietnameseFont)
+                .setFont(font)
                 .setFontSize(10)
                 .setTextAlignment(TextAlignment.CENTER);
         document.add(companyDetails);
 
         // Invoice title
         Paragraph invoiceTitle = new Paragraph("HÓA ĐƠN BÁN HÀNG")
-                .setFont(vietnameseFont)
+                .setFont(font)
                 .setFontSize(16)
                 .setBold()
                 .setTextAlignment(TextAlignment.CENTER)
@@ -146,7 +153,7 @@ public class InvoicePDFGenerator {
         document.add(invoiceTitle);
     }
 
-    private static void addInvoiceInfo(Document document, Invoice invoice) {
+    private static void addInvoiceInfo(Document document, Invoice invoice, PdfFont font) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 
         // Create a table for invoice info
@@ -156,19 +163,19 @@ public class InvoicePDFGenerator {
         // Left column
         Cell leftCell = new Cell()
                 .setBorder(Border.NO_BORDER)
-                .add(new Paragraph("Mã hóa đơn: " + invoice.getId()).setFont(vietnameseFont).setFontSize(10))
-                .add(new Paragraph("Ngày lập: " + dateFormat.format(new Date())).setFont(vietnameseFont).setFontSize(10))
-                .add(new Paragraph("Nhân viên: " + invoice.getCreator().getFullName()).setFont(vietnameseFont).setFontSize(10));
+                .add(new Paragraph("Mã hóa đơn: " + invoice.getId()).setFont(font).setFontSize(10))
+                .add(new Paragraph("Ngày lập: " + dateFormat.format(new Date())).setFont(font).setFontSize(10))
+                .add(new Paragraph("Nhân viên: " + invoice.getCreator().getFullName()).setFont(font).setFontSize(10));
 
         // Right column
         Cell rightCell = new Cell()
                 .setBorder(Border.NO_BORDER)
-                .add(new Paragraph("Loại hóa đơn: " + invoice.getType().toString()).setFont(vietnameseFont).setFontSize(10))
-                .add(new Paragraph("Phương thức: " + getPaymentMethodText(invoice.getPaymentMethod())).setFont(vietnameseFont).setFontSize(10));
+                .add(new Paragraph("Loại hóa đơn: " + invoice.getType().toString()).setFont(font).setFontSize(10))
+                .add(new Paragraph("Phương thức: " + getPaymentMethodText(invoice.getPaymentMethod())).setFont(font).setFontSize(10));
 
         // Add prescription code if exists
         if (invoice.getPrescriptionCode() != null && !invoice.getPrescriptionCode().isEmpty()) {
-            rightCell.add(new Paragraph("Mã đơn thuốc: " + invoice.getPrescriptionCode()).setFont(vietnameseFont).setFontSize(10));
+            rightCell.add(new Paragraph("Mã đơn thuốc: " + invoice.getPrescriptionCode()).setFont(font).setFontSize(10));
         }
 
         infoTable.addCell(leftCell);
@@ -177,7 +184,7 @@ public class InvoicePDFGenerator {
         document.add(infoTable);
     }
 
-    private static void addProductTable(Document document, Invoice invoice) {
+    private static void addProductTable(Document document, Invoice invoice, PdfFont font) {
         // Create table with 6 columns
         float[] columnWidths = {1, 3, 1.5f, 1, 1.5f, 1.5f};
         Table table = new Table(UnitValue.createPercentArray(columnWidths))
@@ -187,149 +194,112 @@ public class InvoicePDFGenerator {
         DeviceRgb headerColor = new DeviceRgb(41, 128, 185);
 
         // Add headers
-        table.addHeaderCell(createHeaderCell("STT", headerColor));
-        table.addHeaderCell(createHeaderCell("Tên sản phẩm", headerColor));
-        table.addHeaderCell(createHeaderCell("Đơn vị", headerColor));
-        table.addHeaderCell(createHeaderCell("Số lượng", headerColor));
-        table.addHeaderCell(createHeaderCell("Đơn giá", headerColor));
-        table.addHeaderCell(createHeaderCell("Thành tiền", headerColor));
+        table.addHeaderCell(createHeaderCell("STT", headerColor, font));
+        table.addHeaderCell(createHeaderCell("Tên sản phẩm", headerColor, font));
+        table.addHeaderCell(createHeaderCell("Đơn vị", headerColor, font));
+        table.addHeaderCell(createHeaderCell("Số lượng", headerColor, font));
+        table.addHeaderCell(createHeaderCell("Đơn giá", headerColor, font));
+        table.addHeaderCell(createHeaderCell("Thành tiền", headerColor, font));
 
         // Add products
         int index = 1;
         for (InvoiceLine line : invoice.getInvoiceLineList()) {
-            table.addCell(createCell(String.valueOf(index++), TextAlignment.CENTER));
-            table.addCell(createCell(line.getProduct().getName(), TextAlignment.LEFT));
-            table.addCell(createCell(line.getUnitOfMeasure(), TextAlignment.CENTER)); // unitOfMeasure is now String
-            table.addCell(createCell(String.valueOf(line.getQuantity()), TextAlignment.CENTER));
-            table.addCell(createCell(CURRENCY_FORMAT.format(line.getUnitPrice()) + " đ", TextAlignment.RIGHT));
-            table.addCell(createCell(CURRENCY_FORMAT.format(line.getUnitPrice() * line.getQuantity()) + " đ", TextAlignment.RIGHT));
+            table.addCell(createCell(String.valueOf(index++), TextAlignment.CENTER, font));
+            table.addCell(createCell(line.getProduct().getName(), TextAlignment.LEFT, font));
+            table.addCell(createCell(line.getUnitOfMeasure(), TextAlignment.CENTER, font));
+            table.addCell(createCell(String.valueOf(line.getQuantity()), TextAlignment.CENTER, font));
+            table.addCell(createCell(formatCurrency(line.getUnitPrice()), TextAlignment.RIGHT, font));
+            table.addCell(createCell(formatCurrency(line.calculateSubtotal()), TextAlignment.RIGHT, font));
         }
 
         document.add(table);
     }
 
-    private static void addTotals(Document document, Invoice invoice) {
-        // Create totals table
+    private static void addTotals(Document document, Invoice invoice, PdfFont font) {
+        // Create table for totals
         Table totalsTable = new Table(UnitValue.createPercentArray(new float[]{3, 1}))
-                .useAllAvailableWidth()
-                .setMarginTop(10);
+                .useAllAvailableWidth();
 
         // Subtotal
-        double subtotal = invoice.calculateSubtotal();
-        totalsTable.addCell(createTotalCell("Tạm tính:", false));
-        totalsTable.addCell(createTotalCell(CURRENCY_FORMAT.format(subtotal) + " đ", false));
+        totalsTable.addCell(createTotalLabelCell("Tổng tiền hàng:", font));
+        totalsTable.addCell(createTotalValueCell(formatCurrency(invoice.calculateSubtotal()), font));
 
         // VAT
-        double vat = invoice.calculateVatAmount();
-        totalsTable.addCell(createTotalCell("VAT:", false));
-        totalsTable.addCell(createTotalCell(CURRENCY_FORMAT.format(vat) + " đ", false));
+        totalsTable.addCell(createTotalLabelCell("Thuế VAT:", font));
+        totalsTable.addCell(createTotalValueCell(formatCurrency(invoice.calculateVatAmount()), font));
 
-        // Promotion discount
+        // Discount if applicable
         if (invoice.getPromotion() != null) {
-            double discount = invoice.calculatePromotion();
-            totalsTable.addCell(createTotalCell("Khuyến mãi:", false));
-            totalsTable.addCell(createTotalCell("- " + CURRENCY_FORMAT.format(discount) + " đ", false));
+            totalsTable.addCell(createTotalLabelCell("Giảm giá (" + invoice.getPromotion().getName() + "):", font));
+            totalsTable.addCell(createTotalValueCell("-" + formatCurrency(invoice.calculatePromotion()), font));
         }
 
         // Total
-        double total = invoice.calculateTotal();
-        totalsTable.addCell(createTotalCell("TỔNG CỘNG:", true));
-        totalsTable.addCell(createTotalCell(CURRENCY_FORMAT.format(total) + " đ", true));
+        totalsTable.addCell(createTotalLabelCell("TỔNG CỘNG:", font).setBold());
+        totalsTable.addCell(createTotalValueCell(formatCurrency(invoice.calculateTotal()), font).setBold());
 
         document.add(totalsTable);
     }
 
-    private static void addFooter(Document document, Invoice invoice) {
+    private static void addFooter(Document document, Invoice invoice, PdfFont font) {
         document.add(new Paragraph("\n"));
 
-        // Thank you message
         Paragraph thankYou = new Paragraph("Cảm ơn quý khách đã mua hàng!")
-                .setFont(vietnameseFont)
+                .setFont(font)
                 .setFontSize(12)
-                .setBold()
+                .setItalic()
                 .setTextAlignment(TextAlignment.CENTER);
         document.add(thankYou);
 
-        // Footer note
         Paragraph note = new Paragraph("Vui lòng giữ hóa đơn để đổi trả hàng trong vòng 7 ngày.")
-                .setFont(vietnameseFont)
+                .setFont(font)
                 .setFontSize(9)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setItalic();
+                .setTextAlignment(TextAlignment.CENTER);
         document.add(note);
-
-        // Signature area
-        document.add(new Paragraph("\n\n"));
-        Table signatureTable = new Table(UnitValue.createPercentArray(new float[]{1, 1}))
-                .useAllAvailableWidth();
-
-        Cell customerSign = new Cell()
-                .setBorder(Border.NO_BORDER)
-                .add(new Paragraph("Khách hàng").setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(10).setBold())
-                .add(new Paragraph("(Ký và ghi rõ họ tên)").setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(8).setItalic())
-                .add(new Paragraph("\n\n\n"));
-
-        Cell staffSign = new Cell()
-                .setBorder(Border.NO_BORDER)
-                .add(new Paragraph("Nhân viên").setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(10).setBold())
-                .add(new Paragraph("(Ký và ghi rõ họ tên)").setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(8).setItalic())
-                .add(new Paragraph("\n\n\n"))
-                .add(new Paragraph(invoice.getCreator().getFullName()).setFont(vietnameseFont).setTextAlignment(TextAlignment.CENTER).setFontSize(10));
-
-        signatureTable.addCell(customerSign);
-        signatureTable.addCell(staffSign);
-
-        document.add(signatureTable);
     }
 
-    private static Cell createHeaderCell(String text, DeviceRgb color) {
+    private static Cell createHeaderCell(String text, DeviceRgb bgColor, PdfFont font) {
         return new Cell()
-                .add(new Paragraph(text).setFont(vietnameseFont).setBold().setFontColor(ColorConstants.WHITE))
-                .setBackgroundColor(color)
+                .add(new Paragraph(text).setFont(font).setFontSize(10).setBold())
+                .setBackgroundColor(bgColor)
+                .setFontColor(ColorConstants.WHITE)
                 .setTextAlignment(TextAlignment.CENTER)
-                .setFontSize(10)
                 .setPadding(5);
     }
 
-    private static Cell createCell(String text, TextAlignment alignment) {
+    private static Cell createCell(String text, TextAlignment alignment, PdfFont font) {
         return new Cell()
-                .add(new Paragraph(text).setFont(vietnameseFont))
+                .add(new Paragraph(text).setFont(font).setFontSize(9))
                 .setTextAlignment(alignment)
-                .setFontSize(9)
-                .setPadding(5);
+                .setPadding(3);
     }
 
-    private static Cell createTotalCell(String text, boolean isBold) {
-        Paragraph para = new Paragraph(text).setFont(vietnameseFont);
-
-        Cell cell = new Cell()
-                .add(para)
-                .setTextAlignment(TextAlignment.RIGHT)
-                .setFontSize(11)
+    private static Cell createTotalLabelCell(String text, PdfFont font) {
+        return new Cell()
+                .add(new Paragraph(text).setFont(font).setFontSize(10))
                 .setBorder(Border.NO_BORDER)
-                .setPadding(3);
+                .setTextAlignment(TextAlignment.RIGHT)
+                .setPaddingRight(10);
+    }
 
-        if (isBold) {
-            para.setBold();
-            cell.setFontSize(13);
-            cell.setBorderTop(new SolidBorder(1));
-        }
+    private static Cell createTotalValueCell(String text, PdfFont font) {
+        return new Cell()
+                .add(new Paragraph(text).setFont(font).setFontSize(10))
+                .setBorder(Border.NO_BORDER)
+                .setTextAlignment(TextAlignment.RIGHT);
+    }
 
-        return cell;
+    private static String formatCurrency(double amount) {
+        return CURRENCY_FORMAT.format(amount) + " đ";
     }
 
     private static String getPaymentMethodText(com.enums.PaymentMethod method) {
-        if (method == null) {
-            return "N/A";
-        }
-        switch (method) {
-            case CASH:
-                return "Tiền mặt";
-            case BANK_TRANSFER:
-                return "Chuyển khoản/Ví điện tử";
-            default:
-                return method.toString();
-        }
+        if (method == null) return "Không xác định";
+        return switch (method) {
+            case CASH -> "Tiền mặt";
+            case BANK_TRANSFER -> "Chuyển khoản";
+            default -> method.toString();
+        };
     }
 }
 

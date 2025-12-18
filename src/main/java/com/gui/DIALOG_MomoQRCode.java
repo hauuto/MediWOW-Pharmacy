@@ -25,7 +25,7 @@ import java.util.Map;
  * Dialog to display MoMo QR Code for payment
  * @author MediWOW Pharmacy
  */
-public class MoMoQRCodeDialog extends JDialog {
+public class DIALOG_MomoQRCode extends JDialog {
     private final String orderId;
     private final long amount;
     private final String orderInfo;
@@ -39,7 +39,7 @@ public class MoMoQRCodeDialog extends JDialog {
     private static final int TIMEOUT = 300000; // 5 minutes timeout
     private long startTime;
 
-    public MoMoQRCodeDialog(Window owner, long amount, String orderInfo) {
+    public DIALOG_MomoQRCode(Window owner, long amount, String orderInfo) {
         super(owner, "Thanh toán MoMo", ModalityType.APPLICATION_MODAL);
         this.orderId = MoMoPaymentService.generateOrderId();
         this.amount = amount;
@@ -364,7 +364,7 @@ public class MoMoQRCodeDialog extends JDialog {
      * @return true if payment was successful, false otherwise
      */
     public static boolean showAndPay(Window owner, long amount, String orderInfo) {
-        MoMoQRCodeDialog dialog = new MoMoQRCodeDialog(owner, amount, orderInfo);
+        DIALOG_MomoQRCode dialog = new DIALOG_MomoQRCode(owner, amount, orderInfo);
         dialog.startPayment();
         dialog.setVisible(true);
         return dialog.isPaymentSuccess();
