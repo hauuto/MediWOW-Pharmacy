@@ -8,6 +8,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -36,43 +37,56 @@ public class DAO_Invoice implements IInvoice {
             System.out.println("Invoice Lines: " + (invoice.getInvoiceLineList() != null ? invoice.getInvoiceLineList().size() : 0));
             System.out.println("Prescription Code: " + invoice.getPrescriptionCode());
 
-            // Merge the creator (Staff) to attach to current session
-            if (invoice.getCreator() != null) {
-                invoice.setCreator(session.merge(invoice.getCreator()));
+            // Store invoice lines temporarily
+            List<InvoiceLine> invoiceLines = new ArrayList<>(invoice.getInvoiceLineList());
+
+            // Use native SQL to insert Invoice (trigger will generate ID)
+            session.createNativeQuery(
+                "INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift) " +
+                "VALUES (:id, :type, GETDATE(), :creator, :prescribedCustomer, :prescriptionCode, :referencedInvoice, :promotion, :paymentMethod, :notes, :shift)")
+                .setParameter("id", "TEMP") // Trigger will replace this
+                .setParameter("type", invoice.getType().name())
+                .setParameter("creator", invoice.getCreator().getId())
+                .setParameter("prescribedCustomer", invoice.getPrescribedCustomer() != null ? invoice.getPrescribedCustomer().getId() : null)
+                .setParameter("prescriptionCode", invoice.getPrescriptionCode())
+                .setParameter("referencedInvoice", invoice.getReferencedInvoice() != null ? invoice.getReferencedInvoice().getId() : null)
+                .setParameter("promotion", invoice.getPromotion() != null ? invoice.getPromotion().getId() : null)
+                .setParameter("paymentMethod", invoice.getPaymentMethod().name())
+                .setParameter("notes", invoice.getNotes())
+                .setParameter("shift", invoice.getShift() != null ? invoice.getShift().getId() : null)
+                .executeUpdate();
+
+            // Retrieve the generated Invoice ID from database
+            String generatedInvoiceId = session.createNativeQuery(
+                "SELECT TOP 1 id FROM Invoice WHERE creator = :creatorId ORDER BY creationDate DESC", String.class)
+                .setParameter("creatorId", invoice.getCreator().getId())
+                .uniqueResult();
+
+            System.out.println("Generated Invoice ID from trigger: " + generatedInvoiceId);
+
+            if (generatedInvoiceId == null) {
+                throw new RuntimeException("Could not retrieve generated Invoice ID");
             }
 
-            // Merge promotion if exists
-            if (invoice.getPromotion() != null) {
-                invoice.setPromotion(session.merge(invoice.getPromotion()));
+            // Now save invoice lines using native SQL
+            for (InvoiceLine line : invoiceLines) {
+                session.createNativeQuery(
+                    "INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType) " +
+                    "VALUES (:id, :invoice, :product, :unitOfMeasure, :quantity, :unitPrice, :lineType)")
+                    .setParameter("id", "TEMP") // Trigger will replace this
+                    .setParameter("invoice", generatedInvoiceId)
+                    .setParameter("product", line.getProduct().getId())
+                    .setParameter("unitOfMeasure", line.getUnitOfMeasure())
+                    .setParameter("quantity", line.getQuantity())
+                    .setParameter("unitPrice", line.getUnitPrice())
+                    .setParameter("lineType", line.getLineType().name())
+                    .executeUpdate();
             }
 
-            // Merge referenced invoice if exists
-            if (invoice.getReferencedInvoice() != null) {
-                invoice.setReferencedInvoice(session.merge(invoice.getReferencedInvoice()));
-            }
-
-            // Merge prescribed customer if exists
-            if (invoice.getPrescribedCustomer() != null) {
-                invoice.setPrescribedCustomer(session.merge(invoice.getPrescribedCustomer()));
-            }
-
-            // Process each invoice line to merge related entities
-            if (invoice.getInvoiceLineList() != null) {
-                for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    // Merge product to attach to current session
-                    if (line.getProduct() != null) {
-                        line.setProduct(session.merge(line.getProduct()));
-                    }
-                    // unitOfMeasure is now just a String, no need to merge
-                }
-            }
-
-            // Now persist the invoice (with merged entities)
-            session.persist(invoice);
             transaction.commit();
 
             System.out.println("========== INVOICE SAVED SUCCESSFULLY ==========");
-            System.out.println("Generated Invoice ID: " + invoice.getId());
+            System.out.println("Final Invoice ID: " + generatedInvoiceId);
             System.out.println("===============================================");
 
         } catch (Exception e) {

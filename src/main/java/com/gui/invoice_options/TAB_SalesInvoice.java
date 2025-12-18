@@ -3,6 +3,7 @@ package com.gui.invoice_options;
 import com.bus.*;
 import com.entities.*;
 import com.enums.*;
+import com.gui.MoMoQRCodeDialog;
 import com.interfaces.ShiftChangeListener;
 import com.utils.*;
 import javax.swing.*;
@@ -233,7 +234,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                 Lot lot = product.getOldestLotAvailable();
                 double unitPrice = lot != null ? lot.getRawPrice() * (baseUOM != null ? baseUOM.getBasePriceConversionRate() : 1) : 0.0;
                 invoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(),
-                    new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice));
+                    new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice));
                 updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice(); return;
             }
         }
@@ -244,7 +245,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         int row = mdlInvoiceLine.getRowCount() - 1;
         previousUOMMap.put(row, product.getBaseUnitOfMeasure());
         oldUOMIdMap.put(row, product.getBaseUnitOfMeasure());
-        invoice.addInvoiceLine(new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price));
+        invoice.addInvoiceLine(new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price));
         updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
     }
 
@@ -280,7 +281,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         mdlInvoiceLine.setValueAt(price * quantity, row, 5);
         String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
         invoice.updateInvoiceLine(productId, oldUomName,
-            new InvoiceLine(java.util.UUID.randomUUID().toString(), product, invoice, uomName, LineType.SALE, quantity, price));
+            new InvoiceLine(product, invoice, uomName, LineType.SALE, quantity, price));
         oldUOMIdMap.put(row, uomName);
         previousUOMMap.put(row, uomName);
         updateVatDisplay(); updateTotalDisplay();
@@ -829,20 +830,84 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (invoice.getInvoiceLineList() == null || invoice.getInvoiceLineList().isEmpty()) {
             JOptionPane.showMessageDialog(parentWindow, "Danh sách sản phẩm trống!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
         }
-        if (invoice.getPaymentMethod() == PaymentMethod.CASH && txtCustomerPayment != null) {
-            long pay = txtCustomerPayment.getValue() instanceof Number ? ((Number) txtCustomerPayment.getValue()).longValue() : 0;
-            long tot = (long) invoice.calculateTotal();
-            if (pay < tot) {
-                JOptionPane.showMessageDialog(parentWindow, "Số tiền không đủ!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
+
+        long total = (long) invoice.calculateTotal();
+
+        // Handle different payment methods
+        if (invoice.getPaymentMethod() == PaymentMethod.CASH) {
+            // Cash payment - check if customer payment is sufficient
+            if (txtCustomerPayment != null) {
+                long pay = txtCustomerPayment.getValue() instanceof Number ? ((Number) txtCustomerPayment.getValue()).longValue() : 0;
+                if (pay < total) {
+                    JOptionPane.showMessageDialog(parentWindow, "Số tiền không đủ!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+            // Process cash payment directly
+            completeSaleAndGenerateInvoice();
+        } else if (invoice.getPaymentMethod() == PaymentMethod.BANK_TRANSFER) {
+            // Bank/MoMo payment - show QR code dialog
+            String orderInfo = "Thanh toán hóa đơn MediWOW Pharmacy";
+            Window owner = SwingUtilities.getWindowAncestor(pnlSalesInvoice);
+
+            boolean paymentSuccess = MoMoQRCodeDialog.showAndPay(owner, total, orderInfo);
+
+            if (paymentSuccess) {
+                // MoMo payment successful - complete the sale
+                completeSaleAndGenerateInvoice();
+            } else {
+                // Payment cancelled or failed - do nothing, user can retry
+                JOptionPane.showMessageDialog(parentWindow, "Thanh toán qua MoMo đã bị hủy hoặc thất bại.\nVui lòng thử lại.", "Thanh toán không thành công", JOptionPane.INFORMATION_MESSAGE);
             }
         }
+    }
+
+    private void completeSaleAndGenerateInvoice() {
         try {
+            // Save invoice to database
+            busInvoice.saveInvoice(invoice);
+
+            // Generate PDF
             File d = new File("invoices"); if (!d.exists()) d.mkdirs();
             String fn = "invoices/Invoice_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".pdf";
             File f = InvoicePDFGenerator.generateInvoicePDF(invoice, fn);
+
             int o = JOptionPane.showConfirmDialog(parentWindow, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
             if (o == JOptionPane.YES_OPTION && Desktop.isDesktopSupported()) Desktop.getDesktop().open(f);
-        } catch (Exception ex) { JOptionPane.showMessageDialog(parentWindow, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE); }
+
+            // Reset the form for new invoice
+            resetInvoiceForm();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(parentWindow, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void resetInvoiceForm() {
+        // Clear the table
+        mdlInvoiceLine.setRowCount(0);
+        productMap.clear();
+        previousUOMMap.clear();
+        oldUOMIdMap.clear();
+
+        // Clear invoice lines
+        invoice.getInvoiceLineList().clear();
+
+        // Reset prescription code
+        txtPrescriptionCode.setText("Điền mã đơn kê thuốc (nếu có)...");
+        txtPrescriptionCode.setForeground(AppColors.PLACEHOLDER_TEXT);
+        invoice.setPrescriptionCode(null);
+
+        // Reset promotion
+        txtPromotionSearch.setText("Điền mã hoặc tên khuyến mãi...");
+        txtPromotionSearch.setForeground(AppColors.PLACEHOLDER_TEXT);
+        invoice.setPromotion(null);
+
+        // Reset payment
+        txtCustomerPayment.setValue(0L);
+
+        // Update displays
+        updateVatDisplay();
+        updateTotalDisplay();
+        validatePrescriptionCodeForInvoice();
     }
 }
-
