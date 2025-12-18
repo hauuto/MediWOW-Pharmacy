@@ -22,7 +22,26 @@ CREATE TABLE Staff (
                        mustChangePassword BIT NOT NULL DEFAULT 1
 );
 
--- 2. Customer Table
+-- 2. Shift Table
+CREATE TABLE Shift (
+                       id NVARCHAR(50) PRIMARY KEY,
+                       staff NVARCHAR(50) NOT NULL,           -- Nhân viên trực ca
+                       startTime DATETIME NOT NULL DEFAULT GETDATE(),
+                       endTime DATETIME,                      -- Null nếu đang mở ca
+                       startCash DECIMAL(18,2) NOT NULL,      -- Tiền mặt đầu ca (Nhập tay)
+                       endCash DECIMAL(18,2),                 -- Tiền mặt thực tế đếm được khi kết ca (Nhập tay)
+                       systemCash DECIMAL(18,2),              -- Tiền mặt hệ thống tính toán (Lưu lại để đối chiếu)
+                       status NVARCHAR(20) NOT NULL CHECK (status IN ('OPEN', 'CLOSED')),
+                       notes NVARCHAR(MAX),
+                       workstation NVARCHAR(100),
+                       closedBy NVARCHAR(50),
+                       closeReason NVARCHAR(500),
+
+                       FOREIGN KEY (staff) REFERENCES Staff(id),
+                       FOREIGN KEY (closedBy) REFERENCES Staff(id)
+);
+
+-- 3. Customer Table
 CREATE TABLE PrescribedCustomer (
                                     id NVARCHAR(50) PRIMARY KEY,
                                     name NVARCHAR(255) NOT NULL,
@@ -31,7 +50,7 @@ CREATE TABLE PrescribedCustomer (
                                     creationDate DATETIME NOT NULL DEFAULT GETDATE()
 );
 
--- 3. Product Table
+-- 4. Product Table
 CREATE TABLE Product (
                          id NVARCHAR(50) PRIMARY KEY,
                          barcode NVARCHAR(100) UNIQUE,
@@ -49,12 +68,12 @@ CREATE TABLE Product (
                          updateDate DATETIME
 );
 
--- 4. MeasurementName Table (Dictionary for UOM names)
+-- 5. MeasurementName Table (Dictionary for UOM names)
 CREATE TABLE MeasurementName(
                                 name NVARCHAR(100) PRIMARY KEY
 );
 
--- 5. UnitOfMeasure Table
+-- 6. UnitOfMeasure Table
 -- Primary Key: (product, name) -> Composite Key
 CREATE TABLE UnitOfMeasure (
                                product NVARCHAR(50) NOT NULL,
@@ -67,7 +86,7 @@ CREATE TABLE UnitOfMeasure (
                                PRIMARY KEY (product, name)
 );
 
--- 6. Lot Table
+-- 7. Lot Table
 CREATE TABLE Lot (
                      id NVARCHAR(50) PRIMARY KEY,
                      batchNumber NVARCHAR(50),
@@ -80,7 +99,7 @@ CREATE TABLE Lot (
                      FOREIGN KEY (product) REFERENCES Product(id) ON DELETE CASCADE
 );
 
--- 7. Promotion Table
+-- 8. Promotion Table
 CREATE TABLE Promotion (
                            id NVARCHAR(50) PRIMARY KEY,
                            name NVARCHAR(255) NOT NULL,
@@ -91,7 +110,7 @@ CREATE TABLE Promotion (
                            isActive BIT NOT NULL DEFAULT 1
 );
 
--- 8. PromotionCondition Table
+-- 9. PromotionCondition Table
 CREATE TABLE PromotionCondition (
                                     id NVARCHAR(50) PRIMARY KEY,
                                     promotion NVARCHAR(50) NOT NULL,
@@ -107,9 +126,7 @@ CREATE TABLE PromotionCondition (
                                         REFERENCES UnitOfMeasure(product, name)
 );
 
-
-
--- 9. PromotionAction Table
+-- 10. PromotionAction Table
 CREATE TABLE PromotionAction (
                                  id NVARCHAR(50) PRIMARY KEY,
                                  promotion NVARCHAR(50) NOT NULL,
@@ -125,7 +142,7 @@ CREATE TABLE PromotionAction (
                                      REFERENCES UnitOfMeasure(product, name)
 );
 
--- 10. Invoice Table
+-- 11. Invoice Table
 CREATE TABLE Invoice (
                          id NVARCHAR(50) PRIMARY KEY,
                          type NVARCHAR(50) NOT NULL CHECK (type IN ('SALES', 'RETURN', 'EXCHANGE')),
@@ -137,14 +154,16 @@ CREATE TABLE Invoice (
                          promotion NVARCHAR(50),
                          paymentMethod NVARCHAR(50) NOT NULL CHECK (paymentMethod IN ('CASH', 'BANK_TRANSFER')),
                          notes NVARCHAR(MAX),
+                         shift NVARCHAR(50),
 
                          FOREIGN KEY (creator) REFERENCES Staff(id),
                          FOREIGN KEY (prescribedCustomer) REFERENCES PrescribedCustomer(id),
                          FOREIGN KEY (referencedInvoice) REFERENCES Invoice(id),
-                         FOREIGN KEY (promotion) REFERENCES Promotion(id)
+                         FOREIGN KEY (promotion) REFERENCES Promotion(id),
+                         FOREIGN KEY (shift) REFERENCES Shift(id)
 );
 
--- 11. InvoiceLine Table (Display & Pricing Info)
+-- 12. InvoiceLine Table (Display & Pricing Info)
 -- SỬA ĐỔI LỚN: Thêm ID và bỏ Composite PK để LotAllocation tham chiếu được
 CREATE TABLE InvoiceLine (
                              id NVARCHAR(50) PRIMARY KEY, -- ID riêng cho dòng này
@@ -162,7 +181,7 @@ CREATE TABLE InvoiceLine (
                              FOREIGN KEY (product, unitOfMeasure) REFERENCES UnitOfMeasure(product, name)
 );
 
--- 12. LotAllocation Table (Inventory Control) -> MỚI HOÀN TOÀN
+-- 13. LotAllocation Table (Inventory Control) -> MỚI HOÀN TOÀN
 CREATE TABLE LotAllocation (
                                id NVARCHAR(50) PRIMARY KEY,
                                invoiceLine NVARCHAR(50) NOT NULL, -- Tham chiếu tới dòng hóa đơn
