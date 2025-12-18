@@ -245,7 +245,7 @@ BEGIN
     SET NOCOUNT ON;
     DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
 
-    INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes)
+    INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
     SELECT
         'INV' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.InvoiceSeg AS NVARCHAR(4)), 4),
         type,
@@ -256,7 +256,8 @@ BEGIN
         referencedInvoice,
         promotion,
         paymentMethod,
-        notes
+        notes,
+        shift
     FROM inserted;
 END
 GO
@@ -321,7 +322,7 @@ BEGIN
     SET NOCOUNT ON;
     DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
 
-    INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes)
+    INSERT INTO Shift (id, staff, startTime, endTime, startCash, endCash, systemCash, status, notes, workstation, closedBy, closeReason)
     SELECT
         'SHI' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.ShiftSeg AS NVARCHAR(4)), 4),
         staff,
@@ -331,7 +332,10 @@ BEGIN
         endCash,
         systemCash,
         status,
-        notes
+        notes,
+        workstation,
+        closedBy,
+        closeReason
     FROM inserted;
 END
 GO

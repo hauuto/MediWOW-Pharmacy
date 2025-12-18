@@ -3,6 +3,7 @@ package com.gui;
 import com.bus.BUS_Shift;
 import com.entities.Shift;
 import com.entities.Staff;
+import com.enums.Role;
 import com.utils.AppColors;
 
 import javax.swing.*;
@@ -24,6 +25,7 @@ public class DIALOG_CloseShift extends JDialog {
     private JTextField txtSystemCash;
     private JTextField txtDifference;
     private JTextArea txtNotes;
+    private JTextArea txtCloseReason;
     private JButton btnConfirm;
     private JButton btnCancel;
 
@@ -31,6 +33,7 @@ public class DIALOG_CloseShift extends JDialog {
     private Staff currentStaff;
     private BUS_Shift busShift;
     private boolean confirmed = false;
+    private boolean requireCloseReason = false; // Whether to require close reason
 
     private static final NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.of("vi", "VN"));
     private static final DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
@@ -41,10 +44,31 @@ public class DIALOG_CloseShift extends JDialog {
         this.currentStaff = staff;
         this.busShift = new BUS_Shift();
 
+        // Check if current staff is closing their own shift
+        boolean isShiftOwner = staff != null && shift != null &&
+            shift.getStaff() != null &&
+            staff.getId().equals(shift.getStaff().getId());
+
+        // If not shift owner, require close reason (only manager can close)
+        if (!isShiftOwner) {
+            requireCloseReason = true;
+
+            // Verify permission
+            if (staff == null || staff.getRole() != Role.MANAGER) {
+                JOptionPane.showMessageDialog(parent,
+                    "Bạn không có quyền đóng ca này.\n" +
+                    "Chỉ người mở ca hoặc Quản lý mới có thể đóng ca.",
+                    "Không có quyền",
+                    JOptionPane.ERROR_MESSAGE);
+                dispose();
+                return;
+            }
+        }
+
         initComponents();
         loadShiftData();
 
-        setSize(800, 800);
+        setSize(800, requireCloseReason ? 900 : 800);
         setLocationRelativeTo(parent);
         setResizable(false);
     }
@@ -73,6 +97,13 @@ public class DIALOG_CloseShift extends JDialog {
         JPanel cashInfoPanel = createCashInfoPanel();
         contentPanel.add(cashInfoPanel);
         contentPanel.add(Box.createVerticalStrut(15));
+
+        // Close reason panel (only if not shift owner)
+        if (requireCloseReason) {
+            JPanel closeReasonPanel = createCloseReasonPanel();
+            contentPanel.add(closeReasonPanel);
+            contentPanel.add(Box.createVerticalStrut(15));
+        }
 
         // Notes panel
         JPanel notesPanel = createNotesPanel();
@@ -200,6 +231,30 @@ public class DIALOG_CloseShift extends JDialog {
         return panel;
     }
 
+    private JPanel createCloseReasonPanel() {
+        JPanel panel = new JPanel(new BorderLayout(5, 5));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder("Lý do đóng ca (BẮT BUỘC)"),
+            new EmptyBorder(10, 10, 10, 10)
+        ));
+
+        // Add warning label
+        JLabel lblWarning = new JLabel("⚠️ Bạn đang đóng ca của nhân viên khác. Vui lòng nhập lý do.");
+        lblWarning.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblWarning.setForeground(AppColors.DANGER);
+        panel.add(lblWarning, BorderLayout.NORTH);
+
+        txtCloseReason = new JTextArea(3, 20);
+        txtCloseReason.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        txtCloseReason.setLineWrap(true);
+        txtCloseReason.setWrapStyleWord(true);
+        JScrollPane scrollPane = new JScrollPane(txtCloseReason);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        return panel;
+    }
+
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
 
@@ -298,17 +353,34 @@ public class DIALOG_CloseShift extends JDialog {
 
             BigDecimal endCash = new BigDecimal(endCashText);
             String notes = txtNotes.getText().trim();
+            String closeReason = null;
+
+            // Validate close reason if required
+            if (requireCloseReason) {
+                closeReason = txtCloseReason.getText().trim();
+                if (closeReason.isEmpty()) {
+                    JOptionPane.showMessageDialog(this,
+                        "Vui lòng nhập lý do đóng ca!",
+                        "Thiếu thông tin",
+                        JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
 
             // Confirm action
+            String confirmMessage = requireCloseReason ?
+                "Bạn có chắc chắn muốn đóng ca của nhân viên khác?\nHành động này không thể hoàn tác." :
+                "Bạn có chắc chắn muốn đóng ca làm việc?\nHành động này không thể hoàn tác.";
+
             int choice = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc chắn muốn đóng ca làm việc?\nHành động này không thể hoàn tác.",
+                confirmMessage,
                 "Xác nhận đóng ca",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
 
             if (choice == JOptionPane.YES_OPTION) {
-                // Close shift
-                busShift.closeShift(currentShift, endCash, notes.isEmpty() ? null : notes);
+                // Close shift with closing staff and reason
+                busShift.closeShift(currentShift, endCash, notes.isEmpty() ? null : notes, currentStaff, closeReason);
                 confirmed = true;
                 JOptionPane.showMessageDialog(this,
                     "Đóng ca thành công!",

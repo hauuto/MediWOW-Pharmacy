@@ -25,6 +25,8 @@ public class DIALOG_OpenShift extends JDialog {
     private Staff currentStaff;
     private BUS_Shift busShift;
     private Shift openedShift = null;
+    private Shift existingShift = null; // Existing shift on workstation
+    private boolean continueExistingShift = false;
 
     private static final DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
@@ -33,11 +35,64 @@ public class DIALOG_OpenShift extends JDialog {
         this.currentStaff = staff;
         this.busShift = new BUS_Shift();
 
-        initComponents();
+        // Check for existing shift on this workstation
+        String workstation = busShift.getCurrentWorkstation();
+        existingShift = busShift.getOpenShiftOnWorkstation(workstation);
+
+        if (existingShift != null && !existingShift.getStaff().getId().equals(staff.getId())) {
+            // Another staff has an open shift on this workstation
+            handleExistingShift(parent);
+        } else {
+            // No existing shift or same staff - proceed normally
+            initComponents();
+        }
 
         setSize(800, 600);
         setLocationRelativeTo(parent);
         setResizable(false);
+    }
+
+    private void handleExistingShift(Frame parent) {
+        String message = String.format(
+            "Hiện đang có ca do nhân viên %s mở từ %s.\n\n" +
+            "Bạn có muốn tiếp tục ca này không?\n\n" +
+            "Lưu ý: Nếu chọn 'Có', bạn sẽ không thể bán hàng cho đến khi đóng ca này.",
+            existingShift.getStaff().getFullName(),
+            existingShift.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"))
+        );
+
+        int choice = JOptionPane.showConfirmDialog(
+            parent,
+            message,
+            "Ca làm việc đang mở",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (choice == JOptionPane.YES_OPTION) {
+            // User wants to continue existing shift - they cannot sell
+            continueExistingShift = true;
+            openedShift = existingShift;
+
+            JOptionPane.showMessageDialog(
+                parent,
+                "Bạn đã chọn tiếp tục ca hiện tại.\n" +
+                "Lưu ý: Bạn KHÔNG THỂ bán hàng khi chưa đóng ca này.",
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            dispose();
+        } else {
+            // User does not want to continue - cannot open new shift
+            JOptionPane.showMessageDialog(
+                parent,
+                "Không thể mở ca mới khi đã có ca đang mở trên máy này.\n" +
+                "Vui lòng đóng ca hiện tại trước.",
+                "Không thể mở ca",
+                JOptionPane.WARNING_MESSAGE
+            );
+            dispose();
+        }
     }
 
     private void initComponents() {
@@ -205,6 +260,19 @@ public class DIALOG_OpenShift extends JDialog {
 
             String notes = txtNotes.getText().trim();
 
+            // Double-check for existing shift before confirming
+            String workstation = busShift.getCurrentWorkstation();
+            Shift existingCheck = busShift.getOpenShiftOnWorkstation(workstation);
+
+            if (existingCheck != null && !existingCheck.getStaff().getId().equals(currentStaff.getId())) {
+                JOptionPane.showMessageDialog(this,
+                    "Máy này đang có ca mở bởi nhân viên: " + existingCheck.getStaff().getFullName() + "\n" +
+                    "Vui lòng đóng ca đó trước khi mở ca mới.",
+                    "Không thể mở ca",
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             // Confirm action
             int choice = JOptionPane.showConfirmDialog(this,
                 "Bạn có chắc chắn muốn mở ca làm việc?",
@@ -213,7 +281,7 @@ public class DIALOG_OpenShift extends JDialog {
                 JOptionPane.QUESTION_MESSAGE);
 
             if (choice == JOptionPane.YES_OPTION) {
-                // Open shift
+                // Open shift - BUS layer will also check workstation
                 openedShift = busShift.openShift(currentStaff, startCash, notes.isEmpty() ? null : notes);
                 JOptionPane.showMessageDialog(this,
                     "Mở ca thành công!",
@@ -226,6 +294,12 @@ public class DIALOG_OpenShift extends JDialog {
             JOptionPane.showMessageDialog(this,
                 "Định dạng tiền không hợp lệ!",
                 "Lỗi",
+                JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalStateException e) {
+            // Caught from BUS_Shift when shift already exists
+            JOptionPane.showMessageDialog(this,
+                e.getMessage(),
+                "Không thể mở ca",
                 JOptionPane.ERROR_MESSAGE);
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this,

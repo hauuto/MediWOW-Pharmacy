@@ -2,10 +2,10 @@ package com.gui;
 
 import com.bus.BUS_Product;
 import com.bus.BUS_Promotion;
-import com.entities.Lot;
-import com.entities.Product;
-import com.entities.Promotion;
+import com.bus.BUS_Shift;
+import com.entities.*;
 import com.enums.LotStatus;
+import com.enums.PromotionEnum;
 import com.utils.AppColors;
 
 import javax.swing.*;
@@ -13,9 +13,14 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
+import java.awt.datatransfer.StringSelection;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -34,6 +39,11 @@ import java.util.stream.Collectors;
 public class TAB_Dashboard_Pharmacist extends JPanel {
     private final BUS_Product busProduct;
     private final BUS_Promotion busPromotion;
+    private final BUS_Shift busShift;
+
+    // Current staff and shift
+    private Staff currentStaff;
+    private Shift currentShift;
 
     // Tables
     private JTable tblLowStock;
@@ -49,7 +59,12 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     private JLabel lblExpiringCount;
     private JLabel lblActivePromotionCount;
 
+    // Shift management labels
+    private JLabel lblShiftId;
+    private JLabel lblCurrentCash;
+
     private JButton btnRefresh;
+    private JButton btnCloseShift;
 
     // Constants
     private static final int LOW_STOCK_THRESHOLD = 100; // Định mức tồn kho thấp
@@ -57,12 +72,21 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     private static final int EXPIRY_DANGER_DAYS = 30; // Cảnh báo nguy hiểm còn 30 ngày
 
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
     public TAB_Dashboard_Pharmacist() {
+        this(null);
+    }
+
+    public TAB_Dashboard_Pharmacist(Staff staff) {
+        this.currentStaff = staff;
         this.busProduct = new BUS_Product();
         this.busPromotion = new BUS_Promotion();
+        this.busShift = new BUS_Shift();
         initComponents();
         loadData();
+        loadShiftData();
     }
 
     private void initComponents() {
@@ -85,13 +109,45 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     }
 
     private JPanel createHeaderPanel() {
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        JPanel headerPanel = new JPanel(new BorderLayout(10, 10));
         headerPanel.setBackground(AppColors.WHITE);
         headerPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
 
+        // Top section: Title + Right Section (Shift Widget + Close Shift)
+        JPanel topSection = new JPanel(new BorderLayout(10, 0));
+        topSection.setBackground(AppColors.WHITE);
+
+        // Title
         JLabel lblTitle = new JLabel("Dashboard Dược Sĩ - Vận Hành");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitle.setForeground(AppColors.PRIMARY);
+
+        // Right section: Shift Widget + Close Shift Button
+        JPanel rightSection = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        rightSection.setBackground(AppColors.WHITE);
+
+        // Shift Info Widget
+        JPanel shiftWidget = createShiftWidget();
+        rightSection.add(shiftWidget);
+
+        // Close Shift Button
+        btnCloseShift = new JButton("Đóng ca");
+        btnCloseShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnCloseShift.setBackground(AppColors.DANGER);
+        btnCloseShift.setForeground(Color.WHITE);
+        btnCloseShift.setFocusPainted(false);
+        btnCloseShift.setBorderPainted(false);
+        btnCloseShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCloseShift.setPreferredSize(new Dimension(120, 40));
+        btnCloseShift.addActionListener(e -> handleShiftButtonClick());
+        rightSection.add(btnCloseShift);
+
+        topSection.add(lblTitle, BorderLayout.WEST);
+        topSection.add(rightSection, BorderLayout.EAST);
+
+        // Bottom section: Date + Refresh button
+        JPanel bottomSection = new JPanel(new BorderLayout());
+        bottomSection.setBackground(AppColors.WHITE);
 
         JLabel lblDate = new JLabel("Ngày: " + LocalDate.now().format(dateFormatter));
         lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 16));
@@ -105,17 +161,203 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         btnRefresh.setBorderPainted(false);
         btnRefresh.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnRefresh.setPreferredSize(new Dimension(150, 40));
-        btnRefresh.addActionListener(e -> loadData());
+        btnRefresh.addActionListener(e -> {
+            loadData();
+            loadShiftData();
+        });
 
-        JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(AppColors.WHITE);
-        topPanel.add(lblTitle, BorderLayout.WEST);
-        topPanel.add(btnRefresh, BorderLayout.EAST);
+        bottomSection.add(lblDate, BorderLayout.WEST);
+        bottomSection.add(btnRefresh, BorderLayout.EAST);
 
-        headerPanel.add(topPanel, BorderLayout.NORTH);
-        headerPanel.add(lblDate, BorderLayout.SOUTH);
+        headerPanel.add(topSection, BorderLayout.NORTH);
+        headerPanel.add(bottomSection, BorderLayout.SOUTH);
 
         return headerPanel;
+    }
+
+    private JPanel createShiftWidget() {
+        JPanel widget = new JPanel();
+        widget.setLayout(new BoxLayout(widget, BoxLayout.Y_AXIS));
+        widget.setBackground(new Color(240, 248, 255)); // Light blue background
+        widget.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppColors.SECONDARY, 1),
+            new EmptyBorder(8, 12, 8, 12)
+        ));
+
+        // Shift ID
+        JPanel shiftIdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        shiftIdPanel.setBackground(new Color(240, 248, 255));
+        JLabel lblShiftIdLabel = new JLabel("Mã Ca:");
+        lblShiftIdLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblShiftIdLabel.setForeground(AppColors.DARK);
+        lblShiftId = new JLabel("---");
+        lblShiftId.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblShiftId.setForeground(AppColors.PRIMARY);
+        shiftIdPanel.add(lblShiftIdLabel);
+        shiftIdPanel.add(lblShiftId);
+
+        // Current Cash
+        JPanel cashPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        cashPanel.setBackground(new Color(240, 248, 255));
+        JLabel lblCashLabel = new JLabel("Tiền mặt:");
+        lblCashLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblCashLabel.setForeground(AppColors.DARK);
+        lblCurrentCash = new JLabel("0 ₫");
+        lblCurrentCash.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblCurrentCash.setForeground(AppColors.SUCCESS);
+        cashPanel.add(lblCashLabel);
+        cashPanel.add(lblCurrentCash);
+
+        widget.add(shiftIdPanel);
+        widget.add(cashPanel);
+
+        return widget;
+    }
+
+    private void loadShiftData() {
+        // First, check if there's ANY open shift on this workstation
+        String workstation = busShift.getCurrentWorkstation();
+        Shift workstationShift = busShift.getOpenShiftOnWorkstation(workstation);
+
+        // Then check staff's personal shift
+        Shift staffShift = null;
+        if (currentStaff != null) {
+            staffShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+        }
+
+        // Use workstation shift if it exists, otherwise use staff shift
+        currentShift = workstationShift != null ? workstationShift : staffShift;
+
+        // Set common button properties
+        btnCloseShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnCloseShift.setForeground(Color.WHITE);
+        btnCloseShift.setBorderPainted(false);
+        btnCloseShift.setFocusPainted(false);
+        btnCloseShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCloseShift.setPreferredSize(new Dimension(120, 40));
+
+        if (currentShift != null) {
+            // Shift is open - show shift info and "Đóng ca"
+            lblShiftId.setText(currentShift.getId());
+            BigDecimal currentCash = busShift.calculateSystemCashForShift(currentShift);
+            lblCurrentCash.setText(currencyFormat.format(currentCash));
+
+            // Check if this is the staff's own shift
+            boolean isOwnShift = currentStaff != null &&
+                currentShift.getStaff() != null &&
+                currentShift.getStaff().getId().equals(currentStaff.getId());
+
+            btnCloseShift.setText("Đóng ca");
+            btnCloseShift.setToolTipText(isOwnShift ?
+                "Nhấn để đóng ca làm việc" :
+                "Đóng ca của: " + currentShift.getStaff().getFullName());
+            btnCloseShift.setBackground(new Color(220, 53, 69)); // Red color for close
+            btnCloseShift.setEnabled(true);
+        } else {
+            // No open shift - show "Mở ca"
+            lblShiftId.setText("Chưa mở ca");
+            lblCurrentCash.setText("---");
+
+            btnCloseShift.setText("Mở ca");
+            btnCloseShift.setToolTipText("Nhấn để mở ca làm việc");
+            btnCloseShift.setBackground(new Color(40, 167, 69)); // Green color for open
+            btnCloseShift.setEnabled(true);
+        }
+    }
+
+    private void handleShiftButtonClick() {
+        if (currentShift != null) {
+            // Close shift
+            DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(
+                (Frame) SwingUtilities.getWindowAncestor(this),
+                currentShift,
+                currentStaff
+            );
+            closeShiftDialog.setVisible(true);
+
+            // Update button and shift info if shift was closed
+            if (closeShiftDialog.isConfirmed()) {
+                currentShift = null;
+                loadShiftData();
+
+                JOptionPane.showMessageDialog(this,
+                    "Ca làm việc đã được đóng thành công!",
+                    "Thông báo",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
+        } else {
+            // Open shift - check for existing shift on workstation
+            String workstation = busShift.getCurrentWorkstation();
+            Shift existingShift = busShift.getOpenShiftOnWorkstation(workstation);
+
+            if (existingShift != null && !existingShift.getStaff().getId().equals(currentStaff.getId())) {
+                // Another staff has an open shift - show takeover dialog
+                handleExistingShift(existingShift);
+            } else {
+                // No existing shift or same staff - open new shift
+                openNewShift();
+            }
+        }
+    }
+
+    private void handleExistingShift(Shift existingShift) {
+        String message = String.format(
+            "Hiện đang có ca do nhân viên %s mở từ %s.\n\n" +
+            "Bạn có muốn tiếp tục ca này không?\n\n" +
+            "Lưu ý: Nếu chọn 'Có', bạn sẽ không thể bán hàng cho đến khi đóng ca này.",
+            existingShift.getStaff().getFullName(),
+            existingShift.getStartTime().format(dateTimeFormatter)
+        );
+
+        int choice = JOptionPane.showConfirmDialog(
+            this,
+            message,
+            "Ca làm việc đang mở",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (choice == JOptionPane.YES_OPTION) {
+            // User wants to continue existing shift
+            currentShift = existingShift;
+            loadShiftData();
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Bạn đã chọn tiếp tục ca hiện tại.\n" +
+                "Lưu ý: Bạn KHÔNG THỂ bán hàng khi chưa đóng ca này.",
+                "Thông báo",
+                JOptionPane.WARNING_MESSAGE
+            );
+        } else {
+            // User does not want to continue
+            JOptionPane.showMessageDialog(
+                this,
+                "Không thể mở ca mới khi đã có ca đang mở trên máy này.\n" +
+                "Vui lòng đóng ca hiện tại trước.",
+                "Không thể mở ca",
+                JOptionPane.WARNING_MESSAGE
+            );
+        }
+    }
+
+    private void openNewShift() {
+        DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(
+            (Frame) SwingUtilities.getWindowAncestor(this),
+            currentStaff
+        );
+        openShiftDialog.setVisible(true);
+
+        // Update button and shift info if shift was opened
+        if (openShiftDialog.getOpenedShift() != null) {
+            currentShift = openShiftDialog.getOpenedShift();
+            loadShiftData();
+
+            JOptionPane.showMessageDialog(this,
+                "Ca làm việc đã được mở thành công!",
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     private JPanel createLowStockPanel() {
@@ -180,18 +422,32 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         headerPanel.add(lblTitle, BorderLayout.WEST);
         headerPanel.add(lblExpiringCount, BorderLayout.EAST);
 
-        // Table
-        String[] columns = {"Mã lô", "Tên sản phẩm", "Số lượng", "Hạn sử dụng", "Còn lại", "Mức độ"};
+        // Table with Action column
+        String[] columns = {"Mã lô", "Tên sản phẩm", "Số lượng", "Hạn sử dụng", "Còn lại", "Mức độ", "Thao tác"};
         expiringSoonModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false;
+                return column == 6; // Only Action column is editable
             }
         };
 
         tblExpiringSoon = createStyledTable(expiringSoonModel);
-        tblExpiringSoon.getColumnModel().getColumn(4).setCellRenderer(new ExpiryDaysCellRenderer());
-        tblExpiringSoon.getColumnModel().getColumn(5).setCellRenderer(new ExpiryLevelCellRenderer());
+
+        // Apply conditional row coloring
+        tblExpiringSoon.setDefaultRenderer(Object.class, new ExpiringRowRenderer());
+
+        // Add button renderer and editor for Action column
+        tblExpiringSoon.getColumnModel().getColumn(6).setCellRenderer(new ButtonRenderer());
+        tblExpiringSoon.getColumnModel().getColumn(6).setCellEditor(new ButtonEditor(new JCheckBox()));
+
+        // Adjust column widths
+        tblExpiringSoon.getColumnModel().getColumn(0).setPreferredWidth(100); // Mã lô
+        tblExpiringSoon.getColumnModel().getColumn(1).setPreferredWidth(200); // Tên sản phẩm
+        tblExpiringSoon.getColumnModel().getColumn(2).setPreferredWidth(80);  // Số lượng
+        tblExpiringSoon.getColumnModel().getColumn(3).setPreferredWidth(100); // Hạn sử dụng
+        tblExpiringSoon.getColumnModel().getColumn(4).setPreferredWidth(80);  // Còn lại
+        tblExpiringSoon.getColumnModel().getColumn(5).setPreferredWidth(100); // Mức độ
+        tblExpiringSoon.getColumnModel().getColumn(6).setPreferredWidth(100); // Thao tác
 
         JScrollPane scrollPane = new JScrollPane(tblExpiringSoon);
         scrollPane.setPreferredSize(new Dimension(0, 180));
@@ -223,8 +479,8 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         headerPanel.add(lblTitle, BorderLayout.WEST);
         headerPanel.add(lblActivePromotionCount, BorderLayout.EAST);
 
-        // Table
-        String[] columns = {"Mã KM", "Tên khuyến mãi", "Ngày bắt đầu", "Ngày kết thúc", "Mô tả"};
+        // Table - Replace Description with Condition
+        String[] columns = {"Mã KM", "Tên khuyến mãi", "Ngày bắt đầu", "Ngày kết thúc", "Điều kiện áp dụng"};
         promotionModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -233,6 +489,13 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         };
 
         tblActivePromotions = createStyledTable(promotionModel);
+
+        // Adjust column widths
+        tblActivePromotions.getColumnModel().getColumn(0).setPreferredWidth(80);  // Mã KM
+        tblActivePromotions.getColumnModel().getColumn(1).setPreferredWidth(200); // Tên KM
+        tblActivePromotions.getColumnModel().getColumn(2).setPreferredWidth(100); // Ngày bắt đầu
+        tblActivePromotions.getColumnModel().getColumn(3).setPreferredWidth(100); // Ngày kết thúc
+        tblActivePromotions.getColumnModel().getColumn(4).setPreferredWidth(300); // Điều kiện
 
         JScrollPane scrollPane = new JScrollPane(tblActivePromotions);
         scrollPane.setPreferredSize(new Dimension(0, 180));
@@ -364,7 +627,8 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                 lot.getQuantity(),
                 lot.getExpiryDate().format(dateFormatter),
                 daysUntilExpiry + " ngày",
-                level
+                level,
+                "Copy ID" // Button label
             });
         }
 
@@ -382,16 +646,90 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         }
 
         for (Promotion promotion : activePromotions) {
+            // Format promotion conditions for display
+            String conditionText = formatPromotionConditions(promotion);
+
             promotionModel.addRow(new Object[]{
                 promotion.getId(),
                 promotion.getName(),
                 promotion.getEffectiveDate() != null ? promotion.getEffectiveDate().format(dateFormatter) : "N/A",
                 promotion.getEndDate() != null ? promotion.getEndDate().format(dateFormatter) : "N/A",
-                promotion.getDescription() != null ? promotion.getDescription() : ""
+                conditionText
             });
         }
 
         lblActivePromotionCount.setText(activePromotions.size() + " chương trình");
+    }
+
+    /**
+     * Format promotion conditions into readable text for staff
+     */
+    private String formatPromotionConditions(Promotion promotion) {
+        if (promotion.getConditions() == null || promotion.getConditions().isEmpty()) {
+            return "Không có điều kiện";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+
+        for (PromotionCondition condition : promotion.getConditions()) {
+            if (count > 0) sb.append("; ");
+
+            // Format based on condition type and target
+            if (condition.getTarget() == PromotionEnum.Target.ORDER_SUBTOTAL) {
+                sb.append("Hóa đơn ");
+                sb.append(formatComparator(condition.getComparator()));
+                sb.append(" ");
+                sb.append(formatCurrency(condition.getPrimaryValue()));
+
+                if (condition.getComparator() == PromotionEnum.Comp.BETWEEN && condition.getSecondaryValue() != null) {
+                    sb.append(" - ");
+                    sb.append(formatCurrency(condition.getSecondaryValue()));
+                }
+            } else if (condition.getTarget() == PromotionEnum.Target.PRODUCT) {
+                if (condition.getConditionType() == PromotionEnum.ConditionType.PRODUCT_QTY) {
+                    sb.append("Mua ");
+                    if (condition.getProduct() != null) {
+                        sb.append(condition.getProduct().getName());
+                        sb.append(" ");
+                    }
+                    sb.append(formatComparator(condition.getComparator()));
+                    sb.append(" ");
+                    sb.append(condition.getPrimaryValue().intValue());
+                    sb.append(" sản phẩm");
+                } else if (condition.getConditionType() == PromotionEnum.ConditionType.PRODUCT_ID) {
+                    sb.append("Sản phẩm: ");
+                    if (condition.getProduct() != null) {
+                        sb.append(condition.getProduct().getName());
+                    }
+                }
+            }
+
+            count++;
+            if (count >= 2) {
+                sb.append("...");
+                break; // Limit to 2 conditions for display
+            }
+        }
+
+        return sb.toString();
+    }
+
+    private String formatComparator(PromotionEnum.Comp comparator) {
+        switch (comparator) {
+            case GREATER_EQUAL: return "≥";
+            case LESS_EQUAL: return "≤";
+            case GREATER: return ">";
+            case LESS: return "<";
+            case EQUAL: return "=";
+            case BETWEEN: return "từ";
+            default: return "";
+        }
+    }
+
+    private String formatCurrency(Double value) {
+        if (value == null) return "0 ₫";
+        return String.format("%,.0f ₫", value);
     }
 
     /**
@@ -402,6 +740,149 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     }
 
     // Custom Cell Renderers
+
+    /**
+     * Conditional Row Renderer for Expiring Soon Table
+     * Colors entire row based on days until expiry:
+     * - Red: < 30 days (Danger)
+     * - Yellow: < 90 days (Warning)
+     */
+    private class ExpiringRowRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                     boolean isSelected, boolean hasFocus, int row, int column) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            // Don't color the button column (column 6)
+            if (column == 6) {
+                return c;
+            }
+
+            // Get "Còn lại" value from column 4 (days remaining)
+            Object daysObj = table.getValueAt(row, 4);
+            if (daysObj != null && daysObj instanceof String) {
+                String daysStr = (String) daysObj;
+                try {
+                    int days = Integer.parseInt(daysStr.split(" ")[0]);
+
+                    if (!isSelected) {
+                        if (days <= EXPIRY_DANGER_DAYS) {
+                            // Red background for danger
+                            c.setBackground(new Color(255, 200, 200));
+                            c.setForeground(Color.BLACK);
+                        } else if (days <= EXPIRY_WARNING_DAYS) {
+                            // Yellow background for warning
+                            c.setBackground(new Color(255, 255, 200));
+                            c.setForeground(Color.BLACK);
+                        } else {
+                            c.setBackground(Color.WHITE);
+                            c.setForeground(Color.BLACK);
+                        }
+                    }
+
+                    // Bold font for "Còn lại" and "Mức độ" columns
+                    if (column == 4 || column == 5) {
+                        setFont(getFont().deriveFont(Font.BOLD));
+                    } else {
+                        setFont(getFont().deriveFont(Font.PLAIN));
+                    }
+                } catch (Exception ignored) {
+                    if (!isSelected) {
+                        c.setBackground(Color.WHITE);
+                        c.setForeground(Color.BLACK);
+                    }
+                }
+            }
+
+            setHorizontalAlignment(column == 2 || column == 4 ? CENTER : LEFT);
+            return c;
+        }
+    }
+
+    /**
+     * Button Renderer for Action Column
+     */
+    private class ButtonRenderer extends JButton implements TableCellRenderer {
+        public ButtonRenderer() {
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                     boolean isSelected, boolean hasFocus, int row, int column) {
+            setText((value == null) ? "Copy ID" : value.toString());
+            setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            setBackground(AppColors.SECONDARY);
+            setForeground(Color.WHITE);
+            setFocusPainted(false);
+            setBorderPainted(false);
+            setCursor(new Cursor(Cursor.HAND_CURSOR));
+            return this;
+        }
+    }
+
+    /**
+     * Button Editor for Action Column
+     */
+    private class ButtonEditor extends DefaultCellEditor {
+        private JButton button;
+        private String label;
+        private boolean clicked;
+        private int row;
+
+        public ButtonEditor(JCheckBox checkBox) {
+            super(checkBox);
+            button = new JButton();
+            button.setOpaque(true);
+            button.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            button.setBackground(AppColors.SECONDARY);
+            button.setForeground(Color.WHITE);
+            button.setFocusPainted(false);
+            button.setBorderPainted(false);
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+            button.addActionListener(e -> {
+                fireEditingStopped();
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                                                    boolean isSelected, int row, int column) {
+            this.row = row;
+            label = (value == null) ? "Copy ID" : value.toString();
+            button.setText(label);
+            clicked = true;
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            if (clicked) {
+                // Get lot batch number from column 0
+                Object batchNumber = tblExpiringSoon.getValueAt(row, 0);
+                if (batchNumber != null) {
+                    // Copy to clipboard
+                    StringSelection stringSelection = new StringSelection(batchNumber.toString());
+                    Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);
+
+                    JOptionPane.showMessageDialog(button,
+                        "Đã copy mã lô: " + batchNumber,
+                        "Thành công",
+                        JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+            clicked = false;
+            return label;
+        }
+
+        @Override
+        public boolean stopCellEditing() {
+            clicked = false;
+            return super.stopCellEditing();
+        }
+    }
+
     private static class LowStockCellRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
