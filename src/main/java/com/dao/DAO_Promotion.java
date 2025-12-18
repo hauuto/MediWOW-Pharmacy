@@ -310,8 +310,28 @@ public class DAO_Promotion implements IPromotion {
     }
 
     private void mergeConditions(Session session, Promotion existing, List<PromotionCondition> incomingList) {
-        if (incomingList == null) return;
+        if (incomingList == null) incomingList = new ArrayList<>();
 
+        // Collect IDs from incoming list (excluding new items without IDs)
+        List<String> incomingIds = incomingList.stream()
+                .filter(c -> c.getId() != null && !c.getId().isBlank())
+                .map(PromotionCondition::getId)
+                .toList();
+
+        // Find and delete conditions that are no longer in the incoming list
+        List<PromotionCondition> existingConditions = session.createQuery(
+                "FROM PromotionCondition c WHERE c.promotion.id = :promotionId",
+                PromotionCondition.class
+        ).setParameter("promotionId", existing.getId()).getResultList();
+
+        for (PromotionCondition existingCond : existingConditions) {
+            if (!incomingIds.contains(existingCond.getId())) {
+                // This condition was removed, delete it
+                session.remove(existingCond);
+            }
+        }
+
+        // Now add new or update existing conditions
         for (PromotionCondition incoming : incomingList) {
             if (incoming.getId() == null || incoming.getId().isBlank()) {
                 // New condition
@@ -341,8 +361,27 @@ public class DAO_Promotion implements IPromotion {
     }
 
     private void mergeActions(Session session, Promotion existing, List<PromotionAction> incomingList) {
-        if (incomingList == null) return;
+        if (incomingList == null) incomingList = new ArrayList<>();
 
+        // Collect IDs from incoming list (excluding new items without IDs)
+        List<String> incomingIds = incomingList.stream()
+                .filter(a -> a.getId() != null && !a.getId().isBlank())
+                .map(PromotionAction::getId)
+                .toList();
+
+        // Find and delete actions that are no longer in the incoming list
+        List<PromotionAction> existingActions = session.createQuery(
+                "FROM PromotionAction a WHERE a.promotion.id = :promotionId",
+                PromotionAction.class
+        ).setParameter("promotionId", existing.getId()).getResultList();
+
+        for (PromotionAction existingAct : existingActions) {
+            if (!incomingIds.contains(existingAct.getId())) {
+                session.remove(existingAct);
+            }
+        }
+
+        // Now add new or update existing actions
         for (PromotionAction incoming : incomingList) {
             if (incoming.getId() == null || incoming.getId().isBlank()) {
                 PromotionAction a = new PromotionAction();
@@ -355,9 +394,7 @@ public class DAO_Promotion implements IPromotion {
 
                 session.persist(a);
             } else {
-                PromotionAction existingAct =
-                        session.find(PromotionAction.class, incoming.getId());
-
+                PromotionAction existingAct = session.find(PromotionAction.class, incoming.getId());
                 if (existingAct != null) {
                     existingAct.setActionOrder(incoming.getActionOrder());
                     existingAct.setType(incoming.getType());
@@ -368,10 +405,6 @@ public class DAO_Promotion implements IPromotion {
             }
         }
     }
-
-
-
-
 
 
     @Override
@@ -471,75 +504,6 @@ public class DAO_Promotion implements IPromotion {
         }
     }
 
-    private void syncActions(Session session, Promotion existing, Promotion detached) {
-        Map<String, PromotionAction> existingMap = existing.getActions().stream()
-                .collect(Collectors.toMap(PromotionAction::getId, a -> a));
-
-        if (detached.getActions() != null) {
-            for (PromotionAction incoming : detached.getActions()) {
-                if (incoming.getId() == null || incoming.getId().isBlank() || incoming.getId().startsWith("TEMP-")) {
-                    PromotionAction a = new PromotionAction();
-                    a.setPromotion(existing);
-                    a.setActionOrder(incoming.getActionOrder());
-                    a.setType(incoming.getType());
-                    a.setTarget(incoming.getTarget());
-                    a.setValue(incoming.getValue());
-                    a.setProductUOM(incoming.getProductUOM());
-                    a.setId("TEMP-" + UUID.randomUUID());
-
-                    existing.getActions().add(a);
-                } else {
-                    PromotionAction a = existingMap.remove(incoming.getId());
-                    if (a == null) {
-                        // Skip unknown IDs
-                        continue;
-                    }
-                    a.setActionOrder(incoming.getActionOrder());
-                    a.setType(incoming.getType());
-                    a.setTarget(incoming.getTarget());
-                    a.setValue(incoming.getValue());
-                    a.setProductUOM(incoming.getProductUOM());
-                }
-            }
-        }
-
-        for (PromotionAction orphan : existingMap.values()) {
-            existing.getActions().remove(orphan);
-        }
-    }
-
-    private void syncConditions(Session session, Promotion existing, Promotion detached) {
-        Map<String, PromotionCondition> existingMap = existing.getConditions().stream()
-                .collect(Collectors.toMap(PromotionCondition::getId, c -> c));
-
-        if (detached.getConditions() != null) {
-            for (PromotionCondition incoming : detached.getConditions()) {
-                if (incoming.getId() == null || incoming.getId().isBlank() || incoming.getId().startsWith("TEMP-")) {
-                    PromotionCondition c = new PromotionCondition();
-                    c.setPromotion(existing);
-                    c.setTarget(incoming.getTarget());
-                    c.setComparator(incoming.getComparator());
-                    c.setConditionType(incoming.getConditionType());
-                    c.setValue(incoming.getValue());
-                    c.setProductUOM(incoming.getProductUOM());
-                    c.setId("TEMP-" + UUID.randomUUID());
-                    existing.getConditions().add(c);
-                } else {
-                    PromotionCondition c = existingMap.remove(incoming.getId());
-                    if (c == null) continue;
-                    c.setTarget(incoming.getTarget());
-                    c.setComparator(incoming.getComparator());
-                    c.setConditionType(incoming.getConditionType());
-                    c.setValue(incoming.getValue());
-                    c.setProductUOM(incoming.getProductUOM());
-                }
-            }
-        }
-
-        for (PromotionCondition orphan : existingMap.values()) {
-            existing.getConditions().remove(orphan);
-        }
-    }
 
 
 }
