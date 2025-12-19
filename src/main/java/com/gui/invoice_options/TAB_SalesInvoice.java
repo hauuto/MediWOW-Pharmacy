@@ -36,6 +36,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private final Map<String, Product> productMap = new HashMap<>();
     private final Map<Integer, String> previousUOMMap = new HashMap<>();
     private final Map<Integer, String> oldUOMIdMap = new HashMap<>();
+    private final Map<Integer, Integer> previousQuantityMap = new HashMap<>();
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
     private JScrollPane scrInvoiceLine;
@@ -45,6 +46,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private JPanel pnlCashOptions;
     private boolean barcodeScanningEnabled = false;
     private boolean isValidatingPrescriptionCode = false;
+    private boolean isUpdatingInvoiceLine = false;
     private JWindow searchWindow, promotionSearchWindow, barcodeScanOverlay;
     private JList<String> searchResultsList, promotionSearchResultsList;
     private DefaultListModel<String> searchResultsModel, promotionSearchResultsModel;
@@ -232,30 +234,64 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' là thuốc ETC.\nVui lòng nhập mã đơn thuốc hợp lệ.", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
             txtPrescriptionCode.requestFocusInWindow(); return;
         }
-        UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
-        for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
-            if (mdlInvoiceLine.getValueAt(i, 0).equals(product.getId()) && mdlInvoiceLine.getValueAt(i, 2).equals(product.getBaseUnitOfMeasure())) {
-                int qty = (int) mdlInvoiceLine.getValueAt(i, 3) + 1;
-                mdlInvoiceLine.setValueAt(qty, i, 3);
-                double price = parseCurrencyValue(mdlInvoiceLine.getValueAt(i, 4).toString());
-                mdlInvoiceLine.setValueAt(qty * price, i, 5);
-                // Calculate unit price
-                Lot lot = product.getOldestLotAvailable();
-                double unitPrice = lot != null ? lot.getRawPrice() * (baseUOM != null ? baseUOM.getBasePriceConversionRate() : 1) : 0.0;
-                invoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(),
-                    new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice));
-                updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice(); return;
+
+        isUpdatingInvoiceLine = true;
+        try {
+            UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
+            for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+                if (mdlInvoiceLine.getValueAt(i, 0).equals(product.getId()) && mdlInvoiceLine.getValueAt(i, 2).equals(product.getBaseUnitOfMeasure())) {
+                    int qty = (int) mdlInvoiceLine.getValueAt(i, 3) + 1;
+
+                    // Check inventory before updating
+                    Lot lot = product.getOldestLotAvailable();
+                    double unitPrice = lot != null ? lot.getRawPrice() * (baseUOM != null ? baseUOM.getBasePriceConversionRate() : 1) : 0.0;
+                    InvoiceLine tempLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice);
+                    if (!tempLine.allocateLots()) {
+                        int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
+                        JOptionPane.showMessageDialog(parentWindow,
+                            "Số lượng yêu cầu vượt quá tồn kho!\nSản phẩm: " + product.getName() +
+                            "\nTồn kho còn lại: " + remaining + " " + product.getBaseUnitOfMeasure(),
+                            "Không đủ tồn kho", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+
+                    mdlInvoiceLine.setValueAt(qty, i, 3);
+                    double price = parseCurrencyValue(mdlInvoiceLine.getValueAt(i, 4).toString());
+                    mdlInvoiceLine.setValueAt(qty * price, i, 5);
+
+                    // Update invoice line with lot allocations
+                    InvoiceLine updatedLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice);
+                    updatedLine.allocateLots();
+                    invoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(), updatedLine);
+                    previousQuantityMap.put(i, qty);
+                    updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice(); return;
+                }
             }
+            Lot lot = product.getOldestLotAvailable();
+            double price = lot != null ? lot.getRawPrice() : 0.0;
+
+            // Create new invoice line and allocate lots
+            InvoiceLine newLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price);
+            if (!newLine.allocateLots()) {
+                int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
+                JOptionPane.showMessageDialog(parentWindow,
+                    "Số lượng yêu cầu vượt quá tồn kho!\nSản phẩm: " + product.getName() +
+                    "\nTồn kho còn lại: " + remaining + " " + product.getBaseUnitOfMeasure(),
+                    "Không đủ tồn kho", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            mdlInvoiceLine.addRow(new Object[]{product.getId(), product.getName(), product.getBaseUnitOfMeasure(), 1, price, price});
+            productMap.put(product.getId(), product);
+            int row = mdlInvoiceLine.getRowCount() - 1;
+            previousUOMMap.put(row, product.getBaseUnitOfMeasure());
+            oldUOMIdMap.put(row, product.getBaseUnitOfMeasure());
+            previousQuantityMap.put(row, 1);
+            invoice.addInvoiceLine(newLine);
+            updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
+        } finally {
+            isUpdatingInvoiceLine = false;
         }
-        Lot lot = product.getOldestLotAvailable();
-        double price = lot != null ? lot.getRawPrice() : 0.0;
-        mdlInvoiceLine.addRow(new Object[]{product.getId(), product.getName(), product.getBaseUnitOfMeasure(), 1, price, price});
-        productMap.put(product.getId(), product);
-        int row = mdlInvoiceLine.getRowCount() - 1;
-        previousUOMMap.put(row, product.getBaseUnitOfMeasure());
-        oldUOMIdMap.put(row, product.getBaseUnitOfMeasure());
-        invoice.addInvoiceLine(new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price));
-        updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
     }
 
     private UnitOfMeasure findUnitOfMeasure(Product product, String name) {
@@ -268,32 +304,94 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         return null;
     }
 
+    /**
+     * Calculate remaining inventory in the selected UOM.
+     * Formula: remainingInUOM = floor(totalBaseQuantity * baseUnitConversionRate)
+     * @param product The product
+     * @param uomName The selected unit of measure name
+     * @return The remaining quantity in the selected UOM
+     */
+    private int getRemainingInventoryInUOM(Product product, String uomName) {
+        // Calculate total available base quantity from all available lots
+        int totalBaseQuantity = product.getLotList().stream()
+                .filter(lot -> lot.getStatus() == com.enums.LotStatus.AVAILABLE && lot.getQuantity() > 0)
+                .mapToInt(Lot::getQuantity)
+                .sum();
+
+        // If using base UOM, return total directly
+        if (uomName.equals(product.getBaseUnitOfMeasure())) {
+            return totalBaseQuantity;
+        }
+
+        // Find the UOM conversion rate
+        UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+        if (uom == null || uom.getBaseUnitConversionRate() == 0) {
+            return totalBaseQuantity;
+        }
+
+        // Convert: remainingInUOM = floor(totalBaseQuantity * baseUnitConversionRate)
+        // e.g., if baseUnitConversionRate = 0.1 (1 box = 10 tablets), and we have 25 tablets
+        // then remainingInUOM = floor(25 * 0.1) = floor(2.5) = 2 boxes
+        return (int) Math.floor(totalBaseQuantity * uom.getBaseUnitConversionRate());
+    }
+
     private void updateInvoiceLineFromTable(int row) {
+        if (isUpdatingInvoiceLine) return; // Prevent recursive calls
         if (row < 0 || row >= mdlInvoiceLine.getRowCount()) return;
-        String productId = (String) mdlInvoiceLine.getValueAt(row, 0);
-        String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
-        int quantity = (int) mdlInvoiceLine.getValueAt(row, 3);
-        Product product = productMap.get(productId);
-        if (product == null) return;
-        for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
-            if (i != row && mdlInvoiceLine.getValueAt(i, 0).equals(productId) && mdlInvoiceLine.getValueAt(i, 2).equals(uomName)) {
-                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại!", "Cảnh báo trùng lặp", JOptionPane.WARNING_MESSAGE));
-                String prev = previousUOMMap.get(row);
-                mdlInvoiceLine.setValueAt(prev != null ? prev : product.getBaseUnitOfMeasure(), row, 2);
+
+        isUpdatingInvoiceLine = true;
+        try {
+            String productId = (String) mdlInvoiceLine.getValueAt(row, 0);
+            String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+            int quantity = (int) mdlInvoiceLine.getValueAt(row, 3);
+            Product product = productMap.get(productId);
+            if (product == null) return;
+
+            for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
+                if (i != row && mdlInvoiceLine.getValueAt(i, 0).equals(productId) && mdlInvoiceLine.getValueAt(i, 2).equals(uomName)) {
+                    JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại!", "Cảnh báo trùng lặp", JOptionPane.WARNING_MESSAGE);
+                    String prev = previousUOMMap.get(row);
+                    mdlInvoiceLine.setValueAt(prev != null ? prev : product.getBaseUnitOfMeasure(), row, 2);
+                    return;
+                }
+            }
+
+            UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+            Lot lot = product.getOldestLotAvailable();
+            double price = lot != null ? lot.getRawPrice() * (uom != null ? uom.getBasePriceConversionRate() : 1) : 0.0;
+
+            // Create invoice line and check lot allocation
+            String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
+            InvoiceLine newLine = new InvoiceLine(product, invoice, uomName, LineType.SALE, quantity, price);
+            if (!newLine.allocateLots()) {
+                // Insufficient inventory - revert changes
+                int remaining = getRemainingInventoryInUOM(product, uomName);
+                JOptionPane.showMessageDialog(parentWindow,
+                    "Số lượng yêu cầu vượt quá tồn kho!\nSản phẩm: " + product.getName() +
+                    "\nTồn kho còn lại: " + remaining + " " + uomName,
+                    "Không đủ tồn kho", JOptionPane.WARNING_MESSAGE);
+
+                // Revert to previous values
+                String prevUom = previousUOMMap.get(row);
+                if (prevUom != null) {
+                    mdlInvoiceLine.setValueAt(prevUom, row, 2);
+                }
+                // Revert quantity to previous value
+                Integer prevQty = previousQuantityMap.get(row);
+                mdlInvoiceLine.setValueAt(prevQty != null ? prevQty : 1, row, 3);
                 return;
             }
+
+            mdlInvoiceLine.setValueAt(price, row, 4);
+            mdlInvoiceLine.setValueAt(price * quantity, row, 5);
+            invoice.updateInvoiceLine(productId, oldUomName, newLine);
+            oldUOMIdMap.put(row, uomName);
+            previousUOMMap.put(row, uomName);
+            previousQuantityMap.put(row, quantity);
+            updateVatDisplay(); updateTotalDisplay();
+        } finally {
+            isUpdatingInvoiceLine = false;
         }
-        UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
-        Lot lot = product.getOldestLotAvailable();
-        double price = lot != null ? lot.getRawPrice() * (uom != null ? uom.getBasePriceConversionRate() : 1) : 0.0;
-        mdlInvoiceLine.setValueAt(price, row, 4);
-        mdlInvoiceLine.setValueAt(price * quantity, row, 5);
-        String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
-        invoice.updateInvoiceLine(productId, oldUomName,
-            new InvoiceLine(product, invoice, uomName, LineType.SALE, quantity, price));
-        oldUOMIdMap.put(row, uomName);
-        previousUOMMap.put(row, uomName);
-        updateVatDisplay(); updateTotalDisplay();
     }
 
     private void setPlaceholderAndTooltip(JTextField txt, String placeholder, String tooltip) {
@@ -472,7 +570,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             }
             mdlInvoiceLine.removeRow(row);
         }
-        previousUOMMap.clear(); oldUOMIdMap.clear();
+        previousUOMMap.clear(); oldUOMIdMap.clear(); previousQuantityMap.clear();
         updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
     }
 
@@ -486,7 +584,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             if (p != null) invoice.removeInvoiceLine(id, uomName);
         }
         mdlInvoiceLine.setRowCount(0);
-        previousUOMMap.clear(); oldUOMIdMap.clear(); productMap.clear();
+        previousUOMMap.clear(); oldUOMIdMap.clear(); previousQuantityMap.clear(); productMap.clear();
         updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
     }
 
@@ -939,6 +1037,16 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     private void completeSaleAndGenerateInvoice() {
         try {
+            // Deduct lot quantities based on lot allocations
+            for (InvoiceLine line : invoice.getInvoiceLineList()) {
+                for (LotAllocation allocation : line.getLotAllocations()) {
+                    boolean success = busProduct.deductLotQuantity(allocation.getLot().getId(), allocation.getQuantity());
+                    if (!success) {
+                        throw new RuntimeException("Không thể cập nhật số lượng lô: " + allocation.getLot().getId());
+                    }
+                }
+            }
+
             // Save invoice to database
             busInvoice.saveInvoice(invoice);
 
@@ -955,6 +1063,10 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             int o = JOptionPane.showConfirmDialog(parentWindow, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
             if (o == JOptionPane.YES_OPTION && Desktop.isDesktopSupported()) Desktop.getDesktop().open(f);
 
+            // Refresh products list to get updated lot quantities
+            products.clear();
+            products.addAll(busProduct.getAllProducts());
+
             // Reset the form for new invoice
             resetInvoiceForm();
         } catch (Exception ex) {
@@ -968,6 +1080,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         productMap.clear();
         previousUOMMap.clear();
         oldUOMIdMap.clear();
+        previousQuantityMap.clear();
 
         // Clear invoice lines
         invoice.getInvoiceLineList().clear();

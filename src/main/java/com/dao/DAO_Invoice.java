@@ -81,6 +81,29 @@ public class DAO_Invoice implements IInvoice {
                     .setParameter("unitPrice", line.getUnitPrice())
                     .setParameter("lineType", line.getLineType().name())
                     .executeUpdate();
+
+                // Retrieve the generated InvoiceLine ID
+                String generatedInvoiceLineId = session.createNativeQuery(
+                    "SELECT TOP 1 id FROM InvoiceLine WHERE invoice = :invoiceId AND product = :productId AND unitOfMeasure = :uom ORDER BY id DESC", String.class)
+                    .setParameter("invoiceId", generatedInvoiceId)
+                    .setParameter("productId", line.getProduct().getId())
+                    .setParameter("uom", line.getUnitOfMeasure())
+                    .uniqueResult();
+
+                // Save LotAllocations for this invoice line
+                if (generatedInvoiceLineId != null && line.getLotAllocations() != null) {
+                    for (com.entities.LotAllocation allocation : line.getLotAllocations()) {
+                        session.createNativeQuery(
+                            "INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) " +
+                            "VALUES (:id, :invoiceLine, :lot, :quantity)")
+                            .setParameter("id", allocation.getId())
+                            .setParameter("invoiceLine", generatedInvoiceLineId)
+                            .setParameter("lot", allocation.getLot().getId())
+                            .setParameter("quantity", allocation.getQuantity())
+                            .executeUpdate();
+                    }
+                    System.out.println("Saved " + line.getLotAllocations().size() + " LotAllocations for InvoiceLine: " + generatedInvoiceLineId);
+                }
             }
 
             transaction.commit();
