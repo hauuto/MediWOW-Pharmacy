@@ -12,8 +12,9 @@ public interface IInvoice {
     /**
      * Saves an invoice to the database.
      * @param invoice The invoice to be saved.
+     * @return The generated invoice ID from the database trigger.
      */
-    void saveInvoice(Invoice invoice);
+    String saveInvoice(Invoice invoice);
 
     /**
      * Retrieves an invoice by its ID.

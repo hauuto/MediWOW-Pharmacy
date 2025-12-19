@@ -16,7 +16,6 @@ import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.beans.*;
-import java.io.File;
 import java.text.*;
 import java.util.*;
 import java.util.List;
@@ -1081,21 +1080,30 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                 }
             }
 
-            // Save invoice to database
-            busInvoice.saveInvoice(invoice);
+            // Save invoice to database and get the generated ID
+            String generatedInvoiceId = busInvoice.saveInvoice(invoice);
 
-            // Generate PDF
-            File d = new File("invoices"); if (!d.exists()) d.mkdirs();
-            String fn = "invoices/Invoice_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".pdf";
-            File f = InvoicePDFGenerator.generateInvoicePDF(invoice, fn);
+            // Get customer payment amount
+            java.math.BigDecimal customerPayment = java.math.BigDecimal.ZERO;
+            if (txtCustomerPayment != null && txtCustomerPayment.getValue() instanceof Number) {
+                customerPayment = java.math.BigDecimal.valueOf(((Number) txtCustomerPayment.getValue()).longValue());
+            }
 
             // Notify dashboard to refresh immediately
             if (dataChangeListener != null) {
                 dataChangeListener.onInvoiceCreated();
             }
 
-            int o = JOptionPane.showConfirmDialog(parentWindow, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
-            if (o == JOptionPane.YES_OPTION && Desktop.isDesktopSupported()) Desktop.getDesktop().open(f);
+            // Ask user if they want to print the receipt
+            int printChoice = JOptionPane.showConfirmDialog(parentWindow,
+                "Thanh toán thành công!\nBạn có muốn in hóa đơn không?",
+                "In hóa đơn",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+
+            if (printChoice == JOptionPane.YES_OPTION) {
+                printReceiptDirectly(generatedInvoiceId, customerPayment);
+            }
 
             // Refresh products list to get updated lot quantities
             products.clear();
@@ -1105,6 +1113,48 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             resetInvoiceForm();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(parentWindow, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void printReceiptDirectly(String invoiceId, java.math.BigDecimal customerPayment) {
+        // Check if any printer is available
+        String[] printers = ReceiptThermalPrinter.getAvailablePrinters();
+        if (printers.length == 0) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Không tìm thấy máy in nào!\nVui lòng kiểm tra kết nối máy in.",
+                "Lỗi máy in",
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Let user select printer
+        String selectedPrinter = (String) JOptionPane.showInputDialog(
+            parentWindow,
+            "Chọn máy in:",
+            "Chọn máy in",
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            printers,
+            printers[0]
+        );
+
+        if (selectedPrinter == null) {
+            return; // User cancelled
+        }
+
+        // Print directly to thermal printer
+        try {
+            ReceiptThermalPrinter.printReceipt(invoice, invoiceId, customerPayment, selectedPrinter);
+            JOptionPane.showMessageDialog(parentWindow,
+                "In hóa đơn thành công!",
+                "Thành công",
+                JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Lỗi in hóa đơn: " + e.getMessage(),
+                "Lỗi",
+                JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
     }
 
