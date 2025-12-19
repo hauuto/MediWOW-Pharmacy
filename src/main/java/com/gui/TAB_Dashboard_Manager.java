@@ -673,8 +673,8 @@ public class TAB_Dashboard_Manager extends JPanel {
         }
 
         lblTodayInvoiceCount.setText(String.valueOf(invoiceCount));
-        lblTodayRevenue.setText(String.format("%,.0f đ", totalRevenue.doubleValue()));
-        lblTodayProfit.setText(String.format("%,.0f đ", totalProfit.doubleValue()));
+        lblTodayRevenue.setText(formatVnd0(totalRevenue) + " đ");
+        lblTodayProfit.setText(formatVnd0(totalProfit) + " đ");
 
         // Color coding for profit
         if (totalProfit.compareTo(java.math.BigDecimal.ZERO) >= 0) {
@@ -748,8 +748,8 @@ public class TAB_Dashboard_Manager extends JPanel {
                 rank++,
                 stats.productName,
                 stats.quantitySold,
-                String.format("%,.0f đ", stats.revenue.doubleValue()),
-                profit.doubleValue()
+                formatVnd0(stats.revenue) + " đ",
+                profit
             });
         }
     }
@@ -915,9 +915,9 @@ public class TAB_Dashboard_Manager extends JPanel {
         java.math.BigDecimal expectedCashAtEnd = cashAtStart.add(cashRevenue);
 
         lblReconInvoiceCount.setText(String.format("<html><b>Số hóa đơn:</b><br/>%d</html>", todayInvoices.size()));
-        lblReconSystemRevenue.setText(String.format("<html><b>Doanh thu hệ thống:</b><br/>%,.0f đ</html>", totalRevenue.doubleValue()));
-        lblReconCashStart.setText(String.format("<html><b>Tiền đầu ca:</b><br/>%,.0f đ</html>", cashAtStart.doubleValue()));
-        lblReconCashEnd.setText(String.format("<html><b>Tiền cuối ca (dự kiến):</b><br/>%,.0f đ</html>", expectedCashAtEnd.doubleValue()));
+        lblReconSystemRevenue.setText(String.format("<html><b>Doanh thu hệ thống:</b><br/>%s đ</html>", formatVnd0(totalRevenue)));
+        lblReconCashStart.setText(String.format("<html><b>Tiền đầu ca:</b><br/>%s đ</html>", formatVnd0(cashAtStart)));
+        lblReconCashEnd.setText(String.format("<html><b>Tiền cuối ca (dự kiến):</b><br/>%s đ</html>", formatVnd0(expectedCashAtEnd)));
 
         // Simple reconciliation status check
         // In a real app, this would compare expectedCashAtEnd with a manual count
@@ -931,6 +931,12 @@ public class TAB_Dashboard_Manager extends JPanel {
             lblCashReconciliation.setText("Lệch");
             lblCashReconciliation.setForeground(AppColors.DANGER);
         }
+    }
+
+    private static String formatVnd0(java.math.BigDecimal amount) {
+        if (amount == null) amount = java.math.BigDecimal.ZERO;
+        // Grouping, 0 decimals (common for VND display)
+        return String.format("%,.0f", amount);
     }
 
     /**
@@ -989,21 +995,14 @@ public class TAB_Dashboard_Manager extends JPanel {
                                                      boolean isSelected, boolean hasFocus, int row, int column) {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
-            if (value instanceof java.math.BigDecimal) {
-                java.math.BigDecimal profit = (java.math.BigDecimal) value;
-                setText(String.format("%,.0f đ", profit.doubleValue()));
+            if (value instanceof java.math.BigDecimal profit) {
+                setText(formatVnd0(profit) + " đ");
 
                 if (profit.compareTo(java.math.BigDecimal.ZERO) >= 0) {
                     c.setForeground(AppColors.SUCCESS);
                 } else {
                     c.setForeground(AppColors.DANGER);
                 }
-                setFont(getFont().deriveFont(Font.BOLD));
-            } else if (value instanceof Double) {
-                // backward compatibility
-                double profit = (Double) value;
-                setText(String.format("%,.0f đ", profit));
-                c.setForeground(profit >= 0 ? AppColors.SUCCESS : AppColors.DANGER);
                 setFont(getFont().deriveFont(Font.BOLD));
             }
 
@@ -1063,14 +1062,3 @@ public class TAB_Dashboard_Manager extends JPanel {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -147,7 +147,7 @@ public class InvoiceLine {
     /** Calculate the VAT amount for this invoice line. */
     public BigDecimal calculateVatAmount() {
         if (product == null) return BigDecimal.ZERO;
-        BigDecimal vatPercent = BigDecimal.valueOf(product.getVat());
+        BigDecimal vatPercent = product.getVat() != null ? product.getVat() : BigDecimal.ZERO;
         BigDecimal vatRate = vatPercent.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
         return calculateSubtotal().multiply(vatRate);
     }
