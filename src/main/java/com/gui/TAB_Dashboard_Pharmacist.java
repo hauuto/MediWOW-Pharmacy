@@ -118,14 +118,24 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         // Summary Cards at top
         contentPanel.add(createSummaryCardsPanel(), BorderLayout.NORTH);
 
-        // Tables and info panels
-        JPanel mainPanel = new JPanel(new GridLayout(4, 1, 10, 10));
+        // Tables and info panels - 2 Column Grid Layout
+        JPanel mainPanel = new JPanel(new GridLayout(1, 2, 15, 10));
         mainPanel.setBackground(AppColors.WHITE);
 
-        mainPanel.add(createExpiringSoonPanel());
-        mainPanel.add(createLowStockPanel());
-        mainPanel.add(createTopSellingPanel());
-        mainPanel.add(createPromotionPanel());
+        // Left Column: Alerts & High Activity (Expiring & Top Selling)
+        JPanel leftColumn = new JPanel(new GridLayout(2, 1, 10, 15));
+        leftColumn.setBackground(AppColors.WHITE);
+        leftColumn.add(createExpiringSoonPanel());
+        leftColumn.add(createTopSellingPanel());
+
+        // Right Column: Stock Management (Low Stock & Promotions)
+        JPanel rightColumn = new JPanel(new GridLayout(2, 1, 10, 15));
+        rightColumn.setBackground(AppColors.WHITE);
+        rightColumn.add(createLowStockPanel());
+        rightColumn.add(createPromotionPanel());
+
+        mainPanel.add(leftColumn);
+        mainPanel.add(rightColumn);
 
         contentPanel.add(mainPanel, BorderLayout.CENTER);
         add(contentPanel, BorderLayout.CENTER);
@@ -428,7 +438,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblLowStock.getColumnModel().getColumn(2).setCellRenderer(new LowStockCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(tblLowStock);
-        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setPreferredSize(new Dimension(0, 300));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
@@ -486,7 +496,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblExpiringSoon.getColumnModel().getColumn(6).setPreferredWidth(100); // Thao tác
 
         JScrollPane scrollPane = new JScrollPane(tblExpiringSoon);
-        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setPreferredSize(new Dimension(0, 300));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
@@ -535,7 +545,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblActivePromotions.getColumnModel().getColumn(4).setPreferredWidth(300); // Điều kiện
 
         JScrollPane scrollPane = new JScrollPane(tblActivePromotions);
-        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setPreferredSize(new Dimension(0, 300));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
@@ -587,7 +597,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblTopSelling.getColumnModel().getColumn(0).setCellRenderer(new TopRankCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(tblTopSelling);
-        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setPreferredSize(new Dimension(0, 300));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
