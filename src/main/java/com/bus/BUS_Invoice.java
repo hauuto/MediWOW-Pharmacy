@@ -15,8 +15,8 @@ public class BUS_Invoice  implements IInvoice {
     }
 
     @Override
-    public void saveInvoice(Invoice invoice) {
-        daoInvoice.saveInvoice(invoice);
+    public String saveInvoice(Invoice invoice) {
+        return daoInvoice.saveInvoice(invoice);
     }
 
     @Override
