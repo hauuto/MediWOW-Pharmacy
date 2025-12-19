@@ -645,52 +645,56 @@ public class TAB_Dashboard_Manager extends JPanel {
             .collect(Collectors.toList());
 
         int invoiceCount = todayInvoices.size();
-        double totalRevenue = 0.0;
-        double totalProfit = 0.0;
+        java.math.BigDecimal totalRevenue = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal totalProfit = java.math.BigDecimal.ZERO;
 
         for (Invoice invoice : todayInvoices) {
-            double invoiceTotal = invoice.calculateTotal();
+            java.math.BigDecimal invoiceTotal = invoice.calculateTotal();
 
             if (invoice.getType() == InvoiceType.SALES) {
-                totalRevenue += invoiceTotal;
+                totalRevenue = totalRevenue.add(invoiceTotal);
 
                 // Calculate profit
                 for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    double revenue = line.calculateSubtotal();
-                    double cost = calculateLineCost(line);
-                    totalProfit += (revenue - cost);
+                    java.math.BigDecimal revenue = line.calculateSubtotal();
+                    java.math.BigDecimal cost = calculateLineCostBD(line);
+                    totalProfit = totalProfit.add(revenue.subtract(cost));
                 }
             } else if (invoice.getType() == InvoiceType.RETURN) {
-                totalRevenue -= invoiceTotal;
+                totalRevenue = totalRevenue.subtract(invoiceTotal);
 
                 // Subtract from profit
                 for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    double revenue = line.calculateSubtotal();
-                    double cost = calculateLineCost(line);
-                    totalProfit -= (revenue - cost);
+                    java.math.BigDecimal revenue = line.calculateSubtotal();
+                    java.math.BigDecimal cost = calculateLineCostBD(line);
+                    totalProfit = totalProfit.subtract(revenue.subtract(cost));
                 }
             }
         }
 
         lblTodayInvoiceCount.setText(String.valueOf(invoiceCount));
-        lblTodayRevenue.setText(String.format("%,.0f đ", totalRevenue));
-        lblTodayProfit.setText(String.format("%,.0f đ", totalProfit));
+        lblTodayRevenue.setText(String.format("%,.0f đ", totalRevenue.doubleValue()));
+        lblTodayProfit.setText(String.format("%,.0f đ", totalProfit.doubleValue()));
 
         // Color coding for profit
-        if (totalProfit >= 0) {
+        if (totalProfit.compareTo(java.math.BigDecimal.ZERO) >= 0) {
             lblTodayProfit.setForeground(AppColors.SUCCESS);
         } else {
             lblTodayProfit.setForeground(AppColors.DANGER);
         }
     }
 
-    private double calculateLineCost(InvoiceLine line) {
-        double totalCost = 0.0;
+    private java.math.BigDecimal calculateLineCostBD(InvoiceLine line) {
+        java.math.BigDecimal totalCost = java.math.BigDecimal.ZERO;
 
         if (line.getLotAllocations() != null) {
             for (LotAllocation allocation : line.getLotAllocations()) {
                 if (allocation.getLot() != null) {
-                    totalCost += allocation.getLot().getRawPrice() * allocation.getQuantity();
+                    java.math.BigDecimal raw = allocation.getLot().getRawPrice();
+                    java.math.BigDecimal qty = java.math.BigDecimal.valueOf(allocation.getQuantity());
+                    if (raw != null) {
+                        totalCost = totalCost.add(raw.multiply(qty));
+                    }
                 }
             }
         }
@@ -721,8 +725,8 @@ public class TAB_Dashboard_Manager extends JPanel {
 
                         ProductStats stats = productStatsMap.getOrDefault(productId, new ProductStats(productName));
                         stats.quantitySold += line.getQuantity();
-                        stats.revenue += line.calculateSubtotal();
-                        stats.cost += calculateLineCost(line);
+                        stats.revenue = stats.revenue.add(line.calculateSubtotal());
+                        stats.cost = stats.cost.add(calculateLineCostBD(line));
 
                         productStatsMap.put(productId, stats);
                     }
@@ -738,14 +742,14 @@ public class TAB_Dashboard_Manager extends JPanel {
         int rank = 1;
         for (int i = 0; i < Math.min(10, sortedProducts.size()); i++) {
             ProductStats stats = sortedProducts.get(i).getValue();
-            double profit = stats.revenue - stats.cost;
+            java.math.BigDecimal profit = stats.revenue.subtract(stats.cost);
 
             bestSellersModel.addRow(new Object[]{
                 rank++,
                 stats.productName,
                 stats.quantitySold,
-                String.format("%,.0f đ", stats.revenue),
-                profit
+                String.format("%,.0f đ", stats.revenue.doubleValue()),
+                profit.doubleValue()
             });
         }
     }
@@ -853,9 +857,9 @@ public class TAB_Dashboard_Manager extends JPanel {
         if (allInvoices == null) return;
 
         LocalDate today = LocalDate.now();
-        Map<Integer, Double> revenueByHour = new TreeMap<>();
+        Map<Integer, java.math.BigDecimal> revenueByHour = new TreeMap<>();
         for (int i = 0; i < 24; i++) {
-            revenueByHour.put(i, 0.0);
+            revenueByHour.put(i, java.math.BigDecimal.ZERO);
         }
 
         for (Invoice invoice : allInvoices) {
@@ -864,12 +868,12 @@ public class TAB_Dashboard_Manager extends JPanel {
                 invoice.getType() == InvoiceType.SALES) {
 
                 int hour = invoice.getCreationDate().getHour();
-                revenueByHour.merge(hour, invoice.calculateTotal(), Double::sum);
+                revenueByHour.merge(hour, invoice.calculateTotal(), java.math.BigDecimal::add);
             }
         }
 
         List<Integer> hours = new ArrayList<>(revenueByHour.keySet());
-        List<Double> revenues = new ArrayList<>(revenueByHour.values());
+        List<Double> revenues = revenueByHour.values().stream().map(java.math.BigDecimal::doubleValue).toList();
 
         if (revenueChart.getSeriesMap().containsKey("Doanh thu")) {
             revenueChart.updateXYSeries("Doanh thu", hours, revenues, null);
@@ -891,30 +895,29 @@ public class TAB_Dashboard_Manager extends JPanel {
                           inv.getCreationDate().toLocalDate().equals(today))
             .collect(Collectors.toList());
 
-        double totalRevenue = 0.0;
-        double cashRevenue = 0.0;
+        java.math.BigDecimal totalRevenue = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal cashRevenue = java.math.BigDecimal.ZERO;
         // Mock value for cash at the start of the shift
-        double cashAtStart = 5000000; // 5,000,000 VND
+        java.math.BigDecimal cashAtStart = java.math.BigDecimal.valueOf(5_000_000);
+        java.math.BigDecimal cashRate = new java.math.BigDecimal("0.70");
 
         for (Invoice invoice : todayInvoices) {
-            double invoiceTotal = invoice.calculateTotal();
+            java.math.BigDecimal invoiceTotal = invoice.calculateTotal();
             if (invoice.getType() == InvoiceType.SALES) {
-                totalRevenue += invoiceTotal;
-                // Assuming a method getPaymentMethod() exists on Invoice
-                // For now, let's assume 70% of sales are cash
-                cashRevenue += invoiceTotal * 0.7;
+                totalRevenue = totalRevenue.add(invoiceTotal);
+                cashRevenue = cashRevenue.add(invoiceTotal.multiply(cashRate));
             } else if (invoice.getType() == InvoiceType.RETURN) {
-                totalRevenue -= invoiceTotal;
-                cashRevenue -= invoiceTotal * 0.7;
+                totalRevenue = totalRevenue.subtract(invoiceTotal);
+                cashRevenue = cashRevenue.subtract(invoiceTotal.multiply(cashRate));
             }
         }
 
-        double expectedCashAtEnd = cashAtStart + cashRevenue;
+        java.math.BigDecimal expectedCashAtEnd = cashAtStart.add(cashRevenue);
 
         lblReconInvoiceCount.setText(String.format("<html><b>Số hóa đơn:</b><br/>%d</html>", todayInvoices.size()));
-        lblReconSystemRevenue.setText(String.format("<html><b>Doanh thu hệ thống:</b><br/>%,.0f đ</html>", totalRevenue));
-        lblReconCashStart.setText(String.format("<html><b>Tiền đầu ca:</b><br/>%,.0f đ</html>", cashAtStart));
-        lblReconCashEnd.setText(String.format("<html><b>Tiền cuối ca (dự kiến):</b><br/>%,.0f đ</html>", expectedCashAtEnd));
+        lblReconSystemRevenue.setText(String.format("<html><b>Doanh thu hệ thống:</b><br/>%,.0f đ</html>", totalRevenue.doubleValue()));
+        lblReconCashStart.setText(String.format("<html><b>Tiền đầu ca:</b><br/>%,.0f đ</html>", cashAtStart.doubleValue()));
+        lblReconCashEnd.setText(String.format("<html><b>Tiền cuối ca (dự kiến):</b><br/>%,.0f đ</html>", expectedCashAtEnd.doubleValue()));
 
         // Simple reconciliation status check
         // In a real app, this would compare expectedCashAtEnd with a manual count
@@ -948,8 +951,8 @@ public class TAB_Dashboard_Manager extends JPanel {
     private static class ProductStats {
         String productName;
         int quantitySold;
-        double revenue;
-        double cost;
+        java.math.BigDecimal revenue = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal cost = java.math.BigDecimal.ZERO;
 
         ProductStats(String productName) {
             this.productName = productName;
@@ -986,15 +989,21 @@ public class TAB_Dashboard_Manager extends JPanel {
                                                      boolean isSelected, boolean hasFocus, int row, int column) {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
-            if (value instanceof Double) {
-                double profit = (Double) value;
-                setText(String.format("%,.0f đ", profit));
+            if (value instanceof java.math.BigDecimal) {
+                java.math.BigDecimal profit = (java.math.BigDecimal) value;
+                setText(String.format("%,.0f đ", profit.doubleValue()));
 
-                if (profit >= 0) {
+                if (profit.compareTo(java.math.BigDecimal.ZERO) >= 0) {
                     c.setForeground(AppColors.SUCCESS);
                 } else {
                     c.setForeground(AppColors.DANGER);
                 }
+                setFont(getFont().deriveFont(Font.BOLD));
+            } else if (value instanceof Double) {
+                // backward compatibility
+                double profit = (Double) value;
+                setText(String.format("%,.0f đ", profit));
+                c.setForeground(profit >= 0 ? AppColors.SUCCESS : AppColors.DANGER);
                 setFont(getFont().deriveFont(Font.BOLD));
             }
 
@@ -1054,4 +1063,14 @@ public class TAB_Dashboard_Manager extends JPanel {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
 

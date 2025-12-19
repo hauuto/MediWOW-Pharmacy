@@ -3,16 +3,17 @@ package com.entities;
 import com.enums.InvoiceType;
 import com.enums.PaymentMethod;
 import com.enums.PromotionEnum;
-import com.enums.PromotionEnum.Target; // Import thêm để code gọn hơn
 import com.enums.PromotionEnum.ConditionType;
+import com.enums.PromotionEnum.Target;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
 
 /**
  * @author Bùi Quốc Trụ
@@ -249,47 +250,58 @@ public class Invoice {
         );
     }
 
-    /** Calculate the subtotal amount of the invoice. */
-    public double calculateSubtotal() {
-        double subtotal = 0.0;
+    // =====================================================
+    // Money calculations (BigDecimal is the source of truth)
+    // =====================================================
+
+    /** Preferred BigDecimal subtotal. */
+    public BigDecimal calculateSubtotal() {
+        BigDecimal subtotal = BigDecimal.ZERO;
         for (InvoiceLine line : invoiceLineList) {
-            subtotal += line.calculateSubtotal();
+            if (line != null) subtotal = subtotal.add(line.calculateSubtotal());
         }
         return subtotal;
     }
 
-    /** Calculate the total VAT amount of the invoice. */
-    public double calculateVatAmount() {
-        double vatAmount = 0.0;
+
+
+    /** Preferred BigDecimal VAT. */
+    public BigDecimal calculateVatAmount() {
+        BigDecimal vatAmount = BigDecimal.ZERO;
         for (InvoiceLine line : invoiceLineList) {
-            vatAmount += line.calculateVatAmount();
+            if (line != null) vatAmount = vatAmount.add(line.calculateVatAmount());
         }
         return vatAmount;
     }
 
-    /** Calculate the subtotal including VAT. */
-    public double calculateSubtotalWithVat() {
-        return calculateSubtotal() + calculateVatAmount();
+
+
+    /** Preferred BigDecimal subtotal including VAT. */
+    public BigDecimal calculateSubtotalWithVat() {
+        return calculateSubtotal().add(calculateVatAmount());
     }
+
+
+    // =====================================================
+    // Promotion checks & discounts
+    // =====================================================
 
     /** Check if the invoice satisfies all promotion conditions */
     public boolean checkPromotionConditions() {
-        if (promotion == null)
-            return false;
+        if (promotion == null) return false;
 
         List<PromotionCondition> conditions = promotion.getConditions();
-        if (conditions == null || conditions.isEmpty())
-            return true;
+        if (conditions == null || conditions.isEmpty()) return true;
+
         for (PromotionCondition condition : conditions) {
-            if (!checkSingleCondition(condition)) {
-                return false;
-            }
+            if (!checkSingleCondition(condition)) return false;
         }
         return true;
     }
 
     /** Check if a single promotion condition is satisfied */
     private boolean checkSingleCondition(PromotionCondition condition) {
+        if (condition == null) return false;
         if (condition.getTarget() == Target.PRODUCT) {
             return checkProductCondition(condition);
         } else if (condition.getTarget() == Target.ORDER_SUBTOTAL) {
@@ -301,15 +313,17 @@ public class Invoice {
     /** Check product-targeted condition (e.g., buy X quantity of product Y) */
     private boolean checkProductCondition(PromotionCondition condition) {
         Product targetProduct = condition.getProduct();
-        if (targetProduct == null)
-            return false;
+        if (targetProduct == null) return false;
+
         int totalQuantity = 0;
         for (InvoiceLine line : invoiceLineList) {
-            if (line.getProduct().getId().equals(targetProduct.getId())) {
+            if (line != null && line.getProduct() != null && line.getProduct().getId().equals(targetProduct.getId())) {
                 totalQuantity += line.getQuantity();
             }
         }
+
         if (condition.getConditionType() == ConditionType.PRODUCT_QTY) {
+            // For quantity, compare using BigDecimal value.
             return compareValues(totalQuantity, condition.getPrimaryValue(), condition.getComparator());
         }
         return false;
@@ -318,85 +332,118 @@ public class Invoice {
     /** Check order subtotal condition (e.g., order total >= X) */
     private boolean checkOrderCondition(PromotionCondition condition) {
         if (condition.getConditionType() == ConditionType.ORDER_SUBTOTAL) {
-            double subtotalWithVat = calculateSubtotalWithVat();
+            BigDecimal subtotalWithVat = calculateSubtotalWithVat();
             return compareValues(subtotalWithVat, condition.getPrimaryValue(), condition.getComparator());
         }
         return false;
     }
 
-    /** Compare two values based on comparator */
-    private boolean compareValues(double actualValue, double requiredValue, PromotionEnum.Comp comparator) {
-        return switch (comparator) {
-            case EQUAL -> actualValue == requiredValue;
-            case GREATER -> actualValue > requiredValue;
-            case GREATER_EQUAL -> actualValue >= requiredValue;
-            case LESS -> actualValue < requiredValue;
-            case LESS_EQUAL -> actualValue <= requiredValue;
-            case BETWEEN -> false; // BETWEEN requires secondaryValue - not implemented yet
-            default -> false;
+    // =====================================================
+    // Promotion discount calculation helpers
+    // =====================================================
+
+    /**
+     * Calculate discount for PRODUCT-targeted action.
+     * Supports percentage/fixed discounts and buy-x-get-y (if configured).
+     */
+    private BigDecimal calculateProductDiscount(PromotionAction action) {
+        if (action == null) return BigDecimal.ZERO;
+        Product targetProduct = action.getProduct();
+        if (targetProduct == null) return BigDecimal.ZERO;
+
+        BigDecimal discount = BigDecimal.ZERO;
+        for (InvoiceLine line : invoiceLineList) {
+            if (line == null || line.getProduct() == null) continue;
+            if (!line.getProduct().getId().equals(targetProduct.getId())) continue;
+
+            BigDecimal lineSubtotalWithVat = line.calculateTotalAmount();
+
+            // Discount value semantics depend on action type
+            switch (action.getType()) {
+                case PERCENT_DISCOUNT -> {
+                    BigDecimal rate = action.getValue().divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+                    discount = discount.add(lineSubtotalWithVat.multiply(rate));
+                }
+                case FIXED_DISCOUNT -> {
+                    // Fixed discount amount for this product line
+                    discount = discount.add(action.getValue());
+                }
+                default -> {
+                    // Other types can be implemented later
+                }
+            }
+        }
+
+        return discount;
+    }
+
+    /**
+     * Calculate discount for ORDER_SUBTOTAL-targeted action.
+     */
+    private BigDecimal calculateOrderDiscount(PromotionAction action) {
+        if (action == null) return BigDecimal.ZERO;
+
+        BigDecimal subtotalWithVat = calculateSubtotalWithVat();
+        return switch (action.getType()) {
+            case PERCENT_DISCOUNT -> {
+                BigDecimal rate = action.getValue().divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+                yield subtotalWithVat.multiply(rate);
+            }
+            case FIXED_DISCOUNT -> action.getValue() != null ? action.getValue() : BigDecimal.ZERO;
+            default -> BigDecimal.ZERO;
         };
     }
 
-    /** Calculate the total discount applied to the invoice. */
-    public double calculatePromotion() {
-        if (promotion == null) return 0.0;
-        if (!checkPromotionConditions()) return 0.0;
+    /** Compare two values based on comparator */
+    private boolean compareValues(BigDecimal actualValue, BigDecimal requiredValue, PromotionEnum.Comp comparator) {
+        if (actualValue == null) actualValue = BigDecimal.ZERO;
+        if (requiredValue == null) requiredValue = BigDecimal.ZERO;
+        int cmp = actualValue.compareTo(requiredValue);
 
-        double totalDiscount = 0.0;
+        return switch (comparator) {
+            case EQUAL -> cmp == 0;
+            case GREATER -> cmp > 0;
+            case GREATER_EQUAL -> cmp >= 0;
+            case LESS -> cmp < 0;
+            case LESS_EQUAL -> cmp <= 0;
+            case BETWEEN -> false; // BETWEEN requires secondaryValue - not implemented yet
+        };
+    }
+
+    /** Compare int (e.g., qty) to a BigDecimal required value. */
+    private boolean compareValues(int actualValue, BigDecimal requiredValue, PromotionEnum.Comp comparator) {
+        if (comparator == null) return false;
+        return compareValues(BigDecimal.valueOf(actualValue), requiredValue, comparator);
+    }
+
+    /** Preferred BigDecimal promotion discount. */
+    public BigDecimal calculatePromotion() {
+        if (promotion == null) return BigDecimal.ZERO;
+        if (!checkPromotionConditions()) return BigDecimal.ZERO;
+
+        BigDecimal totalDiscount = BigDecimal.ZERO;
         List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
                 .sorted(Comparator.comparingInt(PromotionAction::getActionOrder))
                 .toList();
 
         for (PromotionAction action : sortedActionOrderList) {
+            if (action == null) continue;
             if (action.getTarget() == Target.PRODUCT) {
-                totalDiscount += calculateProductDiscount(action);
+                totalDiscount = totalDiscount.add(calculateProductDiscount(action));
             } else if (action.getTarget() == Target.ORDER_SUBTOTAL) {
-                totalDiscount += calculateOrderDiscount(action);
+                totalDiscount = totalDiscount.add(calculateOrderDiscount(action));
             }
         }
+
         return totalDiscount;
     }
 
-    /** Calculate discount for product-targeted promotion action */
-    private double calculateProductDiscount(PromotionAction action) {
-        double discount = 0.0;
-        Product targetProduct = (action.getProductUOM() != null && action.getProductUOM().getProduct() != null)
-                ? action.getProductUOM().getProduct() : null;
 
-        for (InvoiceLine line : invoiceLineList) {
-            if (line.getProduct().getId().equals(targetProduct.getId())) {
-                double lineSubtotalWithVat = line.calculateTotalAmount();
-
-                double primaryValue = (action.getValue() != null) ? action.getValue().doubleValue() : 0.0;
-
-                if (action.getType() == PromotionEnum.ActionType.FIXED_DISCOUNT) {
-                    discount += primaryValue;
-                } else if (action.getType() == PromotionEnum.ActionType.PERCENT_DISCOUNT) {
-                    discount += lineSubtotalWithVat * (primaryValue / 100);
-                }
-            }
-        }
-        return discount;
-    }
-
-    /** Calculate discount for order subtotal-targeted promotion action */
-    private double calculateOrderDiscount(PromotionAction action) {
-        double discount = 0.0;
-        double subtotalWithVat = calculateSubtotalWithVat();
-
-        double primaryValue = (action.getValue() != null) ? action.getValue().doubleValue() : 0.0;
-
-        if (action.getType() == PromotionEnum.ActionType.FIXED_DISCOUNT) {
-            discount = primaryValue;
-        } else if (action.getType() == PromotionEnum.ActionType.PERCENT_DISCOUNT) {
-            discount = subtotalWithVat * (primaryValue / 100);
-        }
-        return discount;
-    }
-
-    /** Calculate the total amount of the invoice after applying promotions. */
-    public double calculateTotal() {
-        return Math.ceil(calculateSubtotalWithVat() - calculatePromotion());
+    /** Preferred BigDecimal total. */
+    public BigDecimal calculateTotal() {
+        BigDecimal total = calculateSubtotalWithVat().subtract(calculatePromotion());
+        // Money scale = 2 for tax/discount; round half-up.
+        return total.setScale(2, RoundingMode.HALF_UP);
     }
 
     @Override

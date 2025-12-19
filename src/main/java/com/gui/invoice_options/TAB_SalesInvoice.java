@@ -244,7 +244,12 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
                     // Check inventory before updating
                     Lot lot = product.getOldestLotAvailable();
-                    double unitPrice = lot != null ? lot.getRawPrice() * (baseUOM != null ? baseUOM.getBasePriceConversionRate() : 1) : 0.0;
+                    java.math.BigDecimal rawPrice = lot != null ? lot.getRawPrice() : java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal basePriceConversion = (baseUOM != null && baseUOM.getBasePriceConversionRate() != null)
+                            ? baseUOM.getBasePriceConversionRate()
+                            : java.math.BigDecimal.ONE;
+                    java.math.BigDecimal unitPrice = rawPrice.multiply(basePriceConversion);
+
                     InvoiceLine tempLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice);
                     if (!tempLine.allocateLots()) {
                         int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
@@ -256,8 +261,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                     }
 
                     mdlInvoiceLine.setValueAt(qty, i, 3);
-                    double price = parseCurrencyValue(mdlInvoiceLine.getValueAt(i, 4).toString());
-                    mdlInvoiceLine.setValueAt(qty * price, i, 5);
+                    java.math.BigDecimal price = parseCurrencyValue(mdlInvoiceLine.getValueAt(i, 4).toString());
+                    mdlInvoiceLine.setValueAt(price.multiply(java.math.BigDecimal.valueOf(qty)), i, 5);
 
                     // Update invoice line with lot allocations
                     InvoiceLine updatedLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice);
@@ -268,7 +273,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                 }
             }
             Lot lot = product.getOldestLotAvailable();
-            double price = lot != null ? lot.getRawPrice() : 0.0;
+            java.math.BigDecimal price = lot != null ? lot.getRawPrice() : java.math.BigDecimal.ZERO;
 
             // Create new invoice line and allocate lots
             InvoiceLine newLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price);
@@ -325,14 +330,13 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
         // Find the UOM conversion rate
         UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
-        if (uom == null || uom.getBaseUnitConversionRate() == 0) {
+        if (uom == null || uom.getBaseUnitConversionRate() == null || uom.getBaseUnitConversionRate().compareTo(java.math.BigDecimal.ZERO) == 0) {
             return totalBaseQuantity;
         }
 
         // Convert: remainingInUOM = floor(totalBaseQuantity * baseUnitConversionRate)
-        // e.g., if baseUnitConversionRate = 0.1 (1 box = 10 tablets), and we have 25 tablets
-        // then remainingInUOM = floor(25 * 0.1) = floor(2.5) = 2 boxes
-        return (int) Math.floor(totalBaseQuantity * uom.getBaseUnitConversionRate());
+        java.math.BigDecimal remaining = java.math.BigDecimal.valueOf(totalBaseQuantity).multiply(uom.getBaseUnitConversionRate());
+        return remaining.setScale(0, java.math.RoundingMode.FLOOR).intValue();
     }
 
     private void updateInvoiceLineFromTable(int row) {
@@ -358,7 +362,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
             UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
             Lot lot = product.getOldestLotAvailable();
-            double price = lot != null ? lot.getRawPrice() * (uom != null ? uom.getBasePriceConversionRate() : 1) : 0.0;
+            java.math.BigDecimal rawPrice = lot != null ? lot.getRawPrice() : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal basePriceConversion = (uom != null && uom.getBasePriceConversionRate() != null)
+                    ? uom.getBasePriceConversionRate()
+                    : java.math.BigDecimal.ONE;
+            java.math.BigDecimal price = rawPrice.multiply(basePriceConversion);
 
             // Create invoice line and check lot allocation
             String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
@@ -383,7 +391,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             }
 
             mdlInvoiceLine.setValueAt(price, row, 4);
-            mdlInvoiceLine.setValueAt(price * quantity, row, 5);
+            mdlInvoiceLine.setValueAt(price.multiply(java.math.BigDecimal.valueOf(quantity)), row, 5);
             invoice.updateInvoiceLine(productId, oldUomName, newLine);
             oldUOMIdMap.put(row, uomName);
             previousUOMMap.put(row, uomName);
@@ -693,9 +701,14 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private void updateCashButtons() {
         if (pnlCashOptions == null || txtTotal == null || invoice == null) return;
         pnlCashOptions.removeAll();
+
+        java.math.BigDecimal total = invoice.calculateTotal();
+        java.math.BigDecimal thousand = java.math.BigDecimal.valueOf(1000);
+        long roundedToThousand = total.divide(thousand, 0, java.math.RoundingMode.CEILING).multiply(thousand).longValue();
+
         long[] amounts = {
             1000L, 2000L, 5000L, 10000L, 20000L, 50000L, 100000L, 200000L, 500000L,
-            ((long) Math.ceil(invoice.calculateTotal() / 1000) * 1000)
+            roundedToThousand
         };
         for (long inc : amounts) {
             pnlCashOptions.add(createCashButton(inc));
@@ -808,7 +821,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         private final DecimalFormat fmt = createCurrencyFormat();
         public CurrencyRenderer() { setHorizontalAlignment(SwingConstants.RIGHT); setFont(new Font("Arial", Font.PLAIN, 16)); }
         public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
-            if (v instanceof Number) v = fmt.format(((Number) v).doubleValue());
+            if (v instanceof java.math.BigDecimal bd) {
+                v = fmt.format(bd);
+            } else if (v instanceof Number) {
+                v = fmt.format(((Number) v).doubleValue());
+            }
             return super.getTableCellRendererComponent(t, v, s, f, r, c);
         }
     }
@@ -875,13 +892,20 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         btnProcessPayment.setEnabled(!hasETC || isValidPrescriptionCode());
     }
 
-    private double parseCurrencyValue(String val) {
+    private java.math.BigDecimal parseCurrencyValue(String val) {
         String c = val.replace("Đ", "").trim().replace(".", "").replace(",", ".");
-        try { return Double.parseDouble(c); } catch (NumberFormatException e) { return 0.0; }
+        try {
+            if (c.isEmpty()) return java.math.BigDecimal.ZERO;
+            return new java.math.BigDecimal(c);
+        } catch (Exception e) {
+            return java.math.BigDecimal.ZERO;
+        }
     }
 
     private void updateVatDisplay() {
-        if (txtVat != null && invoice != null) txtVat.setText(createCurrencyFormat().format(invoice.calculateVatAmount()));
+        if (txtVat != null && invoice != null) {
+            txtVat.setText(createCurrencyFormat().format(invoice.calculateVatAmount()));
+        }
     }
 
     private void updateTotalDisplay() {
@@ -994,7 +1018,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private void handleBankPaymentMethod() {
         pnlCashOptions.setVisible(false); pnlCashOptions.getParent().revalidate(); pnlCashOptions.getParent().repaint();
         if (txtCustomerPayment != null && invoice != null) {
-            txtCustomerPayment.setEnabled(false); txtCustomerPayment.setEditable(false); txtCustomerPayment.setValue((long) invoice.calculateTotal());
+            txtCustomerPayment.setEnabled(false); txtCustomerPayment.setEditable(false);
+            txtCustomerPayment.setValue(invoice.calculateTotal().longValue());
         }
         if (invoice != null) invoice.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
     }
@@ -1004,7 +1029,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             JOptionPane.showMessageDialog(parentWindow, "Danh sách sản phẩm trống!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE); return;
         }
 
-        long total = (long) invoice.calculateTotal();
+        long total = invoice.calculateTotal().longValue();
 
         // Handle different payment methods
         if (invoice.getPaymentMethod() == PaymentMethod.CASH) {

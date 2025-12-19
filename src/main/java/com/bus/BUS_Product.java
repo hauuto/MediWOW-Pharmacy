@@ -112,7 +112,11 @@ public class BUS_Product implements IProduct {
             if (lot.getBatchNumber() == null || lot.getBatchNumber().trim().isEmpty())
                 throw new IllegalArgumentException("Mã lô không được để trống");
             if (lot.getQuantity() < 0) throw new IllegalArgumentException("Số lượng lô phải ≥ 0");
-            if (lot.getRawPrice() < 0) throw new IllegalArgumentException("Giá lô phải ≥ 0");
+
+            java.math.BigDecimal rawPrice = lot.getRawPrice();
+            if (rawPrice != null && rawPrice.compareTo(java.math.BigDecimal.ZERO) < 0)
+                throw new IllegalArgumentException("Giá lô phải ≥ 0");
+
             if (lot.getExpiryDate() == null) throw new IllegalArgumentException("Lô phải có hạn sử dụng");
         }
     }

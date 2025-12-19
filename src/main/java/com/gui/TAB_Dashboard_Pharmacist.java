@@ -777,7 +777,6 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
                 sb.append(formatComparator(condition.getComparator()));
                 sb.append(" ");
                 sb.append(formatCurrency(condition.getPrimaryValue()));
-
 //                if (condition.getComparator() == PromotionEnum.Comp.BETWEEN && condition.getSecondaryValue() != null) {
 //                    sb.append(" - ");
 //                    sb.append(formatCurrency(condition.getSecondaryValue()));
@@ -823,10 +822,11 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
         }
     }
 
-    private String formatCurrency(Double value) {
-        if (value == null) return "0 ₫";
-        return String.format("%,.0f ₫", value);
+    private String formatCurrency(java.math.BigDecimal value) {
+        if (value == null) return currencyFormat.format(java.math.BigDecimal.ZERO);
+        return currencyFormat.format(value);
     }
+
 
     /**
      * Public method to refresh dashboard data
@@ -967,12 +967,11 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
         if (currentShift != null) {
             List<Invoice> allInvoices = busInvoice.getAllInvoices();
             if (allInvoices != null) {
-                double revenueSum = allInvoices.stream()
+                shiftRevenue = allInvoices.stream()
                     .filter(inv -> inv.getShift() != null && inv.getShift().getId().equals(currentShift.getId()))
                     .filter(inv -> inv.getType() == InvoiceType.SALES)
                     .map(Invoice::calculateTotal)
-                    .reduce(0.0, Double::sum);
-                shiftRevenue = BigDecimal.valueOf(revenueSum);
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             }
         }
         lblCardShiftRevenue.setText(currencyFormat.format(shiftRevenue));

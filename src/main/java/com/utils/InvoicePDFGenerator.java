@@ -289,7 +289,8 @@ public class InvoicePDFGenerator {
                 .setTextAlignment(TextAlignment.RIGHT);
     }
 
-    private static String formatCurrency(double amount) {
+    private static String formatCurrency(java.math.BigDecimal amount) {
+        if (amount == null) amount = java.math.BigDecimal.ZERO;
         return CURRENCY_FORMAT.format(amount) + " đ";
     }
 

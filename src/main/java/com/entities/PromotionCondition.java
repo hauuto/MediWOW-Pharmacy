@@ -91,7 +91,12 @@ public class PromotionCondition {
         return (productUOM != null) ? productUOM.getProduct() : null;
     }
 
-    public double getPrimaryValue() {
-        return (value == null) ? 0.0 : value.doubleValue();
+    // ======================
+    // Business helpers
+    // ======================
+
+    /** Preferred accessor for comparing conditions (BigDecimal). */
+    public BigDecimal getPrimaryValue() {
+        return value != null ? value : BigDecimal.ZERO;
     }
 }

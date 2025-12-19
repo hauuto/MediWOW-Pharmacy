@@ -3,6 +3,7 @@ package com.entities;
 import com.enums.LotStatus;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -26,8 +27,8 @@ public class Lot {
     @Column(name = "quantity")
     private int quantity;
 
-    @Column(name = "rawPrice")
-    private double rawPrice;
+    @Column(name = "rawPrice", precision = 18, scale = 2)
+    private BigDecimal rawPrice;
 
     @Column(name = "expiryDate")
     private LocalDateTime expiryDate;
@@ -38,7 +39,7 @@ public class Lot {
 
     protected Lot() {}
 
-    public Lot(String id, String batchNumber, Product product, int quantity, double rawPrice, LocalDateTime expiryDate, LotStatus status) {
+    public Lot(String id, String batchNumber, Product product, int quantity, BigDecimal rawPrice, LocalDateTime expiryDate, LotStatus status) {
         this.id = id;
         this.batchNumber = batchNumber;
         this.product = product;
@@ -76,11 +77,13 @@ public class Lot {
         this.quantity = quantity;
     }
 
-    public double getRawPrice() {
+    /** Preferred BigDecimal accessor. */
+    public java.math.BigDecimal getRawPrice() {
         return rawPrice;
     }
 
-    public void setRawPrice(double rawPrice) {
+    /** Preferred BigDecimal setter. */
+    public void setRawPrice(java.math.BigDecimal rawPrice) {
         this.rawPrice = rawPrice;
     }
 
