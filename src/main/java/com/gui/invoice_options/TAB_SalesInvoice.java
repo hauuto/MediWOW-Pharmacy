@@ -444,13 +444,13 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         tblInvoiceLine.getColumnModel().getColumn(2).setCellEditor(new UnitOfMeasureCellEditor());
         tblInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
         tblInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
-        tblInvoiceLine.getColumnModel().getColumn(4).setCellRenderer(new CurrencyRenderer());
-        tblInvoiceLine.getColumnModel().getColumn(5).setCellRenderer(new CurrencyRenderer());
         tblInvoiceLine.setName("tblInvoiceLine");
         tblInvoiceLine.addFocusListener(this);
         tblInvoiceLine.addPropertyChangeListener("tableCellEditor", this);
         mdlInvoiceLine.addTableModelListener(this);
-        DefaultTableCellRenderer r = new DefaultTableCellRenderer() {
+
+        // Alternating row color renderer for columns 0-3
+        DefaultTableCellRenderer defaultRenderer = new DefaultTableCellRenderer() {
             public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int row, int col) {
                 Component c = super.getTableCellRendererComponent(t, v, s, f, row, col);
                 c.setBackground(row % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
@@ -458,7 +458,13 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                 return c;
             }
         };
-        for (int i = 0; i < 6; i++) tblInvoiceLine.getColumnModel().getColumn(i).setCellRenderer(r);
+        for (int i = 0; i < 4; i++) tblInvoiceLine.getColumnModel().getColumn(i).setCellRenderer(defaultRenderer);
+
+        // Currency renderer with alternating row colors for columns 4-5
+        CurrencyRenderer currencyRenderer = new CurrencyRenderer();
+        tblInvoiceLine.getColumnModel().getColumn(4).setCellRenderer(currencyRenderer);
+        tblInvoiceLine.getColumnModel().getColumn(5).setCellRenderer(currencyRenderer);
+
         scrInvoiceLine = new JScrollPane(tblInvoiceLine);
     }
 
@@ -826,7 +832,10 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             } else if (v instanceof Number) {
                 v = fmt.format(((Number) v).doubleValue());
             }
-            return super.getTableCellRendererComponent(t, v, s, f, r, c);
+            Component comp = super.getTableCellRendererComponent(t, v, s, f, r, c);
+            comp.setBackground(r % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
+            if (s) comp.setBackground(t.getSelectionBackground());
+            return comp;
         }
     }
 
@@ -842,7 +851,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private DecimalFormat createCurrencyFormat() {
         DecimalFormatSymbols s = new DecimalFormatSymbols();
         s.setGroupingSeparator('.'); s.setDecimalSeparator(',');
-        DecimalFormat f = new DecimalFormat("#,000 'Đ'", s);
+        DecimalFormat f = new DecimalFormat("#,##0 'Đ'", s);
         f.setGroupingUsed(true); f.setGroupingSize(3);
         return f;
     }
