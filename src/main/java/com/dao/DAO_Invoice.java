@@ -22,9 +22,10 @@ public class DAO_Invoice implements IInvoice {
     }
 
     @Override
-    public void saveInvoice(Invoice invoice) {
+    public String saveInvoice(Invoice invoice) {
         Transaction transaction = null;
         Session session = null;
+        String generatedInvoiceId = null;
         try {
             session = sessionFactory.openSession();
             transaction = session.beginTransaction();
@@ -57,7 +58,7 @@ public class DAO_Invoice implements IInvoice {
                 .executeUpdate();
 
             // Retrieve the generated Invoice ID from database
-            String generatedInvoiceId = session.createNativeQuery(
+            generatedInvoiceId = session.createNativeQuery(
                 "SELECT TOP 1 id FROM Invoice WHERE creator = :creatorId ORDER BY creationDate DESC", String.class)
                 .setParameter("creatorId", invoice.getCreator().getId())
                 .uniqueResult();
@@ -111,6 +112,8 @@ public class DAO_Invoice implements IInvoice {
             System.out.println("========== INVOICE SAVED SUCCESSFULLY ==========");
             System.out.println("Final Invoice ID: " + generatedInvoiceId);
             System.out.println("===============================================");
+
+            return generatedInvoiceId;
 
         } catch (Exception e) {
             if (transaction != null) {
