@@ -25,7 +25,6 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
@@ -600,7 +599,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
 
     private JTable createStyledTable(DefaultTableModel model) {
         JTable table = new JTable(model);
-        table.setRowHeight(30);
+        table.setRowHeight(36);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setSelectionBackground(new Color(AppColors.SECONDARY.getRed(), AppColors.SECONDARY.getGreen(), AppColors.SECONDARY.getBlue(), 50));
         table.setSelectionForeground(AppColors.TEXT);
@@ -861,37 +860,95 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
             .filter(inv -> inv.getType() == InvoiceType.SALES)
             .collect(Collectors.toList());
 
-        // Count quantities sold per product
-        Map<Product, Integer> productSalesMap = new HashMap<>();
+        // Aggregate quantity sold per (product, unitOfMeasure)
+        class ProductUomKey {
+            private final String productId;
+            private final String uom;
+
+            private ProductUomKey(String productId, String uom) {
+                this.productId = productId;
+                this.uom = uom;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                ProductUomKey that = (ProductUomKey) o;
+                return Objects.equals(productId, that.productId) && Objects.equals(uom, that.uom);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(productId, uom);
+            }
+        }
+
+        class ProductUomSale {
+            private final Product product;
+            private final String uom;
+            private final int quantity;
+
+            private ProductUomSale(Product product, String uom, int quantity) {
+                this.product = product;
+                this.uom = uom;
+                this.quantity = quantity;
+            }
+        }
+
+        Map<ProductUomKey, ProductUomSale> sales = new HashMap<>();
 
         for (Invoice invoice : shiftInvoices) {
-            if (invoice.getInvoiceLineList() != null) {
-                for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    Product product = line.getProduct();
-                    int quantity = line.getQuantity();
-                    productSalesMap.merge(product, quantity, Integer::sum);
+            if (invoice.getInvoiceLineList() == null) continue;
+
+            for (InvoiceLine line : invoice.getInvoiceLineList()) {
+                if (line == null) continue;
+
+                Product product = line.getProduct();
+                if (product == null) continue;
+
+                int quantity = line.getQuantity();
+                if (quantity <= 0) continue;
+
+                String uom = line.getUnitOfMeasure();
+                if (uom == null || uom.trim().isEmpty()) {
+                    uom = product.getBaseUnitOfMeasure();
+                }
+
+                ProductUomKey key = new ProductUomKey(product.getId(), uom);
+                ProductUomSale existing = sales.get(key);
+                if (existing == null) {
+                    sales.put(key, new ProductUomSale(product, uom, quantity));
+                } else {
+                    sales.put(key, new ProductUomSale(product, uom, existing.quantity + quantity));
                 }
             }
         }
 
-        // Sort by quantity sold (descending) and take top 5
-        List<Map.Entry<Product, Integer>> topProducts = productSalesMap.entrySet().stream()
-            .sorted((e1, e2) -> Integer.compare(e2.getValue(), e1.getValue()))
+        List<ProductUomSale> topRows = sales.values().stream()
+            // Primary: quantity desc
+            .sorted((a, b) -> {
+                int cmp = Integer.compare(b.quantity, a.quantity);
+                if (cmp != 0) return cmp;
+                // Secondary: product name asc
+                String an = a.product != null ? a.product.getName() : "";
+                String bn = b.product != null ? b.product.getName() : "";
+                cmp = an.compareToIgnoreCase(bn);
+                if (cmp != 0) return cmp;
+                // Tertiary: uom asc
+                return String.valueOf(a.uom).compareToIgnoreCase(String.valueOf(b.uom));
+            })
             .limit(5)
             .collect(Collectors.toList());
 
-        // Add to table
         int rank = 1;
-        for (Map.Entry<Product, Integer> entry : topProducts) {
-            Product product = entry.getKey();
-            int quantity = entry.getValue();
-
+        for (ProductUomSale row : topRows) {
             topSellingModel.addRow(new Object[]{
                 rank++,
-                product.getId(),
-                product.getName(),
-                quantity,
-                product.getBaseUnitOfMeasure()
+                row.product != null ? row.product.getId() : "N/A",
+                row.product != null ? row.product.getName() : "N/A",
+                row.quantity,
+                row.uom
             });
         }
     }
