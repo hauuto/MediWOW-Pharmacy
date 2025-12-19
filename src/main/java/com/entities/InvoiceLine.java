@@ -1,11 +1,14 @@
 package com.entities;
 
 import com.enums.LineType;
+import com.enums.LotStatus;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * @author Bùi Quốc Trụ
@@ -164,6 +167,105 @@ public class InvoiceLine {
      */
     public double calculateTotalAmount() {
         return calculateSubtotal() + calculateVatAmount();
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Allocates lots to this invoice line using FIFO (First-In-First-Out) principle.
+     * Converts the quantity from the current UOM to base UOM, then selects oldest available lots.
+     *
+     * @return true if sufficient inventory exists and lots were allocated successfully, false otherwise
+     */
+    public boolean allocateLots() {
+        // Clear existing allocations
+        lotAllocations.clear();
+
+        if (product == null || quantity <= 0) {
+            return false;
+        }
+
+        // Convert quantity to base UOM
+        int baseQuantityNeeded = convertToBaseQuantity();
+
+        // Get all available lots sorted by expiry date (FIFO - oldest first)
+        List<Lot> availableLots = product.getLotList().stream()
+                .filter(lot -> lot.getStatus() == LotStatus.AVAILABLE && lot.getQuantity() > 0)
+                .sorted(Comparator.comparing(Lot::getExpiryDate))
+                .toList();
+
+        // Check if we have enough inventory
+        int totalAvailable = availableLots.stream().mapToInt(Lot::getQuantity).sum();
+        if (totalAvailable < baseQuantityNeeded) {
+            return false; // Insufficient inventory
+        }
+
+        // Allocate lots using FIFO
+        int remainingQuantity = baseQuantityNeeded;
+        for (Lot lot : availableLots) {
+            if (remainingQuantity <= 0) {
+                break;
+            }
+
+            int allocatedQuantity = Math.min(remainingQuantity, lot.getQuantity());
+
+            // Create lot allocation with generated ID
+            String allocationId = "LA-" + UUID.randomUUID().toString();
+            LotAllocation allocation = new LotAllocation(allocationId, this, lot, allocatedQuantity);
+            lotAllocations.add(allocation);
+
+            remainingQuantity -= allocatedQuantity;
+        }
+
+        return remainingQuantity == 0;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Converts the current quantity from the current UOM to base UOM quantity.
+     * Formula: baseQuantity = currentQuantity / baseUnitConversionRate
+     *
+     * @return The quantity in base UOM units
+     */
+    public int convertToBaseQuantity() {
+        if (unitOfMeasure == null || unitOfMeasure.equals(product.getBaseUnitOfMeasure())) {
+            return quantity;
+        }
+
+        // Find the UOM conversion rate
+        UnitOfMeasure uom = product.getUnitOfMeasureList().stream()
+                .filter(u -> u.getName().equals(unitOfMeasure))
+                .findFirst()
+                .orElse(null);
+
+        if (uom == null || uom.getBaseUnitConversionRate() == 0) {
+            return quantity; // Fallback to original quantity if UOM not found
+        }
+
+        // Convert: baseQuantity = currentQuantity / baseUnitConversionRate
+        // e.g., if baseUnitConversionRate = 0.1 (1 box = 10 tablets), then 2 boxes = 2 / 0.1 = 20 tablets
+        return (int) Math.ceil(quantity / uom.getBaseUnitConversionRate());
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Gets the total base quantity needed for this invoice line.
+     *
+     * @return The quantity in base UOM units
+     */
+    public int getBaseQuantityNeeded() {
+        return convertToBaseQuantity();
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Clears all lot allocations for this invoice line.
+     */
+    public void clearLotAllocations() {
+        lotAllocations.clear();
     }
 
     @Override

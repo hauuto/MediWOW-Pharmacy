@@ -208,4 +208,90 @@ public class DAO_Product implements IProduct {
         } catch (Exception e) { e.printStackTrace(); return false; }
         finally { if (session != null && session.isOpen()) session.close(); }
     }
+
+    /**
+     * Update the quantity of a specific lot and change status if quantity becomes 0
+     * @param lotId The ID of the lot
+     * @param quantityToDeduct The quantity to deduct from the lot
+     * @return true if successful, false otherwise
+     */
+    public boolean deductLotQuantity(String lotId, int quantityToDeduct) {
+        if (lotId == null || lotId.trim().isEmpty() || quantityToDeduct <= 0) return false;
+        Transaction transaction = null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            transaction = session.beginTransaction();
+
+            Lot lot = session.get(Lot.class, lotId);
+            if (lot != null) {
+                int newQuantity = lot.getQuantity() - quantityToDeduct;
+                if (newQuantity < 0) {
+                    transaction.rollback();
+                    return false; // Cannot deduct more than available
+                }
+
+                lot.setQuantity(newQuantity);
+
+                // Update status based on quantity
+//                if (newQuantity == 0) {
+//                    lot.setStatus(com.enums.LotStatus.OUT_OF_STOCK);
+//                }
+
+                session.merge(lot);
+                transaction.commit();
+                return true;
+            }
+
+            transaction.rollback();
+            return false;
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
+    }
+
+    /**
+     * Update the quantity of a specific lot to a new value
+     * @param lotId The ID of the lot
+     * @param newQuantity The new quantity value
+     * @return true if successful, false otherwise
+     */
+    public boolean updateLotQuantity(String lotId, int newQuantity) {
+        if (lotId == null || lotId.trim().isEmpty() || newQuantity < 0) return false;
+        Transaction transaction = null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            transaction = session.beginTransaction();
+
+            Lot lot = session.get(Lot.class, lotId);
+            if (lot != null) {
+                lot.setQuantity(newQuantity);
+
+                // Update status based on quantity
+//                if (newQuantity == 0) {
+//                    lot.setStatus(com.enums.LotStatus.OUT_OF_STOCK);
+//                } else if (lot.getStatus() == com.enums.LotStatus.OUT_OF_STOCK) {
+//                    lot.setStatus(com.enums.LotStatus.AVAILABLE);
+//                }
+
+                session.merge(lot);
+                transaction.commit();
+                return true;
+            }
+
+            transaction.rollback();
+            return false;
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
+    }
 }

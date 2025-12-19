@@ -155,4 +155,36 @@ public class BUS_Product implements IProduct {
     public Product getProductByIdWithChildren(String id) {
         return (id == null || id.isBlank()) ? null : dao.getProductById(id);
     }
+
+    /**
+     * Deduct a specific quantity from a lot
+     * @param lotId The ID of the lot
+     * @param quantityToDeduct The quantity to deduct
+     * @return true if successful, false otherwise
+     */
+    public boolean deductLotQuantity(String lotId, int quantityToDeduct) {
+        if (lotId == null || lotId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Lot ID cannot be null or empty");
+        }
+        if (quantityToDeduct <= 0) {
+            throw new IllegalArgumentException("Quantity to deduct must be positive");
+        }
+        return dao.deductLotQuantity(lotId, quantityToDeduct);
+    }
+
+    /**
+     * Update the quantity of a specific lot to a new value
+     * @param lotId The ID of the lot
+     * @param newQuantity The new quantity value
+     * @return true if successful, false otherwise
+     */
+    public boolean updateLotQuantity(String lotId, int newQuantity) {
+        if (lotId == null || lotId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Lot ID cannot be null or empty");
+        }
+        if (newQuantity < 0) {
+            throw new IllegalArgumentException("Quantity cannot be negative");
+        }
+        return dao.updateLotQuantity(lotId, newQuantity);
+    }
 }
