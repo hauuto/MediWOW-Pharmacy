@@ -60,14 +60,20 @@ public class TAB_InvoiceList extends JPanel {
         selectedInvoiceLine = null;
         if (invoice == null || invoice.getInvoiceLineList() == null) return;
         for (InvoiceLine line : invoice.getInvoiceLineList()) {
+            java.math.BigDecimal unitPrice = line.getUnitPrice();
+            int qty = line.getQuantity();
+            java.math.BigDecimal lineTotal = (unitPrice != null)
+                    ? unitPrice.multiply(java.math.BigDecimal.valueOf(qty))
+                    : java.math.BigDecimal.ZERO;
+
             mdlInvoiceLine.addRow(new Object[]{
                 line.getId(),
                 line.getProduct() != null ? line.getProduct().getId() : "",
                 line.getProduct() != null ? line.getProduct().getName() : "",
                 line.getUnitOfMeasure(),
-                line.getQuantity(),
-                line.getUnitPrice(),
-                line.getQuantity() * line.getUnitPrice(),
+                qty,
+                unitPrice,
+                lineTotal,
                 line.getLineType() != null ? line.getLineType().toString() : ""
             });
         }
@@ -242,8 +248,13 @@ public class TAB_InvoiceList extends JPanel {
             Component comp = super.getTableCellRendererComponent(t, v, s, f, r, c);
             comp.setBackground(r % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
             if (s) comp.setBackground(t.getSelectionBackground());
+            if (v instanceof java.math.BigDecimal bd) {
+                setText(fmt.format(bd));
+                return this;
+            }
             if (v instanceof Number) setText(fmt.format(((Number) v).doubleValue()));
-            return comp;
+            else setText(v == null ? "" : v.toString());
+            return this;
         }
     }
 }

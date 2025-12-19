@@ -80,9 +80,6 @@ public class PromotionAction {
     public BigDecimal getValue() { return value; }
     public void setValue(BigDecimal value) { this.value = value; }
 
-    public UnitOfMeasure getProductUOM() { return productUOM; }
-    public void setProductUOM(UnitOfMeasure productUOM) { this.productUOM = productUOM; }
-
     // ======================
     // Compatibility Helpers
     // ======================
@@ -90,7 +87,9 @@ public class PromotionAction {
         return (productUOM != null) ? productUOM.getProduct() : null;
     }
 
-    public double getPrimaryValue() {
-        return (value == null) ? 0.0 : value.doubleValue();
-    }
+    public UnitOfMeasure getProductUOM() { return productUOM; }
+    public void setProductUOM(UnitOfMeasure productUOM) { this.productUOM = productUOM; }
+
+    /** Alias for UI code that expects the name getProductUOM(). */
+    public UnitOfMeasure getProductUOMAlias() { return productUOM; }
 }

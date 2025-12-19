@@ -180,32 +180,32 @@ public class DAO_Shift {
                 .setParameter("shiftId", shiftId)
                 .list();
 
-            // Calculate cash using Invoice.calculateTotal() method which includes VAT and discount
-            double salesCash = 0.0;
-            double returnCash = 0.0;
-            double exchangeCash = 0.0;
+            // Calculate cash using BigDecimal totals
+            BigDecimal salesCash = BigDecimal.ZERO;
+            BigDecimal returnCash = BigDecimal.ZERO;
+            BigDecimal exchangeCash = BigDecimal.ZERO;
 
             for (com.entities.Invoice invoice : invoices) {
-                double total = invoice.calculateTotal();
+                BigDecimal total = invoice.calculateTotal();
 
                 switch (invoice.getType()) {
                     case SALES:
-                        salesCash += total;
+                        salesCash = salesCash.add(total);
                         break;
                     case RETURN:
-                        returnCash += total;
+                        returnCash = returnCash.add(total);
                         break;
                     case EXCHANGE:
-                        exchangeCash += total;
+                        exchangeCash = exchangeCash.add(total);
                         break;
                 }
             }
 
             // Calculate total: startCash + sales - return + exchange
             return startCash
-                .add(BigDecimal.valueOf(salesCash))
-                .subtract(BigDecimal.valueOf(returnCash))
-                .add(BigDecimal.valueOf(exchangeCash));
+                .add(salesCash)
+                .subtract(returnCash)
+                .add(exchangeCash);
 
         } finally {
             if (session != null && session.isOpen()) {
@@ -214,4 +214,3 @@ public class DAO_Shift {
         }
     }
 }
-

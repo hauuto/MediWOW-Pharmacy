@@ -3,6 +3,8 @@ package com.entities;
 import jakarta.persistence.*;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 
 /**
@@ -21,29 +23,32 @@ public class UnitOfMeasure {
     @Column(name = "name", length = 100)
     private String name;
 
-    @Column(name = "price", nullable = false)
-    private double price;
+    @Column(name = "price", nullable = false, precision = 18, scale = 2)
+    private BigDecimal price;
 
-    @Column(name = "baseUnitConversionRate", nullable = false)
-    private double baseUnitConversionRate;
+    @Column(name = "baseUnitConversionRate", nullable = false, precision = 18, scale = 4)
+    private BigDecimal baseUnitConversionRate;
 
     @Transient
-    private double basePriceConversionRate;
+    private BigDecimal basePriceConversionRate;
 
     protected UnitOfMeasure() {}
 
-    public UnitOfMeasure(Product product, String name, double price, double baseUnitConversionRate) {
+    public UnitOfMeasure(Product product, String name, BigDecimal price, BigDecimal baseUnitConversionRate) {
         this.product = product;
         this.name = name;
         this.price = price;
         this.baseUnitConversionRate = baseUnitConversionRate;
-        basePriceConversionRate = 1 / baseUnitConversionRate;
+        calculateDerivedFields();
     }
 
     @PostLoad
     private void calculateDerivedFields() {
-        if (baseUnitConversionRate != 0) {
-            basePriceConversionRate = 1 / baseUnitConversionRate;
+        if (baseUnitConversionRate != null && baseUnitConversionRate.compareTo(BigDecimal.ZERO) != 0) {
+            // basePriceConversionRate = 1 / baseUnitConversionRate
+            basePriceConversionRate = BigDecimal.ONE.divide(baseUnitConversionRate, 10, RoundingMode.HALF_UP);
+        } else {
+            basePriceConversionRate = BigDecimal.ONE;
         }
     }
 
@@ -67,24 +72,24 @@ public class UnitOfMeasure {
         this.name = name;
     }
 
-    public double getPrice() {
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(double price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 
-    public double getBaseUnitConversionRate() {
+    public BigDecimal getBaseUnitConversionRate() {
         return baseUnitConversionRate;
     }
 
-    public void setBaseUnitConversionRate(double baseUnitConversionRate) {
+    public void setBaseUnitConversionRate(BigDecimal baseUnitConversionRate) {
         this.baseUnitConversionRate = baseUnitConversionRate;
-        basePriceConversionRate = 1 / this.baseUnitConversionRate;
+        calculateDerivedFields();
     }
 
-    public double getBasePriceConversionRate() {
+    public BigDecimal getBasePriceConversionRate() {
         return basePriceConversionRate;
     }
 
