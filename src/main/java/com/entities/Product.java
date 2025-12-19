@@ -8,6 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +46,7 @@ public class Product {
     private String activeIngredient;
 
     @Column(name = "vat")
-    private double vat;
+    private BigDecimal vat;
 
     @Column(name = "strength")
     private String strength;
@@ -83,7 +84,7 @@ public class Product {
         this.shortName = shortName;
         this.manufacturer = manufacturer;
         this.activeIngredient = activeIngredient;
-        setVat(vat);
+        setVat(BigDecimal.valueOf(vat));
         this.strength = strength;
         this.description = description;
         setBaseUnitOfMeasure(baseUnitOfMeasure);
@@ -132,10 +133,33 @@ public class Product {
     public String getActiveIngredient() { return activeIngredient; }
     public void setActiveIngredient(String activeIngredient) { this.activeIngredient = (activeIngredient == null) ? null : activeIngredient.trim(); }
 
-    public double getVat() { return vat; }
-    public void setVat(double vat) {
-        if (vat < 0 || vat > 100) throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
+    /**
+     * VAT percent (0..100). Source-of-truth is BigDecimal to avoid floating point issues.
+     */
+    public BigDecimal getVat() { return vat; }
+
+    /**
+     * Legacy getter for older code paths/UI widgets that work with primitives.
+     */
+    public double getVatAsDouble() {
+        return vat != null ? vat.doubleValue() : 0.0;
+    }
+
+    public void setVat(BigDecimal vat) {
+        if (vat == null) vat = BigDecimal.ZERO;
+        // Normalize scale; VAT percent doesn't need money scale, but keep it consistent and human-friendly.
+        vat = vat.setScale(2, RoundingMode.HALF_UP);
+        if (vat.compareTo(BigDecimal.ZERO) < 0 || vat.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
+        }
         this.vat = vat;
+    }
+
+    /**
+     * Legacy setter to reduce refactor surface.
+     */
+    public void setVat(double vat) {
+        setVat(BigDecimal.valueOf(vat));
     }
 
     public String getStrength() { return strength; }

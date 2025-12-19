@@ -101,7 +101,8 @@ public class BUS_Product implements IProduct {
         if (p.getBaseUnitOfMeasure() == null || p.getBaseUnitOfMeasure().trim().isEmpty())
             throw new IllegalArgumentException("Đơn vị tính gốc không được để trống");
 
-        if (p.getVat() < 0 || p.getVat() > 100)
+        java.math.BigDecimal vat = (p.getVat() != null) ? p.getVat() : java.math.BigDecimal.ZERO;
+        if (vat.compareTo(java.math.BigDecimal.ZERO) < 0 || vat.compareTo(java.math.BigDecimal.valueOf(100)) > 0)
             throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
 
         // Lot: khi thêm mới, yêu cầu >= 1 dòng (theo UI validate)

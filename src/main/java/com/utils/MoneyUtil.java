@@ -22,13 +22,25 @@ public final class MoneyUtil {
         return BigDecimal.ZERO.setScale(MONEY_SCALE, MONEY_ROUNDING);
     }
 
+    /**
+     * Prefer {@link #ofBigDecimal(BigDecimal)} or {@link #ofString(String)} when possible.
+     * This method exists for UI/widget interoperability.
+     */
     public static BigDecimal of(double value) {
         return BigDecimal.valueOf(value).setScale(MONEY_SCALE, MONEY_ROUNDING);
     }
 
-    public static BigDecimal ofNullable(BigDecimal value) {
-        if (value == null) return zero();
-        return value.setScale(MONEY_SCALE, MONEY_ROUNDING);
+    public static BigDecimal ofBigDecimal(BigDecimal value) {
+        return scale(value);
+    }
+
+    /**
+     * Parses a decimal string safely and normalizes to MONEY_SCALE.
+     * Useful to avoid double binary fractions.
+     */
+    public static BigDecimal ofString(String value) {
+        if (value == null || value.trim().isEmpty()) return zero();
+        return scale(new BigDecimal(value.trim()));
     }
 
     public static BigDecimal scale(BigDecimal value) {
@@ -53,4 +65,3 @@ public final class MoneyUtil {
         return percent.divide(BigDecimal.valueOf(100), 10, MONEY_ROUNDING);
     }
 }
-

@@ -25,8 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;               // Date, List, ArrayList, BitSet, ...
 import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
+
 import com.bus.BUS_Product;
 import com.entities.Product;
 import com.entities.UnitOfMeasure;         // ⇦ NEW
@@ -714,7 +713,7 @@ public class TAB_Product {
         if (model instanceof ToggleEditableTableModel tm) {
             int start = tm.getEditableRowStart();
             if (isEditMode && !isAddingNew && row < start) {
-                warn("Chỉ được xóa các dòng mới thêm trong phiên chỉnh sửa.");
+                warn("Chỉ được xóa các dòng mới thêm trong phiên sửa.");
                 return;
             }
         }
@@ -1046,8 +1045,11 @@ public class TAB_Product {
 
     private void applyDefaultVatByCategory() {
         String cat = String.valueOf(cbCategoryDetail.getSelectedItem());
-        double vat = (cat != null && cat.toLowerCase().contains("sản phẩm chức năng")) ? 10.0 : 5.0;
-        spVat.setValue(vat);
+        java.math.BigDecimal vat = (cat != null && cat.toLowerCase().contains("sản phẩm chức năng"))
+                ? java.math.BigDecimal.TEN
+                : java.math.BigDecimal.valueOf(5);
+        // Spinner expects a Number; keep BigDecimal source-of-truth, convert only at the UI boundary.
+        spVat.setValue(vat.doubleValue());
     }
 
     private void onCancel() {
@@ -1384,7 +1386,7 @@ public class TAB_Product {
         txtStrength.setText(safe(p.getStrength()));
         txtDescription.setText(safe(p.getDescription()));
         txtBaseUom.setText(safe(p.getBaseUnitOfMeasure()));
-        spVat.setValue(p.getVat());
+        spVat.setValue(p.getVat() != null ? p.getVat().doubleValue() : 0.0);
 
         // Enum -> nhãn/combobox
         if (p.getCategory() != null)
