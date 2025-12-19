@@ -49,6 +49,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     private Shift currentShift;
     private GUI_InvoiceMenu invoiceMenu;
     private ShiftChangeListener shiftChangeListener;
+    private TAB_Dashboard dashboard;
 
 
     /**
@@ -83,7 +84,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         //testing rules
 
 
-        TAB_Dashboard dashboard = new TAB_Dashboard(currentStaff);
+        dashboard = new TAB_Dashboard(currentStaff);
         invoiceMenu = new GUI_InvoiceMenu(currentStaff);
         shiftChangeListener = invoiceMenu; // Set invoiceMenu as the shift change listener
 
@@ -129,6 +130,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
         setActiveButton(btnHome);
         cardLayout.show(pnlMain, "dashboard");
+        dashboard.refresh(); // Ensure first show always displays fresh data
 
         Locale locale = Locale.of("vi", "VN");
         DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss EEEE, dd/MM/yyyy", locale);
@@ -149,6 +151,9 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         if (src == btnHome) {
             setActiveButton(btnHome);
             cardLayout.show(pnlMain, "dashboard");
+            if (dashboard != null) {
+                dashboard.refresh();
+            }
         } else if (src == btnSales) {
             setActiveButton(btnSales);
             cardLayout.show(pnlMain, "invoiceMenu");
