@@ -103,6 +103,16 @@ public class ReceiptThermalPrinter {
                               padLeft("TT: " + getPaymentMethodText(invoice.getPaymentMethod()), LINE_WIDTH / 2);
             escpos.writeLF(normalLeft, infoLine2);
 
+            // Row 3: Shift ID
+            if (invoice.getShift() != null && invoice.getShift().getId() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Ma ca: " + invoice.getShift().getId());
+            }
+
+            // Row 4: Customer Name (if exists)
+            if (invoice.getPrescribedCustomer() != null && invoice.getPrescribedCustomer().getName() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Khach hang: " + truncateText(removeAccents(invoice.getPrescribedCustomer().getName()), 30));
+            }
+
             // Prescription code if exists
             if (invoice.getPrescriptionCode() != null && !invoice.getPrescriptionCode().isEmpty()) {
                 escpos.writeLF(normalLeft, LEFT_PADDING + "Ma don thuoc: " + invoice.getPrescriptionCode());
