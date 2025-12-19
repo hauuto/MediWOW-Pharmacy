@@ -273,15 +273,7 @@ public class DIALOG_MomoQRCode extends JDialog {
                     if (response.isPaid()) {
                         paymentSuccess = true;
                         stopPolling();
-                        lblStatus.setText("Thanh toán thành công!");
-                        lblStatus.setForeground(AppColors.SUCCESS);
-                        btnCancel.setText("Đóng");
-                        btnCancel.setBackground(AppColors.PRIMARY);
-
-                        // Auto close after 2 seconds
-                        Timer closeTimer = new Timer(2000, evt -> dispose());
-                        closeTimer.setRepeats(false);
-                        closeTimer.start();
+                        dispose(); // Close immediately, TAB_SalesInvoice will show success message
                     } else if (response.isPending()) {
                         // Still waiting, update status
                         long elapsed = (System.currentTimeMillis() - startTime) / 1000;

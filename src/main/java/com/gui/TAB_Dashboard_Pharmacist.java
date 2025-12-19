@@ -8,6 +8,7 @@ import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LotStatus;
 import com.enums.PromotionEnum;
+import com.interfaces.DataChangeListener;
 import com.interfaces.ShiftChangeListener;
 import com.utils.AppColors;
 
@@ -29,6 +30,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.swing.Timer;
 
 /**
  * Dashboard cho Nhân viên (Dược sĩ)
@@ -39,7 +41,7 @@ import java.util.stream.Collectors;
  *
  * @author Tô Thanh Hậu
  */
-public class TAB_Dashboard_Pharmacist extends JPanel {
+public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListener {
     private final BUS_Product busProduct;
     private final BUS_Promotion busPromotion;
     private final BUS_Shift busShift;
@@ -75,14 +77,17 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     private JLabel lblShiftId;
     private JLabel lblCurrentCash;
 
-    private JButton btnRefresh;
     private JButton btnCloseShift;
+
+    // Auto-refresh timer
+    private Timer refreshTimer;
 
     // Constants
     private static final int LOW_STOCK_THRESHOLD = 100; // Định mức tồn kho thấp
     private static final int CRITICAL_STOCK_THRESHOLD = 10; // Ngưỡng tồn kho nguy hiểm
     private static final int EXPIRY_WARNING_DAYS = 90; // Cảnh báo thuốc còn 90 ngày hết hạn
     private static final int EXPIRY_DANGER_DAYS = 30; // Cảnh báo nguy hiểm còn 30 ngày
+    private static final int AUTO_REFRESH_INTERVAL = 5000; // Auto-refresh every 5 seconds
 
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -101,6 +106,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         initComponents();
         loadData();
         loadShiftData();
+        startAutoRefresh();
     }
 
     private void initComponents() {
@@ -118,14 +124,24 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         // Summary Cards at top
         contentPanel.add(createSummaryCardsPanel(), BorderLayout.NORTH);
 
-        // Tables and info panels
-        JPanel mainPanel = new JPanel(new GridLayout(4, 1, 10, 10));
+        // Tables and info panels - 2 Column Grid Layout
+        JPanel mainPanel = new JPanel(new GridLayout(1, 2, 15, 10));
         mainPanel.setBackground(AppColors.WHITE);
 
-        mainPanel.add(createExpiringSoonPanel());
-        mainPanel.add(createLowStockPanel());
-        mainPanel.add(createTopSellingPanel());
-        mainPanel.add(createPromotionPanel());
+        // Left Column: Alerts & High Activity (Expiring & Top Selling)
+        JPanel leftColumn = new JPanel(new GridLayout(2, 1, 10, 15));
+        leftColumn.setBackground(AppColors.WHITE);
+        leftColumn.add(createExpiringSoonPanel());
+        leftColumn.add(createTopSellingPanel());
+
+        // Right Column: Stock Management (Low Stock & Promotions)
+        JPanel rightColumn = new JPanel(new GridLayout(2, 1, 10, 15));
+        rightColumn.setBackground(AppColors.WHITE);
+        rightColumn.add(createLowStockPanel());
+        rightColumn.add(createPromotionPanel());
+
+        mainPanel.add(leftColumn);
+        mainPanel.add(rightColumn);
 
         contentPanel.add(mainPanel, BorderLayout.CENTER);
         add(contentPanel, BorderLayout.CENTER);
@@ -157,7 +173,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         btnCloseShift = new JButton("Đóng ca");
         btnCloseShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnCloseShift.setBackground(AppColors.DANGER);
-        btnCloseShift.setForeground(Color.WHITE);
+        btnCloseShift.setForeground(AppColors.WHITE);
         btnCloseShift.setFocusPainted(false);
         btnCloseShift.setBorderPainted(false);
         btnCloseShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -168,7 +184,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         topSection.add(lblTitle, BorderLayout.WEST);
         topSection.add(rightSection, BorderLayout.EAST);
 
-        // Bottom section: Date + Refresh button
+        // Bottom section: Date only
         JPanel bottomSection = new JPanel(new BorderLayout());
         bottomSection.setBackground(AppColors.WHITE);
 
@@ -176,21 +192,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         lblDate.setForeground(AppColors.DARK);
 
-        btnRefresh = new JButton("Làm mới");
-        btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnRefresh.setBackground(AppColors.SECONDARY);
-        btnRefresh.setForeground(Color.WHITE);
-        btnRefresh.setFocusPainted(false);
-        btnRefresh.setBorderPainted(false);
-        btnRefresh.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnRefresh.setPreferredSize(new Dimension(150, 40));
-        btnRefresh.addActionListener(e -> {
-            loadData();
-            loadShiftData();
-        });
-
         bottomSection.add(lblDate, BorderLayout.WEST);
-        bottomSection.add(btnRefresh, BorderLayout.EAST);
 
         headerPanel.add(topSection, BorderLayout.NORTH);
         headerPanel.add(bottomSection, BorderLayout.SOUTH);
@@ -201,7 +203,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     private JPanel createShiftWidget() {
         JPanel widget = new JPanel();
         widget.setLayout(new BoxLayout(widget, BoxLayout.Y_AXIS));
-        widget.setBackground(new Color(240, 248, 255)); // Light blue background
+        widget.setBackground(AppColors.WHITE); // Light blue background
         widget.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(AppColors.SECONDARY, 1),
             new EmptyBorder(8, 12, 8, 12)
@@ -209,7 +211,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         // Shift ID
         JPanel shiftIdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        shiftIdPanel.setBackground(new Color(240, 248, 255));
+        shiftIdPanel.setBackground(AppColors.WHITE);
         JLabel lblShiftIdLabel = new JLabel("Mã Ca:");
         lblShiftIdLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblShiftIdLabel.setForeground(AppColors.DARK);
@@ -221,7 +223,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         // Current Cash
         JPanel cashPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        cashPanel.setBackground(new Color(240, 248, 255));
+        cashPanel.setBackground(AppColors.WHITE);
         JLabel lblCashLabel = new JLabel("Tiền mặt:");
         lblCashLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblCashLabel.setForeground(AppColors.DARK);
@@ -253,7 +255,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         // Set common button properties
         btnCloseShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnCloseShift.setForeground(Color.WHITE);
+        btnCloseShift.setForeground(AppColors.WHITE);
         btnCloseShift.setBorderPainted(false);
         btnCloseShift.setFocusPainted(false);
         btnCloseShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -274,7 +276,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             btnCloseShift.setToolTipText(isOwnShift ?
                 "Nhấn để đóng ca làm việc" :
                 "Đóng ca của: " + currentShift.getStaff().getFullName());
-            btnCloseShift.setBackground(new Color(220, 53, 69)); // Red color for close
+            btnCloseShift.setBackground(AppColors.DANGER); // Red color for close
             btnCloseShift.setEnabled(true);
         } else {
             // No open shift - show "Mở ca"
@@ -283,7 +285,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
             btnCloseShift.setText("Mở ca");
             btnCloseShift.setToolTipText("Nhấn để mở ca làm việc");
-            btnCloseShift.setBackground(new Color(40, 167, 69)); // Green color for open
+            btnCloseShift.setBackground(AppColors.SUCCESS); // Green color for open
             btnCloseShift.setEnabled(true);
         }
     }
@@ -405,11 +407,11 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         JLabel lblTitle = new JLabel("CẢNH BÁO: Thuốc Sắp Hết Hàng");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblTitle.setForeground(AppColors.DANGER);
+        lblTitle.setForeground(AppColors.WARNING);
 
         lblLowStockCount = new JLabel("0 sản phẩm");
         lblLowStockCount.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblLowStockCount.setForeground(AppColors.DANGER);
+        lblLowStockCount.setForeground(AppColors.WARNING);
 
         headerPanel.add(lblTitle, BorderLayout.WEST);
         headerPanel.add(lblLowStockCount, BorderLayout.EAST);
@@ -428,7 +430,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblLowStock.getColumnModel().getColumn(2).setCellRenderer(new LowStockCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(tblLowStock);
-        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setPreferredSize(new Dimension(0, 300));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
@@ -448,11 +450,11 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         JLabel lblTitle = new JLabel("CẢNH BÁO: Thuốc Sắp Hết Hạn");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblTitle.setForeground(AppColors.WARNING);
+        lblTitle.setForeground(AppColors.DANGER);
 
         lblExpiringCount = new JLabel("0 lô hàng");
         lblExpiringCount.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblExpiringCount.setForeground(AppColors.WARNING);
+        lblExpiringCount.setForeground(AppColors.DANGER);
 
         headerPanel.add(lblTitle, BorderLayout.WEST);
         headerPanel.add(lblExpiringCount, BorderLayout.EAST);
@@ -486,7 +488,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblExpiringSoon.getColumnModel().getColumn(6).setPreferredWidth(100); // Thao tác
 
         JScrollPane scrollPane = new JScrollPane(tblExpiringSoon);
-        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setPreferredSize(new Dimension(0, 300));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
@@ -535,7 +537,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblActivePromotions.getColumnModel().getColumn(4).setPreferredWidth(300); // Điều kiện
 
         JScrollPane scrollPane = new JScrollPane(tblActivePromotions);
-        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setPreferredSize(new Dimension(0, 300));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
@@ -587,7 +589,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         tblTopSelling.getColumnModel().getColumn(0).setCellRenderer(new TopRankCellRenderer());
 
         JScrollPane scrollPane = new JScrollPane(tblTopSelling);
-        scrollPane.setPreferredSize(new Dimension(0, 180));
+        scrollPane.setPreferredSize(new Dimension(0, 300));
         scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
 
         panel.add(headerPanel, BorderLayout.NORTH);
@@ -601,14 +603,14 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         table.setRowHeight(30);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setSelectionBackground(new Color(AppColors.SECONDARY.getRed(), AppColors.SECONDARY.getGreen(), AppColors.SECONDARY.getBlue(), 50));
-        table.setSelectionForeground(Color.BLACK);
+        table.setSelectionForeground(AppColors.TEXT);
         table.setGridColor(AppColors.BACKGROUND);
         table.setShowGrid(true);
 
         JTableHeader header = table.getTableHeader();
         header.setFont(new Font("Segoe UI", Font.BOLD, 13));
         header.setBackground(AppColors.SECONDARY);
-        header.setForeground(Color.WHITE);
+        header.setForeground(AppColors.WHITE);
         header.setPreferredSize(new Dimension(0, 35));
 
         return table;
@@ -947,16 +949,16 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
                     if (!isSelected) {
                         if (days <= EXPIRY_DANGER_DAYS) {
-                            // Red background for danger
-                            c.setBackground(new Color(255, 200, 200));
-                            c.setForeground(Color.BLACK);
+                            // Light red background for danger
+                            c.setBackground(new Color(255, 230, 230));
+                            c.setForeground(AppColors.TEXT);
                         } else if (days <= EXPIRY_WARNING_DAYS) {
-                            // Yellow background for warning
-                            c.setBackground(new Color(255, 255, 200));
-                            c.setForeground(Color.BLACK);
+                            // Light yellow background for warning
+                            c.setBackground(new Color(255, 250, 220));
+                            c.setForeground(AppColors.TEXT);
                         } else {
-                            c.setBackground(Color.WHITE);
-                            c.setForeground(Color.BLACK);
+                            c.setBackground(AppColors.WHITE);
+                            c.setForeground(AppColors.TEXT);
                         }
                     }
 
@@ -968,8 +970,8 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                     }
                 } catch (Exception ignored) {
                     if (!isSelected) {
-                        c.setBackground(Color.WHITE);
-                        c.setForeground(Color.BLACK);
+                        c.setBackground(AppColors.WHITE);
+                        c.setForeground(AppColors.TEXT);
                     }
                 }
             }
@@ -993,7 +995,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             setText((value == null) ? "Copy ID" : value.toString());
             setFont(new Font("Segoe UI", Font.PLAIN, 12));
             setBackground(AppColors.SECONDARY);
-            setForeground(Color.WHITE);
+            setForeground(AppColors.WHITE);
             setFocusPainted(false);
             setBorderPainted(false);
             setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -1016,7 +1018,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             button.setOpaque(true);
             button.setFont(new Font("Segoe UI", Font.PLAIN, 12));
             button.setBackground(AppColors.SECONDARY);
-            button.setForeground(Color.WHITE);
+            button.setForeground(AppColors.WHITE);
             button.setFocusPainted(false);
             button.setBorderPainted(false);
             button.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -1078,7 +1080,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                     c.setForeground(AppColors.WARNING);
                     setFont(getFont().deriveFont(Font.BOLD));
                 } else {
-                    c.setForeground(Color.BLACK);
+                    c.setForeground(AppColors.TEXT);
                 }
             }
 
@@ -1125,15 +1127,15 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                 setFont(getFont().deriveFont(Font.BOLD));
                 switch (level) {
                     case "NGUY HIỂM":
-                        c.setForeground(Color.WHITE);
+                        c.setForeground(AppColors.WHITE);
                         c.setBackground(AppColors.DANGER);
                         break;
                     case "CAO":
-                        c.setForeground(Color.WHITE);
+                        c.setForeground(AppColors.WHITE);
                         c.setBackground(AppColors.WARNING);
                         break;
                     case "TRUNG BÌNH":
-                        c.setForeground(Color.BLACK);
+                        c.setForeground(AppColors.TEXT);
                         c.setBackground(AppColors.LIGHT);
                         break;
                 }
@@ -1163,16 +1165,16 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
                 if (!isSelected) {
                     if (stock == 0) {
-                        // Dark red/gray for out of stock
-                        c.setBackground(new Color(128, 128, 128)); // Gray
-                        c.setForeground(Color.WHITE);
+                        // Gray for out of stock
+                        c.setBackground(AppColors.BACKGROUND);
+                        c.setForeground(AppColors.TEXT);
                     } else if (stock <= CRITICAL_STOCK_THRESHOLD) {
-                        // Yellow for critical stock
-                        c.setBackground(new Color(255, 255, 200));
-                        c.setForeground(Color.BLACK);
+                        // Light yellow for critical stock
+                        c.setBackground(new Color(255, 250, 220));
+                        c.setForeground(AppColors.TEXT);
                     } else {
-                        c.setBackground(Color.WHITE);
-                        c.setForeground(Color.BLACK);
+                        c.setBackground(AppColors.WHITE);
+                        c.setForeground(AppColors.TEXT);
                     }
                 }
 
@@ -1208,22 +1210,22 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
                     switch (rank) {
                         case 1:
                             c.setBackground(new Color(255, 215, 0)); // Gold
-                            c.setForeground(Color.BLACK);
+                            c.setForeground(AppColors.TEXT);
                             setText(String.valueOf(rank));
                             break;
                         case 2:
                             c.setBackground(new Color(192, 192, 192)); // Silver
-                            c.setForeground(Color.BLACK);
+                            c.setForeground(AppColors.TEXT);
                             setText(String.valueOf(rank));
                             break;
                         case 3:
                             c.setBackground(new Color(205, 127, 50)); // Bronze
-                            c.setForeground(Color.BLACK);
+                            c.setForeground(AppColors.TEXT);
                             setText(String.valueOf(rank));
                             break;
                         default:
-                            c.setBackground(Color.WHITE);
-                            c.setForeground(Color.BLACK);
+                            c.setBackground(AppColors.WHITE);
+                            c.setForeground(AppColors.TEXT);
                             setText(String.valueOf(rank));
                             break;
                     }
@@ -1244,7 +1246,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             "Thuốc Sắp Hết Hạn",
             "0",
             "lô hàng cần xử lý",
-            new Color(220, 53, 69), // Red
+            AppColors.DANGER, // Red
             ""
         );
         lblCardExpiringCount = (JLabel) ((JPanel) cardExpiring.getComponent(0)).getComponent(0);
@@ -1254,7 +1256,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             "Thuốc Sắp Hết Hàng",
             "0",
             "sản phẩm cần nhập",
-            new Color(255, 143, 0), // Orange
+            AppColors.WARNING, // Orange/Yellow
             ""
         );
         lblCardLowStockCount = (JLabel) ((JPanel) cardLowStock.getComponent(0)).getComponent(0);
@@ -1264,7 +1266,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
             "Doanh Thu Ca Hiện Tại",
             "0 đ",
             "từ đầu ca đến hiện tại",
-            new Color(40, 167, 69), // Green
+            AppColors.SUCCESS, // Green
             ""
         );
         lblCardShiftRevenue = (JLabel) ((JPanel) cardRevenue.getComponent(0)).getComponent(0);
@@ -1278,7 +1280,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
     private JPanel createSummaryCard(String title, String value, String subtitle, Color color, String icon) {
         JPanel card = new JPanel(new BorderLayout(10, 10));
-        card.setBackground(Color.WHITE);
+        card.setBackground(AppColors.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(color, 2),
             new EmptyBorder(20, 20, 20, 20)
@@ -1286,7 +1288,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
 
         // Top section: Value only (no icon)
         JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(Color.WHITE);
+        topPanel.setBackground(AppColors.WHITE);
 
         JLabel lblValue = new JLabel(value);
         lblValue.setFont(new Font("Segoe UI", Font.BOLD, 32));
@@ -1298,7 +1300,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         // Bottom section: Title + Subtitle
         JPanel bottomPanel = new JPanel();
         bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
-        bottomPanel.setBackground(Color.WHITE);
+        bottomPanel.setBackground(AppColors.WHITE);
 
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -1318,5 +1320,72 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         card.add(bottomPanel, BorderLayout.SOUTH);
 
         return card;
+    }
+
+    /**
+     * Start auto-refresh timer to update dashboard data periodically
+     */
+    private void startAutoRefresh() {
+        if (refreshTimer != null && refreshTimer.isRunning()) {
+            refreshTimer.stop();
+        }
+
+        refreshTimer = new Timer(AUTO_REFRESH_INTERVAL, e -> {
+            try {
+                loadData();
+                loadShiftData();
+            } catch (Exception ex) {
+                // Silent fail - don't interrupt user with errors during auto-refresh
+                System.err.println("Auto-refresh error: " + ex.getMessage());
+            }
+        });
+        refreshTimer.setRepeats(true);
+        refreshTimer.start();
+    }
+
+    /**
+     * Stop auto-refresh timer when component is no longer needed
+     */
+    public void stopAutoRefresh() {
+        if (refreshTimer != null && refreshTimer.isRunning()) {
+            refreshTimer.stop();
+        }
+    }
+
+    // DataChangeListener implementation
+    @Override
+    public void onInvoiceCreated() {
+        // Immediately refresh dashboard when a new invoice is created
+        SwingUtilities.invokeLater(() -> {
+            loadData();
+            loadShiftData();
+        });
+    }
+
+    @Override
+    public void onProductChanged() {
+        // Immediately refresh dashboard when products change
+        SwingUtilities.invokeLater(() -> {
+            loadData();
+            loadShiftData();
+        });
+    }
+
+    @Override
+    public void onPromotionChanged() {
+        // Immediately refresh dashboard when promotions change
+        SwingUtilities.invokeLater(() -> {
+            loadData();
+            loadShiftData();
+        });
+    }
+
+    @Override
+    public void onDataChanged() {
+        // General data change - refresh everything
+        SwingUtilities.invokeLater(() -> {
+            loadData();
+            loadShiftData();
+        });
     }
 }

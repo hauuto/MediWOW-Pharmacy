@@ -6,6 +6,7 @@ import com.entities.Staff;
 import com.gui.invoice_options.TAB_ExchangeInvoice;
 import com.gui.invoice_options.TAB_InvoiceList;
 import com.gui.invoice_options.TAB_SalesInvoice;
+import com.interfaces.DataChangeListener;
 import com.interfaces.ShiftChangeListener;
 import com.utils.AppColors;
 import javax.swing.*;
@@ -24,6 +25,7 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
     private boolean salesInvoiceInitialized = false;
     private boolean exchangeInvoiceInitialized = false;
     private ShiftChangeListener shiftChangeListener;
+    private DataChangeListener dataChangeListener;
     private BUS_Shift busShift;
     private boolean hasActiveShift = false;
 
@@ -41,6 +43,10 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
 
     public void setShiftChangeListener(ShiftChangeListener listener) {
         this.shiftChangeListener = listener;
+    }
+
+    public void setDataChangeListener(DataChangeListener listener) {
+        this.dataChangeListener = listener;
     }
 
     @Override
@@ -151,7 +157,7 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
     private void initializeSalesInvoice() {
         if (!salesInvoiceInitialized) {
             try {
-                tabSelling = new TAB_SalesInvoice(currentStaff, shiftChangeListener);
+                tabSelling = new TAB_SalesInvoice(currentStaff, shiftChangeListener, dataChangeListener);
                 pnlContent.add(tabSelling.pnlSalesInvoice, "selling");
                 salesInvoiceInitialized = true;
             } catch (IllegalStateException e) {

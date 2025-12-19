@@ -2,6 +2,7 @@ package com.gui;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import com.interfaces.DataChangeListener;
 import com.utils.AppColors;
 import com.entities.Staff;
 import com.entities.Shift;
@@ -90,6 +91,10 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         // so they can be forwarded to the invoice menu
         dashboard.setShiftChangeListener(this);
 
+        // Connect dashboard as DataChangeListener to invoiceMenu
+        // so dashboard refreshes immediately when data changes
+        invoiceMenu.setDataChangeListener((DataChangeListener) dashboard);
+
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistic statistic = new TAB_Statistic();
         TAB_Product product = new TAB_Product();
@@ -137,8 +142,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     }
 
 
-
-
     @Override
     public void actionPerformed(ActionEvent e) {
         Object src = e.getSource();
@@ -179,14 +182,14 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
             if (openShift != null) {
                 // Check if it's current staff's shift or another staff's shift
                 boolean isOwnShift = currentStaff != null &&
-                    openShift.getStaff() != null &&
-                    openShift.getStaff().getId().equals(currentStaff.getId());
+                        openShift.getStaff() != null &&
+                        openShift.getStaff().getId().equals(currentStaff.getId());
 
                 String warningMessage = isOwnShift ?
-                    "CẢNH BÁO: Bạn đang có ca làm việc chưa đóng!\n\n" +
-                    "Vui lòng chọn một trong các hành động sau:" :
-                    "CẢNH BÁO: Máy này đang có ca mở bởi nhân viên " + openShift.getStaff().getFullName() + "!\n\n" +
-                    "Vui lòng chọn một trong các hành động sau:";
+                        "CẢNH BÁO: Bạn đang có ca làm việc chưa đóng!\n\n" +
+                                "Vui lòng chọn một trong các hành động sau:" :
+                        "CẢNH BÁO: Máy này đang có ca mở bởi nhân viên " + openShift.getStaff().getFullName() + "!\n\n" +
+                                "Vui lòng chọn một trong các hành động sau:";
 
                 // Show warning with 3 options: Close Shift, Logout Anyway, Cancel
                 Object[] options = {"Đóng ca", "Đăng xuất", "Hủy"};

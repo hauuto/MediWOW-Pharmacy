@@ -160,22 +160,6 @@ public class DAO_Invoice implements IInvoice {
                         "WHERE p.id = :promotionId",
                         com.entities.Promotion.class
                     ).setParameter("promotionId", invoice.getPromotion().getId()).uniqueResult();
-
-                    // Fetch products in promotion conditions
-                    session.createQuery(
-                        "SELECT DISTINCT pc FROM PromotionCondition pc " +
-                        "LEFT JOIN FETCH pc.product " +
-                        "WHERE pc.promotion.id = :promotionId",
-                        com.entities.PromotionCondition.class
-                    ).setParameter("promotionId", invoice.getPromotion().getId()).list();
-
-                    // Fetch products in promotion actions
-                    session.createQuery(
-                        "SELECT DISTINCT pa FROM PromotionAction pa " +
-                        "LEFT JOIN FETCH pa.product " +
-                        "WHERE pa.promotion.id = :promotionId",
-                        com.entities.PromotionAction.class
-                    ).setParameter("promotionId", invoice.getPromotion().getId()).list();
                 }
 
                 // Fetch products in invoice lines
@@ -274,22 +258,6 @@ public class DAO_Invoice implements IInvoice {
                         "LEFT JOIN FETCH p.actions " +
                         "WHERE p IN :promotions",
                         com.entities.Promotion.class
-                    ).setParameter("promotions", promotions).list();
-
-                    // Fetch products in promotion conditions
-                    session.createQuery(
-                        "SELECT DISTINCT pc FROM PromotionCondition pc " +
-                        "LEFT JOIN FETCH pc.product " +
-                        "WHERE pc.promotion IN :promotions",
-                        com.entities.PromotionCondition.class
-                    ).setParameter("promotions", promotions).list();
-
-                    // Fetch products in promotion actions
-                    session.createQuery(
-                        "SELECT DISTINCT pa FROM PromotionAction pa " +
-                        "LEFT JOIN FETCH pa.product " +
-                        "WHERE pa.promotion IN :promotions",
-                        com.entities.PromotionAction.class
                     ).setParameter("promotions", promotions).list();
                 }
 

@@ -4,6 +4,7 @@ import com.bus.*;
 import com.entities.*;
 import com.enums.*;
 import com.gui.DIALOG_MomoQRCode;
+import com.interfaces.DataChangeListener;
 import com.interfaces.ShiftChangeListener;
 import com.utils.*;
 import javax.swing.*;
@@ -44,7 +45,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private JPanel pnlCashOptions;
     private boolean barcodeScanningEnabled = false;
     private boolean isValidatingPrescriptionCode = false;
-    private JWindow searchWindow, promotionSearchWindow;
+    private JWindow searchWindow, promotionSearchWindow, barcodeScanOverlay;
     private JList<String> searchResultsList, promotionSearchResultsList;
     private DefaultListModel<String> searchResultsModel, promotionSearchResultsModel;
     private List<Product> currentSearchResults = new ArrayList<>();
@@ -53,10 +54,16 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private Window parentWindow;
     private Shift currentShift;
     private ShiftChangeListener shiftChangeListener;
+    private DataChangeListener dataChangeListener;
 
     public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener) {
+        this(creator, shiftChangeListener, null);
+    }
+
+    public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener, DataChangeListener dataChangeListener) {
         this.currentStaff = Objects.requireNonNull(creator, "Nhân viên tạo hóa đơn không được null");
         this.shiftChangeListener = shiftChangeListener;
+        this.dataChangeListener = dataChangeListener;
         $$$setupUI$$$();
         parentWindow = this;
         currentShift = ensureCurrentShift();
@@ -361,9 +368,78 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private void toggleBarcodeScanning() {
         barcodeScanningEnabled = !barcodeScanningEnabled;
         updateBarcodeScanButtonAppearance();
-        txtSearchInput.setText(""); txtSearchInput.requestFocusInWindow();
-        JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã " + (barcodeScanningEnabled ? "BẬT" : "TẮT") + "!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+        txtSearchInput.setText("");
+
+        if (barcodeScanningEnabled) {
+            JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã BẬT!\n\nNhấn chuột bất kỳ để tắt.", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+            SwingUtilities.invokeLater(this::showBarcodeScanOverlay);
+        } else {
+            hideBarcodeScanOverlay();
+            JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã TẮT!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void setupBarcodeScanOverlay() {
+        barcodeScanOverlay = new JWindow();
+        barcodeScanOverlay.setBackground(new Color(0, 0, 0, 1)); // Nearly transparent
+
+        JPanel overlayPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                // Semi-transparent overlay to indicate scanning mode
+                g.setColor(new Color(0, 0, 0, 30));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        overlayPanel.setOpaque(false);
+        overlayPanel.setLayout(null);
+
+        // Mouse listener to disable barcode scanning on any click
+        overlayPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                disableBarcodeScanning();
+            }
+        });
+
+        barcodeScanOverlay.setContentPane(overlayPanel);
+        barcodeScanOverlay.setAlwaysOnTop(true);
+    }
+
+    private void showBarcodeScanOverlay() {
+        if (barcodeScanOverlay == null) setupBarcodeScanOverlay();
+
+        Window ancestor = SwingUtilities.getWindowAncestor(pnlSalesInvoice);
+        if (ancestor != null) {
+            Point loc = ancestor.getLocationOnScreen();
+            barcodeScanOverlay.setLocation(loc);
+            barcodeScanOverlay.setSize(ancestor.getSize());
+        } else {
+            // Fallback to screen size
+            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+            barcodeScanOverlay.setLocation(0, 0);
+            barcodeScanOverlay.setSize(screenSize);
+        }
+
+        barcodeScanOverlay.setVisible(true);
+        // Set focus on the product search bar for barcode input
         SwingUtilities.invokeLater(() -> txtSearchInput.requestFocusInWindow());
+    }
+
+    private void hideBarcodeScanOverlay() {
+        if (barcodeScanOverlay != null) {
+            barcodeScanOverlay.setVisible(false);
+        }
+    }
+
+    private void disableBarcodeScanning() {
+        if (barcodeScanningEnabled) {
+            barcodeScanningEnabled = false;
+            updateBarcodeScanButtonAppearance();
+            hideBarcodeScanOverlay();
+            JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã TẮT!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     private void updateBarcodeScanButtonAppearance() {
@@ -376,7 +452,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         Product p = products.stream().filter(pr -> code.equals(pr.getBarcode())).findFirst().orElse(null);
         Toolkit.getDefaultToolkit().beep();
         if (p == null)
-            JOptionPane.showMessageDialog(parentWindow, "Không tìm thấy sản phẩm với mã vạch: " + code, "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parentWindow, "Không tìm thấy sản phẩm với mã vạch: " + code + "\nBẤM ENTER ĐỂ TẮT THÔNG BÁO!", "Lỗi", JOptionPane.ERROR_MESSAGE);
         else
             addProductToInvoice(p);
         SwingUtilities.invokeLater(() -> { if (barcodeScanningEnabled) txtSearchInput.requestFocusInWindow(); });
@@ -754,10 +830,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     @Override public void focusLost(FocusEvent e) {
         Object src = e.getSource();
-        if (src == txtSearchInput && !e.isTemporary() && barcodeScanningEnabled) {
-            Component o = e.getOppositeComponent();
-            if (o instanceof JTextField || o instanceof JFormattedTextField) { barcodeScanningEnabled = false; updateBarcodeScanButtonAppearance(); }
-        } else if (src == txtPrescriptionCode) validatePrescriptionCode();
+        if (src == txtPrescriptionCode) validatePrescriptionCode();
         else if (src == txtPromotionSearch) new javax.swing.Timer(150, evt -> promotionSearchWindow.setVisible(false)) {{ setRepeats(false); start(); }};
         else if (src instanceof JTextField) {
             JTextField t = (JTextField) src;
@@ -873,6 +946,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             File d = new File("invoices"); if (!d.exists()) d.mkdirs();
             String fn = "invoices/Invoice_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".pdf";
             File f = InvoicePDFGenerator.generateInvoicePDF(invoice, fn);
+
+            // Notify dashboard to refresh immediately
+            if (dataChangeListener != null) {
+                dataChangeListener.onInvoiceCreated();
+            }
 
             int o = JOptionPane.showConfirmDialog(parentWindow, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
             if (o == JOptionPane.YES_OPTION && Desktop.isDesktopSupported()) Desktop.getDesktop().open(f);
