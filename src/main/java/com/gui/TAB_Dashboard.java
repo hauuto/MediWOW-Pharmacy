@@ -2,6 +2,7 @@ package com.gui;
 
 import com.entities.Staff;
 import com.enums.Role;
+import com.interfaces.DataChangeListener;
 import com.interfaces.ShiftChangeListener;
 
 import javax.swing.*;
@@ -14,7 +15,7 @@ import java.awt.*;
  *
  * @author Tô Thanh Hậu
  */
-public class TAB_Dashboard extends JPanel {
+public class TAB_Dashboard extends JPanel implements DataChangeListener {
     private Staff currentStaff;
     private JPanel contentPanel;
     private ShiftChangeListener shiftChangeListener;
@@ -65,6 +66,35 @@ public class TAB_Dashboard extends JPanel {
             ((TAB_Dashboard_Manager) contentPanel).setShiftChangeListener(listener);
         } else if (contentPanel instanceof TAB_Dashboard_Pharmacist) {
             ((TAB_Dashboard_Pharmacist) contentPanel).setShiftChangeListener(listener);
+        }
+    }
+
+    // DataChangeListener implementation - propagate to child dashboard
+    @Override
+    public void onInvoiceCreated() {
+        if (contentPanel instanceof TAB_Dashboard_Pharmacist) {
+            ((TAB_Dashboard_Pharmacist) contentPanel).onInvoiceCreated();
+        }
+    }
+
+    @Override
+    public void onProductChanged() {
+        if (contentPanel instanceof TAB_Dashboard_Pharmacist) {
+            ((TAB_Dashboard_Pharmacist) contentPanel).onProductChanged();
+        }
+    }
+
+    @Override
+    public void onPromotionChanged() {
+        if (contentPanel instanceof TAB_Dashboard_Pharmacist) {
+            ((TAB_Dashboard_Pharmacist) contentPanel).onPromotionChanged();
+        }
+    }
+
+    @Override
+    public void onDataChanged() {
+        if (contentPanel instanceof TAB_Dashboard_Pharmacist) {
+            ((TAB_Dashboard_Pharmacist) contentPanel).onDataChanged();
         }
     }
 }

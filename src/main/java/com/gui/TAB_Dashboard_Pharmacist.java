@@ -8,6 +8,7 @@ import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.LotStatus;
 import com.enums.PromotionEnum;
+import com.interfaces.DataChangeListener;
 import com.interfaces.ShiftChangeListener;
 import com.utils.AppColors;
 
@@ -29,6 +30,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.swing.Timer;
 
 /**
  * Dashboard cho Nhân viên (Dược sĩ)
@@ -39,7 +41,7 @@ import java.util.stream.Collectors;
  *
  * @author Tô Thanh Hậu
  */
-public class TAB_Dashboard_Pharmacist extends JPanel {
+public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListener {
     private final BUS_Product busProduct;
     private final BUS_Promotion busPromotion;
     private final BUS_Shift busShift;
@@ -75,14 +77,17 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
     private JLabel lblShiftId;
     private JLabel lblCurrentCash;
 
-    private JButton btnRefresh;
     private JButton btnCloseShift;
+
+    // Auto-refresh timer
+    private Timer refreshTimer;
 
     // Constants
     private static final int LOW_STOCK_THRESHOLD = 100; // Định mức tồn kho thấp
     private static final int CRITICAL_STOCK_THRESHOLD = 10; // Ngưỡng tồn kho nguy hiểm
     private static final int EXPIRY_WARNING_DAYS = 90; // Cảnh báo thuốc còn 90 ngày hết hạn
     private static final int EXPIRY_DANGER_DAYS = 30; // Cảnh báo nguy hiểm còn 30 ngày
+    private static final int AUTO_REFRESH_INTERVAL = 5000; // Auto-refresh every 5 seconds
 
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -101,6 +106,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         initComponents();
         loadData();
         loadShiftData();
+        startAutoRefresh();
     }
 
     private void initComponents() {
@@ -178,7 +184,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         topSection.add(lblTitle, BorderLayout.WEST);
         topSection.add(rightSection, BorderLayout.EAST);
 
-        // Bottom section: Date + Refresh button
+        // Bottom section: Date only
         JPanel bottomSection = new JPanel(new BorderLayout());
         bottomSection.setBackground(AppColors.WHITE);
 
@@ -186,21 +192,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         lblDate.setForeground(AppColors.DARK);
 
-        btnRefresh = new JButton("Làm mới");
-        btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnRefresh.setBackground(AppColors.SECONDARY);
-        btnRefresh.setForeground(AppColors.WHITE);
-        btnRefresh.setFocusPainted(false);
-        btnRefresh.setBorderPainted(false);
-        btnRefresh.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnRefresh.setPreferredSize(new Dimension(150, 40));
-        btnRefresh.addActionListener(e -> {
-            loadData();
-            loadShiftData();
-        });
-
         bottomSection.add(lblDate, BorderLayout.WEST);
-        bottomSection.add(btnRefresh, BorderLayout.EAST);
 
         headerPanel.add(topSection, BorderLayout.NORTH);
         headerPanel.add(bottomSection, BorderLayout.SOUTH);
@@ -1328,5 +1320,72 @@ public class TAB_Dashboard_Pharmacist extends JPanel {
         card.add(bottomPanel, BorderLayout.SOUTH);
 
         return card;
+    }
+
+    /**
+     * Start auto-refresh timer to update dashboard data periodically
+     */
+    private void startAutoRefresh() {
+        if (refreshTimer != null && refreshTimer.isRunning()) {
+            refreshTimer.stop();
+        }
+
+        refreshTimer = new Timer(AUTO_REFRESH_INTERVAL, e -> {
+            try {
+                loadData();
+                loadShiftData();
+            } catch (Exception ex) {
+                // Silent fail - don't interrupt user with errors during auto-refresh
+                System.err.println("Auto-refresh error: " + ex.getMessage());
+            }
+        });
+        refreshTimer.setRepeats(true);
+        refreshTimer.start();
+    }
+
+    /**
+     * Stop auto-refresh timer when component is no longer needed
+     */
+    public void stopAutoRefresh() {
+        if (refreshTimer != null && refreshTimer.isRunning()) {
+            refreshTimer.stop();
+        }
+    }
+
+    // DataChangeListener implementation
+    @Override
+    public void onInvoiceCreated() {
+        // Immediately refresh dashboard when a new invoice is created
+        SwingUtilities.invokeLater(() -> {
+            loadData();
+            loadShiftData();
+        });
+    }
+
+    @Override
+    public void onProductChanged() {
+        // Immediately refresh dashboard when products change
+        SwingUtilities.invokeLater(() -> {
+            loadData();
+            loadShiftData();
+        });
+    }
+
+    @Override
+    public void onPromotionChanged() {
+        // Immediately refresh dashboard when promotions change
+        SwingUtilities.invokeLater(() -> {
+            loadData();
+            loadShiftData();
+        });
+    }
+
+    @Override
+    public void onDataChanged() {
+        // General data change - refresh everything
+        SwingUtilities.invokeLater(() -> {
+            loadData();
+            loadShiftData();
+        });
     }
 }
