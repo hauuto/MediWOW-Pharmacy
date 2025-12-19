@@ -4,6 +4,7 @@ import com.bus.*;
 import com.entities.*;
 import com.enums.*;
 import com.gui.DIALOG_MomoQRCode;
+import com.interfaces.DataChangeListener;
 import com.interfaces.ShiftChangeListener;
 import com.utils.*;
 import javax.swing.*;
@@ -53,10 +54,16 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private Window parentWindow;
     private Shift currentShift;
     private ShiftChangeListener shiftChangeListener;
+    private DataChangeListener dataChangeListener;
 
     public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener) {
+        this(creator, shiftChangeListener, null);
+    }
+
+    public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener, DataChangeListener dataChangeListener) {
         this.currentStaff = Objects.requireNonNull(creator, "Nhân viên tạo hóa đơn không được null");
         this.shiftChangeListener = shiftChangeListener;
+        this.dataChangeListener = dataChangeListener;
         $$$setupUI$$$();
         parentWindow = this;
         currentShift = ensureCurrentShift();
@@ -939,6 +946,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             File d = new File("invoices"); if (!d.exists()) d.mkdirs();
             String fn = "invoices/Invoice_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".pdf";
             File f = InvoicePDFGenerator.generateInvoicePDF(invoice, fn);
+
+            // Notify dashboard to refresh immediately
+            if (dataChangeListener != null) {
+                dataChangeListener.onInvoiceCreated();
+            }
 
             int o = JOptionPane.showConfirmDialog(parentWindow, "Thanh toán thành công!\nBạn có muốn mở hóa đơn không?", "Thành công", JOptionPane.YES_NO_OPTION);
             if (o == JOptionPane.YES_OPTION && Desktop.isDesktopSupported()) Desktop.getDesktop().open(f);
