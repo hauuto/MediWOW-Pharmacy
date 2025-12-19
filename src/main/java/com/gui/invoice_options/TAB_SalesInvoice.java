@@ -641,9 +641,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         Box pv = Box.createVerticalBox(); presc.add(pv);
 
         // Shift ID field (uneditable)
-        txtShiftId = new JTextField(); txtShiftId.setName("txtShiftId");
-        txtShiftId.setEditable(false); txtShiftId.setFocusable(false);
-        txtShiftId.setText("N/A");
+        txtShiftId = new JTextField(); txtShiftId.setEditable(false); txtShiftId.setFocusable(false);
         pv.add(generateLabelAndTextField(new JLabel("Mã ca:"), txtShiftId, "", "Mã ca làm việc", 112));
         pv.add(Box.createVerticalStrut(10));
 
@@ -938,6 +936,17 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (txtTotal != null && invoice != null) {
             txtTotal.setText(createCurrencyFormat().format(invoice.calculateTotal()));
             updateCashButtons();
+            updateBankPaymentAmount();
+        }
+    }
+
+    /**
+     * Update customer payment field when Bank payment method is selected
+     * to always reflect the current invoice total.
+     */
+    private void updateBankPaymentAmount() {
+        if (invoice != null && invoice.getPaymentMethod() == PaymentMethod.BANK_TRANSFER && txtCustomerPayment != null) {
+            txtCustomerPayment.setValue(invoice.calculateTotal().longValue());
         }
     }
 
