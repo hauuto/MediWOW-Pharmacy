@@ -3,6 +3,7 @@ package com.dao;
 import com.entities.Shift;
 import com.entities.Staff;
 import com.enums.ShiftStatus;
+import com.interfaces.IShift;
 import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -12,13 +13,16 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public class DAO_Shift {
+public class DAO_Shift implements IShift {
     private final SessionFactory sessionFactory;
 
     public DAO_Shift() {
         this.sessionFactory = HibernateUtil.getSessionFactory();
     }
 
+    // ===== DAO-level operations =====
+
+    @Override
     public Shift getOpenShiftByStaffId(String staffId) {
         if (staffId == null || staffId.isBlank()) return null;
         Session session = null;
@@ -43,6 +47,7 @@ public class DAO_Shift {
      * @param workstation Workstation identifier
      * @return Open shift on that workstation, or null
      */
+    @Override
     public Shift getOpenShiftByWorkstation(String workstation) {
         if (workstation == null || workstation.isBlank()) return null;
         Session session = null;
@@ -75,6 +80,7 @@ public class DAO_Shift {
         }
     }
 
+    @Override
     public Shift openShift(Staff staff, BigDecimal startCash, String notes, String workstation) {
         Transaction transaction = null;
         Session session = null;
@@ -114,6 +120,7 @@ public class DAO_Shift {
         }
     }
 
+    @Override
     public Shift closeShift(String shiftId, BigDecimal endCash, BigDecimal systemCash, String notes, Staff closedBy, String closeReason) {
         Transaction transaction = null;
         Session session = null;
@@ -163,6 +170,7 @@ public class DAO_Shift {
         }
     }
 
+    @Override
     public BigDecimal calculateSystemCashForShift(String shiftId) {
         Session session = null;
         try {
@@ -212,5 +220,42 @@ public class DAO_Shift {
                 session.close();
             }
         }
+    }
+
+    // ===== Business-layer methods are not supported by DAO_Shift =====
+
+    @Override
+    public Shift getCurrentOpenShiftForStaff(Staff staff) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public Shift getOpenShiftOnWorkstation(String workstation) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public String getCurrentWorkstation() {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public Shift openShift(Staff staff, BigDecimal startCash, String notes) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public Shift closeShift(Shift shift, BigDecimal endCash, String notes, Staff closingStaff) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public Shift closeShift(Shift shift, BigDecimal endCash, String notes, Staff closingStaff, String closeReason) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public BigDecimal calculateSystemCashForShift(Shift shift) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
     }
 }

@@ -4,17 +4,23 @@ import com.dao.DAO_Shift;
 import com.entities.Shift;
 import com.entities.Staff;
 import com.enums.Role;
+import com.interfaces.IShift;
 
 import java.math.BigDecimal;
 import java.net.InetAddress;
 
-public class BUS_Shift {
-    private final DAO_Shift daoShift;
+public class BUS_Shift implements IShift {
+    private final IShift daoShift;
 
     public BUS_Shift() {
-        this.daoShift = new DAO_Shift();
+        this(new DAO_Shift());
     }
 
+    public BUS_Shift(IShift daoShift) {
+        this.daoShift = daoShift;
+    }
+
+    @Override
     public Shift getCurrentOpenShiftForStaff(Staff staff) {
         if (staff == null) return null;
         return daoShift.getOpenShiftByStaffId(staff.getId());
@@ -23,6 +29,7 @@ public class BUS_Shift {
     /**
      * Get any open shift on current workstation
      */
+    @Override
     public Shift getOpenShiftOnWorkstation(String workstation) {
         if (workstation == null || workstation.isBlank()) return null;
         return daoShift.getOpenShiftByWorkstation(workstation);
@@ -31,6 +38,7 @@ public class BUS_Shift {
     /**
      * Get current workstation identifier
      */
+    @Override
     public String getCurrentWorkstation() {
         try {
             InetAddress localHost = InetAddress.getLocalHost();
@@ -40,10 +48,12 @@ public class BUS_Shift {
         }
     }
 
+    @Override
     public Shift openShift(Staff staff, BigDecimal startCash, String notes) {
         return openShift(staff, startCash, notes, getCurrentWorkstation());
     }
 
+    @Override
     public Shift openShift(Staff staff, BigDecimal startCash, String notes, String workstation) {
         if (staff == null) {
             throw new IllegalArgumentException("Không tìm thấy thông tin nhân viên hiện tại");
@@ -77,10 +87,12 @@ public class BUS_Shift {
         return newShift;
     }
 
+    @Override
     public Shift closeShift(Shift shift, BigDecimal endCash, String notes, Staff closingStaff) {
         return closeShift(shift, endCash, notes, closingStaff, null);
     }
 
+    @Override
     public Shift closeShift(Shift shift, BigDecimal endCash, String notes, Staff closingStaff, String closeReason) {
         if (shift == null) {
             throw new IllegalArgumentException("Không tìm thấy thông tin ca làm việc");
@@ -111,9 +123,31 @@ public class BUS_Shift {
         return daoShift.closeShift(shift.getId(), endCash, systemCash, notes, closingStaff, closeReason);
     }
 
+    @Override
     public BigDecimal calculateSystemCashForShift(Shift shift) {
         if (shift == null) return BigDecimal.ZERO;
         return daoShift.calculateSystemCashForShift(shift.getId());
     }
-}
 
+    // ===== DAO-level methods are not supported by BUS_Shift =====
+
+    @Override
+    public Shift getOpenShiftByStaffId(String staffId) {
+        throw new UnsupportedOperationException("BUS_Shift does not support DAO operations");
+    }
+
+    @Override
+    public Shift getOpenShiftByWorkstation(String workstation) {
+        throw new UnsupportedOperationException("BUS_Shift does not support DAO operations");
+    }
+
+    @Override
+    public Shift closeShift(String shiftId, BigDecimal endCash, BigDecimal systemCash, String notes, Staff closedBy, String closeReason) {
+        throw new UnsupportedOperationException("BUS_Shift does not support DAO operations");
+    }
+
+    @Override
+    public BigDecimal calculateSystemCashForShift(String shiftId) {
+        throw new UnsupportedOperationException("BUS_Shift does not support DAO operations");
+    }
+}
