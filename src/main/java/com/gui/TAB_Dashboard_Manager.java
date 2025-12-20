@@ -2,16 +2,15 @@ package com.gui;
 
 import com.bus.BUS_Invoice;
 import com.bus.BUS_Product;
-import com.bus.BUS_Shift;
+import com.dao.DAO_Shift;
 import com.entities.*;
 import com.enums.InvoiceType;
-import com.enums.LineType;
+import com.enums.ProductCategory;
 import com.interfaces.ShiftChangeListener;
 import com.utils.AppColors;
+import org.knowm.xchart.CategoryChart;
+import org.knowm.xchart.CategoryChartBuilder;
 import org.knowm.xchart.XChartPanel;
-import org.knowm.xchart.XYChart;
-import org.knowm.xchart.XYChartBuilder;
-import org.knowm.xchart.style.Styler;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -20,63 +19,54 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Locale;
 
 /**
- * Dashboard cho Quản lý (Chủ nhà thuốc)
- * Tập trung vào hiệu quả kinh doanh và xu hướng:
- * - Sản phẩm bán chạy nhất
- * - Phát hiện sản phẩm tăng/giảm đột biến
- * - Thống kê doanh thu và lợi nhuận
- * - Đối soát cuối ca/cuối ngày
+ * Dashboard cho Quản lý - công cụ ra quyết định chiến lược.
+ * Không hiển thị dữ liệu thô; tập trung KPI, xu hướng, rủi ro và hành động.
  *
  * @author Tô Thanh Hậu
  */
 public class TAB_Dashboard_Manager extends JPanel {
-    private final BUS_Invoice busInvoice;
-    private final BUS_Product busProduct;
-    private final BUS_Shift busShift;
 
-    // Current staff and shift
-    private Staff currentStaff;
-    private Shift currentShift;
+    private final Staff currentStaff;
     private ShiftChangeListener shiftChangeListener;
 
+    // Chỉ dùng BUS/DAO của entities
+    private final BUS_Invoice busInvoice;
+    private final BUS_Product busProduct;
+    private final DAO_Shift daoShift;
+
+    // Header controls
+    private JLabel lblTitle;
+    private JLabel lblDate;
+    private JComboBox<String> cbSoSanh;
+    private JComboBox<String> cbBieuDo;
+    private JButton btnLamMoi;
+
+    // KPI cards
+    private KpiCard cardDoanhThuThuan;
+    private KpiCard cardLoiNhuan;
+    private KpiCard cardTraHang;
+    private KpiCard cardChenhLechTienMat;
+
+    // Chart
+    private JPanel chartWrap;
+
     // Tables
-    private JTable tblBestSellers;
-    private JTable tblTrending;
+    private JTable tblDotBien;
+    private DefaultTableModel mdlDotBien;
 
-    private DefaultTableModel bestSellersModel;
-    private DefaultTableModel trendingModel;
+    private JTable tblDoiSoat;
+    private DefaultTableModel mdlDoiSoat;
 
-    // Labels for statistics
-    private JLabel lblTodayRevenue;
-    private JLabel lblTodayProfit;
-    private JLabel lblTodayInvoiceCount;
-    private JLabel lblCashReconciliation;
-    private JLabel lblReconInvoiceCount, lblReconSystemRevenue, lblReconCashStart, lblReconCashEnd, lblReconStatus;
-
-    // Shift management labels
-    private JLabel lblShiftId;
-    private JLabel lblCurrentCash;
-
-    private JButton btnRefresh;
-    private JButton btnShift;
-    private XYChart revenueChart;
-    private XChartPanel<XYChart> revenueChartPanel;
-
-    // Date range selectors
-    private JComboBox<String> cboComparisonPeriod;
-
-    private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+    private final NumberFormat currency = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
+    private final DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public TAB_Dashboard_Manager() {
         this(null);
@@ -86,979 +76,953 @@ public class TAB_Dashboard_Manager extends JPanel {
         this.currentStaff = staff;
         this.busInvoice = new BUS_Invoice();
         this.busProduct = new BUS_Product();
-        this.busShift = new BUS_Shift();
+        this.daoShift = new DAO_Shift();
         initComponents();
-        loadData();
-        loadShiftData();
+        refresh();
     }
+
+    public void setShiftChangeListener(ShiftChangeListener listener) {
+        this.shiftChangeListener = listener;
+    }
+
+    public void refresh() {
+        // tránh block EDT lâu: do dữ liệu có thể truy vấn DB
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            private ManagerKpis kpis;
+            private List<TimePoint> series;
+            private List<TrendingProductRow> dotBien;
+            private List<ShiftReconciliationRow> doiSoat;
+
+            @Override
+            protected Void doInBackground() {
+                ComparisonPeriod cp = getComparisonPeriodLocal();
+                TimeGranularity tg = getTimeGranularityLocal();
+
+                kpis = buildKpisHomNay(cp);
+                series = buildDoanhThuLoiNhuanSeries(tg);
+                dotBien = buildSanPhamDotBienTop(5);
+                doiSoat = buildDoiSoatCaHomNay();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                applyKpis(kpis);
+                renderChart(series);
+                loadDotBien(dotBien);
+                loadDoiSoat(doiSoat);
+            }
+        };
+        worker.execute();
+    }
+
+    // ================= UI =================
 
     private void initComponents() {
         setLayout(new BorderLayout(10, 10));
         setBorder(new EmptyBorder(20, 20, 20, 20));
         setBackground(AppColors.WHITE);
 
-        // Header
         add(createHeaderPanel(), BorderLayout.NORTH);
 
-        // Main content
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBackground(AppColors.WHITE);
+        JPanel content = new JPanel(new BorderLayout(10, 10));
+        content.setOpaque(false);
 
-        // Statistics panel at top
-        mainPanel.add(createStatisticsPanel(), BorderLayout.NORTH);
+        content.add(createKpiPanel(), BorderLayout.NORTH);
+        content.add(createCenterPanel(), BorderLayout.CENTER);
 
-        // Center panel with two split panes
-        JSplitPane mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        mainSplit.setResizeWeight(0.6);
-        mainSplit.setBorder(null);
-
-        JSplitPane topSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        topSplit.setResizeWeight(0.5);
-        topSplit.setLeftComponent(createBestSellersPanel());
-        topSplit.setRightComponent(createRevenueChartPanel());
-
-        JSplitPane bottomSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        bottomSplit.setResizeWeight(0.5);
-        bottomSplit.setLeftComponent(createTrendingPanel());
-        bottomSplit.setRightComponent(createCashReconciliationPanel());
-
-        mainSplit.setTopComponent(topSplit);
-        mainSplit.setBottomComponent(bottomSplit);
-
-        mainPanel.add(mainSplit, BorderLayout.CENTER);
-
-        add(mainPanel, BorderLayout.CENTER);
+        add(content, BorderLayout.CENTER);
     }
 
     private JPanel createHeaderPanel() {
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(AppColors.WHITE);
-        headerPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
+        JPanel header = new JPanel(new BorderLayout(10, 10));
+        header.setOpaque(false);
+        header.setBorder(new EmptyBorder(0, 0, 10, 0));
 
-        JLabel lblTitle = new JLabel("Dashboard Quản Lý - Hiệu Quả Kinh Doanh");
+        // Left: title + date
+        JPanel left = new JPanel();
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        left.setOpaque(false);
+
+        lblTitle = new JLabel("Dashboard Quản lý - Điều hành chiến lược");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
         lblTitle.setForeground(AppColors.PRIMARY);
 
-        // Right section: Shift Widget + Shift Button + Controls
-        JPanel rightSection = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
-        rightSection.setBackground(AppColors.WHITE);
-
-        // Shift Info Widget
-        JPanel shiftWidget = createShiftWidget();
-        rightSection.add(shiftWidget);
-
-
-        // Shift Button (Mở ca / Đóng ca)
-        btnShift = new JButton("Mở ca");
-        btnShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnShift.setBackground(new Color(40, 167, 69));
-        btnShift.setForeground(Color.WHITE);
-        btnShift.setFocusPainted(false);
-        btnShift.setBorderPainted(false);
-        btnShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnShift.setPreferredSize(new Dimension(100, 35));
-        btnShift.addActionListener(e -> handleShiftButtonClick());
-        rightSection.add(btnShift);
-
-        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        controlPanel.setBackground(AppColors.WHITE);
-
-        JLabel lblPeriod = new JLabel("So sánh với:");
-        lblPeriod.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-
-        cboComparisonPeriod = new JComboBox<>(new String[]{
-            "Hôm qua", "7 ngày trước", "Tháng trước"
-        });
-        cboComparisonPeriod.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        cboComparisonPeriod.addActionListener(e -> loadTrendingProducts());
-
-        btnRefresh = new JButton("Làm mới");
-        btnRefresh.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnRefresh.setBackground(AppColors.SECONDARY);
-        btnRefresh.setForeground(Color.WHITE);
-        btnRefresh.setFocusPainted(false);
-        btnRefresh.setBorderPainted(false);
-        btnRefresh.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnRefresh.setPreferredSize(new Dimension(130, 35));
-        btnRefresh.addActionListener(e -> {
-            loadData();
-            loadShiftData();
-        });
-
-        controlPanel.add(lblPeriod);
-        controlPanel.add(cboComparisonPeriod);
-        controlPanel.add(btnRefresh);
-
-        // Combine shift section and control panel
-        JPanel combinedRight = new JPanel(new BorderLayout(10, 10));
-        combinedRight.setBackground(AppColors.WHITE);
-        combinedRight.add(rightSection, BorderLayout.NORTH);
-        combinedRight.add(controlPanel, BorderLayout.SOUTH);
-
-        JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.setBackground(AppColors.WHITE);
-        topPanel.add(lblTitle, BorderLayout.WEST);
-        topPanel.add(combinedRight, BorderLayout.EAST);
-
-        JLabel lblDate = new JLabel("Ngày: " + LocalDate.now().format(dateFormatter));
+        lblDate = new JLabel("Ngày: " + LocalDate.now().format(dateFmt));
         lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         lblDate.setForeground(AppColors.DARK);
 
-        headerPanel.add(topPanel, BorderLayout.NORTH);
-        headerPanel.add(lblDate, BorderLayout.SOUTH);
+        left.add(lblTitle);
+        left.add(Box.createVerticalStrut(4));
+        left.add(lblDate);
 
-        return headerPanel;
+        // Right: filters
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        right.setOpaque(false);
+
+        cbSoSanh = new JComboBox<>(new String[]{"So với hôm qua", "So với 7 ngày trước"});
+        cbSoSanh.setPreferredSize(new Dimension(170, 32));
+
+        cbBieuDo = new JComboBox<>(new String[]{"Biểu đồ 7 ngày gần nhất", "Biểu đồ theo giờ hôm nay"});
+        cbBieuDo.setPreferredSize(new Dimension(190, 32));
+
+        btnLamMoi = new JButton("Làm mới");
+        btnLamMoi.setPreferredSize(new Dimension(110, 32));
+        btnLamMoi.setBackground(AppColors.PRIMARY);
+        btnLamMoi.setForeground(Color.WHITE);
+        btnLamMoi.setFocusPainted(false);
+        btnLamMoi.setBorderPainted(false);
+        btnLamMoi.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnLamMoi.addActionListener(e -> refresh());
+
+        cbSoSanh.addActionListener(e -> refresh());
+        cbBieuDo.addActionListener(e -> refresh());
+
+        right.add(cbSoSanh);
+        right.add(cbBieuDo);
+        right.add(btnLamMoi);
+
+        header.add(left, BorderLayout.WEST);
+        header.add(right, BorderLayout.EAST);
+        return header;
     }
 
-    private JPanel createShiftWidget() {
-        JPanel widget = new JPanel();
-        widget.setLayout(new BoxLayout(widget, BoxLayout.Y_AXIS));
-        widget.setBackground(new Color(240, 248, 255)); // Light blue background
-        widget.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(AppColors.SECONDARY, 1),
-            new EmptyBorder(8, 12, 8, 12)
+    private JPanel createKpiPanel() {
+        JPanel wrap = new JPanel(new GridLayout(1, 4, 12, 0));
+        wrap.setOpaque(false);
+
+        cardDoanhThuThuan = new KpiCard("Doanh thu thuần", "Doanh thu bán − Doanh thu trả", KpiTone.TICH_CUC);
+        cardLoiNhuan = new KpiCard("Lợi nhuận / Lỗ", "Doanh thu hóa đơn − Giá vốn", KpiTone.TU_DONG);
+        cardTraHang = new KpiCard("Tổng đơn trả hàng", "Chỉ báo vấn đề kinh doanh", KpiTone.CANH_BAO);
+        cardChenhLechTienMat = new KpiCard("Chênh lệch tiền mặt", "Thực tế − Hệ thống", KpiTone.NGUY_CO);
+
+        wrap.add(cardDoanhThuThuan);
+        wrap.add(cardLoiNhuan);
+        wrap.add(cardTraHang);
+        wrap.add(cardChenhLechTienMat);
+
+        return wrap;
+    }
+
+    private JPanel createCenterPanel() {
+        JPanel center = new JPanel(new GridLayout(1, 2, 12, 0));
+        center.setOpaque(false);
+
+        JPanel left = new JPanel(new BorderLayout(10, 10));
+        left.setOpaque(false);
+        left.add(createChartPanel(), BorderLayout.NORTH);
+        left.add(createDotBienPanel(), BorderLayout.CENTER);
+
+        JPanel right = new JPanel(new BorderLayout(10, 10));
+        right.setOpaque(false);
+        right.add(createActionHintPanel(), BorderLayout.NORTH);
+        right.add(createDoiSoatPanel(), BorderLayout.CENTER);
+
+        center.add(left);
+        center.add(right);
+        return center;
+    }
+
+    private JPanel createChartPanel() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        p.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(AppColors.LIGHT, 1),
+            "Doanh thu & Lợi nhuận theo thời gian"
         ));
 
-        // Shift ID
-        JPanel shiftIdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        shiftIdPanel.setBackground(new Color(240, 248, 255));
-        JLabel lblShiftIdLabel = new JLabel("Mã Ca:");
-        lblShiftIdLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblShiftIdLabel.setForeground(AppColors.DARK);
-        lblShiftId = new JLabel("---");
-        lblShiftId.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblShiftId.setForeground(AppColors.PRIMARY);
-        shiftIdPanel.add(lblShiftIdLabel);
-        shiftIdPanel.add(lblShiftId);
+        chartWrap = new JPanel(new BorderLayout());
+        chartWrap.setBackground(Color.WHITE);
+        chartWrap.setPreferredSize(new Dimension(0, 300));
 
-        // Current Cash
-        JPanel cashPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        cashPanel.setBackground(new Color(240, 248, 255));
-        JLabel lblCashLabel = new JLabel("Tiền mặt:");
-        lblCashLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblCashLabel.setForeground(AppColors.DARK);
-        lblCurrentCash = new JLabel("0 ₫");
-        lblCurrentCash.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblCurrentCash.setForeground(AppColors.SUCCESS);
-        cashPanel.add(lblCashLabel);
-        cashPanel.add(lblCurrentCash);
+        JLabel note = new JLabel("Mục tiêu: nhận diện giờ/ngày cao điểm để điều chỉnh phân ca hoặc khuyến mãi.");
+        note.setBorder(new EmptyBorder(6, 8, 6, 8));
+        note.setForeground(AppColors.DARK);
+        note.setFont(new Font("Segoe UI", Font.ITALIC, 12));
 
-        widget.add(shiftIdPanel);
-        widget.add(cashPanel);
-
-        return widget;
+        p.add(chartWrap, BorderLayout.CENTER);
+        p.add(note, BorderLayout.SOUTH);
+        return p;
     }
 
-    private void loadShiftData() {
-        // First, check if there's ANY open shift on this workstation
-        String workstation = busShift.getCurrentWorkstation();
-        Shift workstationShift = busShift.getOpenShiftOnWorkstation(workstation);
-
-        // Then check staff's personal shift
-        Shift staffShift = null;
-        if (currentStaff != null) {
-            staffShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
-        }
-
-        // Use workstation shift if it exists, otherwise use staff shift
-        currentShift = workstationShift != null ? workstationShift : staffShift;
-
-        // Set common button properties
-        btnShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnShift.setForeground(Color.WHITE);
-        btnShift.setBorderPainted(false);
-        btnShift.setFocusPainted(false);
-        btnShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnShift.setPreferredSize(new Dimension(100, 35));
-
-        if (currentShift != null) {
-            // Shift is open - show shift info and "Đóng ca"
-            lblShiftId.setText(currentShift.getId());
-            BigDecimal currentCash = busShift.calculateSystemCashForShift(currentShift);
-            lblCurrentCash.setText(currencyFormat.format(currentCash));
-
-            // Check if this is the staff's own shift
-            boolean isOwnShift = currentStaff != null &&
-                currentShift.getStaff() != null &&
-                currentShift.getStaff().getId().equals(currentStaff.getId());
-
-            btnShift.setText("Đóng ca");
-            btnShift.setToolTipText(isOwnShift ?
-                "Nhấn để đóng ca làm việc" :
-                "Đóng ca của: " + currentShift.getStaff().getFullName());
-            btnShift.setBackground(new Color(220, 53, 69)); // Red color for close
-            btnShift.setEnabled(true);
-        } else {
-            // No open shift - show "Mở ca"
-            lblShiftId.setText("Chưa mở ca");
-            lblCurrentCash.setText("---");
-
-            btnShift.setText("Mở ca");
-            btnShift.setToolTipText("Nhấn để mở ca làm việc");
-            btnShift.setBackground(new Color(40, 167, 69)); // Green color for open
-            btnShift.setEnabled(true);
-        }
-    }
-
-    private void handleShiftButtonClick() {
-        if (currentShift != null) {
-            // Close shift
-            DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(
-                (Frame) SwingUtilities.getWindowAncestor(this),
-                currentShift,
-                currentStaff
-            );
-            closeShiftDialog.setVisible(true);
-
-            // Update button and shift info if shift was closed
-            if (closeShiftDialog.isConfirmed()) {
-                Shift closedShift = currentShift;
-                currentShift = null;
-                loadShiftData();
-
-                // Notify listener that shift was closed
-                if (shiftChangeListener != null) {
-                    shiftChangeListener.onShiftClosed(closedShift);
-                }
-
-                JOptionPane.showMessageDialog(this,
-                    "Ca làm việc đã được đóng thành công!",
-                    "Thông báo",
-                    JOptionPane.INFORMATION_MESSAGE);
-            }
-        } else {
-            // Open shift - check for existing shift on workstation
-            String workstation = busShift.getCurrentWorkstation();
-            Shift existingShift = busShift.getOpenShiftOnWorkstation(workstation);
-
-            if (existingShift != null && !existingShift.getStaff().getId().equals(currentStaff.getId())) {
-                // Another staff has an open shift - show takeover dialog
-                handleExistingShift(existingShift);
-            } else {
-                // No existing shift or same staff - open new shift
-                openNewShift();
-            }
-        }
-    }
-
-    private void handleExistingShift(Shift existingShift) {
-        String message = String.format(
-            "Hiện đang có ca do nhân viên %s mở từ %s.\n\n" +
-            "Bạn có muốn tiếp tục ca này không?\n\n" +
-            "Lưu ý: Nếu chọn 'Có', bạn sẽ không thể bán hàng cho đến khi đóng ca này.",
-            existingShift.getStaff().getFullName(),
-            existingShift.getStartTime().format(dateTimeFormatter)
-        );
-
-        int choice = JOptionPane.showConfirmDialog(
-            this,
-            message,
-            "Ca làm việc đang mở",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE
-        );
-
-        if (choice == JOptionPane.YES_OPTION) {
-            // User wants to continue existing shift
-            currentShift = existingShift;
-            loadShiftData();
-
-            JOptionPane.showMessageDialog(
-                this,
-                "Bạn đã chọn tiếp tục ca hiện tại.\n" +
-                "Lưu ý: Bạn KHÔNG THỂ bán hàng khi chưa đóng ca này.",
-                "Thông báo",
-                JOptionPane.WARNING_MESSAGE
-            );
-        } else {
-            // User does not want to continue
-            JOptionPane.showMessageDialog(
-                this,
-                "Không thể mở ca mới khi đã có ca đang mở trên máy này.\n" +
-                "Vui lòng đóng ca hiện tại trước.",
-                "Không thể mở ca",
-                JOptionPane.WARNING_MESSAGE
-            );
-        }
-    }
-
-    private void openNewShift() {
-        DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(
-            (Frame) SwingUtilities.getWindowAncestor(this),
-            currentStaff
-        );
-        openShiftDialog.setVisible(true);
-
-        // Update button and shift info if shift was opened
-        if (openShiftDialog.getOpenedShift() != null) {
-            currentShift = openShiftDialog.getOpenedShift();
-            loadShiftData();
-
-            // Notify listener that shift was opened
-            if (shiftChangeListener != null) {
-                shiftChangeListener.onShiftOpened(currentShift);
-            }
-
-            JOptionPane.showMessageDialog(this,
-                "Ca làm việc đã được mở thành công!",
-                "Thông báo",
-                JOptionPane.INFORMATION_MESSAGE);
-        }
-    }
-
-    private JPanel createStatisticsPanel() {
-        JPanel statsPanel = new JPanel(new GridLayout(1, 4, 15, 0));
-        statsPanel.setBackground(AppColors.WHITE);
-        statsPanel.setBorder(new EmptyBorder(0, 0, 20, 0));
-        statsPanel.setPreferredSize(new Dimension(0, 120));
-
-        lblTodayInvoiceCount = new JLabel("0");
-        statsPanel.add(createStatCard("Số Hóa Đơn Hôm Nay", lblTodayInvoiceCount, AppColors.SECONDARY));
-
-        lblTodayRevenue = new JLabel("0 đ");
-        statsPanel.add(createStatCard("Doanh Thu Hôm Nay", lblTodayRevenue, AppColors.PURPLE));
-
-        lblTodayProfit = new JLabel("0 đ");
-        statsPanel.add(createStatCard("Lợi Nhuận Hôm Nay", lblTodayProfit, AppColors.SUCCESS));
-
-        lblCashReconciliation = new JLabel("Chưa đối soát");
-        statsPanel.add(createStatCard("Trạng Thái Đối Soát", lblCashReconciliation, AppColors.DARK));
-
-        return statsPanel;
-    }
-
-    private JPanel createStatCard(String title, JLabel valueLabel, Color color) {
-        JPanel card = new JPanel();
-        card.setLayout(new BorderLayout(10, 10));
-        card.setBackground(AppColors.WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(color, 2, true),
-            new EmptyBorder(15, 15, 15, 15)
+    private JPanel createDotBienPanel() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        p.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(AppColors.LIGHT, 1),
+            "Sản phẩm có doanh số tăng đột biến"
         ));
 
-        JLabel lblTitle = new JLabel(title);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lblTitle.setForeground(AppColors.DARK);
+        JLabel note = new JLabel("Hành động: cân nhắc nhập hàng gấp và theo dõi xu hướng nhu cầu bất thường.");
+        note.setBorder(new EmptyBorder(6, 8, 6, 8));
+        note.setForeground(AppColors.DARK);
+        note.setFont(new Font("Segoe UI", Font.ITALIC, 12));
 
-        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        valueLabel.setForeground(color);
-        valueLabel.setHorizontalAlignment(SwingConstants.CENTER);
-
-        card.add(lblTitle, BorderLayout.NORTH);
-        card.add(valueLabel, BorderLayout.CENTER);
-
-        return card;
-    }
-
-    private JPanel createBestSellersPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(AppColors.WHITE);
-        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
-
-        JLabel lblTitle = new JLabel("Top 10 Sản Phẩm Bán Chạy (30 ngày)");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTitle.setForeground(AppColors.SUCCESS);
-
-        String[] columns = {"#", "Tên sản phẩm", "Đã bán", "Doanh thu", "Lợi nhuận"};
-        bestSellersModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
+        mdlDotBien = new DefaultTableModel(new Object[]{"Mã", "Tên sản phẩm", "Nhóm", "Doanh thu hôm nay", "TB 7 ngày", "% tăng"}, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
         };
+        tblDotBien = new JTable(mdlDotBien);
+        styleTable(tblDotBien);
+        tblDotBien.getColumnModel().getColumn(5).setCellRenderer(new PercentCellRenderer());
 
-        tblBestSellers = createStyledTable(bestSellersModel);
-        tblBestSellers.getColumnModel().getColumn(0).setPreferredWidth(30);
-        tblBestSellers.getColumnModel().getColumn(0).setCellRenderer(createCenterRenderer());
-        tblBestSellers.getColumnModel().getColumn(2).setCellRenderer(createCenterRenderer());
-        tblBestSellers.getColumnModel().getColumn(3).setCellRenderer(createRightRenderer());
-        tblBestSellers.getColumnModel().getColumn(4).setCellRenderer(new ProfitCellRenderer());
-
-        JScrollPane scrollPane = new JScrollPane(tblBestSellers);
-        scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
-
-        panel.add(lblTitle, BorderLayout.NORTH);
-        panel.add(scrollPane, BorderLayout.CENTER);
-
-        return panel;
+        p.add(new JScrollPane(tblDotBien), BorderLayout.CENTER);
+        p.add(note, BorderLayout.SOUTH);
+        return p;
     }
 
-    private JPanel createTrendingPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(AppColors.WHITE);
-        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
+    private JPanel createActionHintPanel() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        p.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(AppColors.LIGHT, 1),
+            "Nhà thuốc đang làm ăn ra sao?"
+        ));
 
-        JLabel lblTitle = new JLabel("Sản Phẩm Có Xu Hướng Bất Thường");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTitle.setForeground(AppColors.SECONDARY);
+        JTextArea ta = new JTextArea();
+        ta.setEditable(false);
+        ta.setLineWrap(true);
+        ta.setWrapStyleWord(true);
+        ta.setBackground(Color.WHITE);
+        ta.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        ta.setForeground(AppColors.TEXT);
+        ta.setText(
+            "• Xem Doanh thu thuần và Lợi nhuận/Lỗ để đánh giá hiệu quả kinh doanh.\n" +
+            "• Nếu Tổng đơn trả hàng tăng: rà soát chất lượng tư vấn, sản phẩm và quy trình đổi/trả.\n" +
+            "• Nếu Chênh lệch tiền mặt âm: ưu tiên kiểm tra ca có rủi ro thất thoát.\n" +
+            "• Dựa vào biểu đồ theo giờ/ngày để quyết định phân ca hoặc chạy khuyến mãi đúng thời điểm."
+        );
+        ta.setBorder(new EmptyBorder(8, 10, 8, 10));
 
-        String[] columns = {"Tên sản phẩm", "Trước", "Hiện tại", "Thay đổi", "Xu hướng"};
-        trendingModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
+        p.add(ta, BorderLayout.CENTER);
+        return p;
+    }
+
+    private JPanel createDoiSoatPanel() {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setOpaque(false);
+        p.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(AppColors.LIGHT, 1),
+            "Kiểm soát tiền mặt & rủi ro thất thoát (đối soát ca)"
+        ));
+
+        JLabel note = new JLabel("Màu đỏ: tiền thực tế thấp hơn hệ thống (nguy cơ thất thoát)." );
+        note.setBorder(new EmptyBorder(6, 8, 6, 8));
+        note.setForeground(AppColors.DARK);
+        note.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+
+        mdlDoiSoat = new DefaultTableModel(new Object[]{"Mã ca", "Nhân viên", "Mở ca", "Tiền đầu ca", "Tiền cuối ca", "Doanh thu hệ thống", "Tiền thực tế", "Chênh lệch"}, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
         };
+        tblDoiSoat = new JTable(mdlDoiSoat);
+        styleTable(tblDoiSoat);
+        tblDoiSoat.getColumnModel().getColumn(7).setCellRenderer(new CashMismatchRenderer());
 
-        tblTrending = createStyledTable(trendingModel);
-        tblTrending.getColumnModel().getColumn(1).setCellRenderer(createCenterRenderer());
-        tblTrending.getColumnModel().getColumn(2).setCellRenderer(createCenterRenderer());
-        tblTrending.getColumnModel().getColumn(3).setCellRenderer(new TrendCellRenderer());
-        tblTrending.getColumnModel().getColumn(4).setCellRenderer(new TrendStatusCellRenderer());
-
-        JScrollPane scrollPane = new JScrollPane(tblTrending);
-        scrollPane.setBorder(new EmptyBorder(0, 0, 0, 0));
-
-        panel.add(lblTitle, BorderLayout.NORTH);
-        panel.add(scrollPane, BorderLayout.CENTER);
-
-        return panel;
+        p.add(new JScrollPane(tblDoiSoat), BorderLayout.CENTER);
+        p.add(note, BorderLayout.SOUTH);
+        return p;
     }
 
-    private JPanel createRevenueChartPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(AppColors.WHITE);
-        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
+    // ================= Data binding =================
 
-        JLabel lblTitle = new JLabel("Doanh Thu Theo Giờ Trong Ngày");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTitle.setForeground(AppColors.PURPLE);
-
-        revenueChart = new XYChartBuilder()
-            .width(400).height(300)
-            .title("").xAxisTitle("Giờ").yAxisTitle("Doanh thu (VND)")
-            .build();
-
-        revenueChart.getStyler().setLegendPosition(Styler.LegendPosition.InsideNW);
-
-        revenueChart.getStyler().setPlotMargin(0);
-        revenueChart.getStyler().setPlotContentSize(.95);
-        revenueChart.getStyler().setAxisTickLabelsColor(AppColors.DARK);
-
-        revenueChart.getStyler().setChartTitleVisible(false);
-        revenueChart.getStyler().setChartBackgroundColor(AppColors.WHITE);
-        revenueChart.getStyler().setPlotBackgroundColor(AppColors.WHITE);
-        revenueChart.getStyler().setPlotBorderColor(AppColors.BACKGROUND);
-        revenueChart.getStyler().setSeriesColors(new Color[]{AppColors.PURPLE});
-
-        revenueChartPanel = new XChartPanel<>(revenueChart);
-        revenueChartPanel.setBorder(null);
-
-        panel.add(lblTitle, BorderLayout.NORTH);
-        panel.add(revenueChartPanel, BorderLayout.CENTER);
-
-        return panel;
+    // Đổi các hàm binding để dùng enum nội bộ
+    private ComparisonPeriod getComparisonPeriodLocal() {
+        int idx = cbSoSanh != null ? cbSoSanh.getSelectedIndex() : 0;
+        return idx == 0 ? ComparisonPeriod.HOM_QUA : ComparisonPeriod.TUAN_TRUOC_CUNG_KY;
     }
 
-    private JPanel createCashReconciliationPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setBackground(AppColors.WHITE);
-        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
-
-        JLabel lblTitle = new JLabel("Đối Soát Cuối Ngày");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTitle.setForeground(AppColors.DARK);
-
-        JPanel infoPanel = new JPanel(new GridLayout(2, 3, 20, 10));
-        infoPanel.setBackground(AppColors.WHITE);
-
-        lblReconInvoiceCount = createReconLabel("Số hóa đơn", "0");
-        lblReconSystemRevenue = createReconLabel("Doanh thu hệ thống", "0 đ");
-        lblReconCashStart = createReconLabel("Tiền đầu ca", "0 đ");
-        lblReconCashEnd = createReconLabel("Tiền cuối ca (dự kiến)", "0 đ");
-        lblReconStatus = createReconLabel("Trạng thái", "Chưa đối soát");
-
-        infoPanel.add(lblReconInvoiceCount);
-        infoPanel.add(lblReconSystemRevenue);
-        infoPanel.add(lblReconStatus);
-        infoPanel.add(lblReconCashStart);
-        infoPanel.add(lblReconCashEnd);
-
-        panel.add(lblTitle, BorderLayout.NORTH);
-        panel.add(infoPanel, BorderLayout.CENTER);
-
-        return panel;
+    private TimeGranularity getTimeGranularityLocal() {
+        int idx = cbBieuDo != null ? cbBieuDo.getSelectedIndex() : 0;
+        return idx == 0 ? TimeGranularity.THEO_NGAY_7_NGAY : TimeGranularity.THEO_GIO_HOM_NAY;
     }
 
-    private JLabel createReconLabel(String title, String value) {
-        JLabel label = new JLabel(String.format("<html><b>%s:</b><br/>%s</html>", title, value));
-        label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        return label;
+    // ================== Tổng hợp số liệu (không tạo BUS/DAO mới) ==================
+
+    private static class PeriodAgg {
+        BigDecimal doanhThuBan = BigDecimal.ZERO;
+        BigDecimal doanhThuTra = BigDecimal.ZERO;
+        BigDecimal doanhThuThuan = BigDecimal.ZERO;
+        BigDecimal loiNhuan = BigDecimal.ZERO;
+        int soDonTraHang = 0;
     }
 
-    private JTable createStyledTable(DefaultTableModel model) {
-        JTable table = new JTable(model);
-        table.setRowHeight(30);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        table.setSelectionBackground(new Color(AppColors.SECONDARY.getRed(), AppColors.SECONDARY.getGreen(), AppColors.SECONDARY.getBlue(), 50));
-        table.setSelectionForeground(Color.BLACK);
-        table.setGridColor(AppColors.BACKGROUND);
-        table.setShowGrid(true);
-
-        JTableHeader header = table.getTableHeader();
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        header.setBackground(AppColors.SECONDARY);
-        header.setForeground(Color.WHITE);
-        header.setPreferredSize(new Dimension(0, 35));
-
-        return table;
-    }
-
-    private DefaultTableCellRenderer createCenterRenderer() {
-        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer();
-        renderer.setHorizontalAlignment(SwingConstants.CENTER);
-        return renderer;
-    }
-
-    private DefaultTableCellRenderer createRightRenderer() {
-        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer();
-        renderer.setHorizontalAlignment(SwingConstants.RIGHT);
-        return renderer;
-    }
-
-    private void loadData() {
-        try {
-            loadTodayStatistics();
-            loadBestSellers();
-            loadTrendingProducts();
-            loadCashReconciliation();
-            loadRevenueByHour();
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this,
-                "Lỗi khi tải dữ liệu: " + e.getMessage(),
-                "Lỗi",
-                JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void loadTodayStatistics() {
-        List<Invoice> allInvoices = busInvoice.getAllInvoices();
-        if (allInvoices == null) {
-            allInvoices = List.of();
-        }
-
+    private ManagerKpis buildKpisHomNay(ComparisonPeriod compare) {
         LocalDate today = LocalDate.now();
-        List<Invoice> todayInvoices = allInvoices.stream()
-            .filter(inv -> inv.getCreationDate() != null &&
-                          inv.getCreationDate().toLocalDate().equals(today))
-            .collect(Collectors.toList());
+        LocalDate prev = (compare == ComparisonPeriod.HOM_QUA) ? today.minusDays(1) : today.minusDays(7);
 
-        int invoiceCount = todayInvoices.size();
-        java.math.BigDecimal totalRevenue = java.math.BigDecimal.ZERO;
-        java.math.BigDecimal totalProfit = java.math.BigDecimal.ZERO;
+        PeriodAgg cur = aggregateInvoicesForDay(today);
+        PeriodAgg pre = aggregateInvoicesForDay(prev);
 
-        for (Invoice invoice : todayInvoices) {
-            java.math.BigDecimal invoiceTotal = invoice.calculateTotal();
+        BigDecimal mismatchCur = calculateCashMismatchForDay(today);
+        BigDecimal mismatchPre = calculateCashMismatchForDay(prev);
 
-            if (invoice.getType() == InvoiceType.SALES) {
-                totalRevenue = totalRevenue.add(invoiceTotal);
+        return new ManagerKpis(
+            new KpiTrend(cur.doanhThuThuan, pre.doanhThuThuan),
+            new KpiTrend(cur.loiNhuan, pre.loiNhuan),
+            new KpiTrend(BigDecimal.valueOf(cur.soDonTraHang), BigDecimal.valueOf(pre.soDonTraHang)),
+            new KpiTrend(mismatchCur, mismatchPre)
+        );
+    }
 
-                // Calculate profit
-                for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    java.math.BigDecimal revenue = line.calculateSubtotal();
-                    java.math.BigDecimal cost = calculateLineCostBD(line);
-                    totalProfit = totalProfit.add(revenue.subtract(cost));
-                }
-            } else if (invoice.getType() == InvoiceType.RETURN) {
-                totalRevenue = totalRevenue.subtract(invoiceTotal);
+    private List<TimePoint> buildDoanhThuLoiNhuanSeries(TimeGranularity g) {
+        return (g == TimeGranularity.THEO_NGAY_7_NGAY) ? buildSeries7Ngay() : buildSeriesTheoGioHomNay();
+    }
 
-                // Subtract from profit
-                for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    java.math.BigDecimal revenue = line.calculateSubtotal();
-                    java.math.BigDecimal cost = calculateLineCostBD(line);
-                    totalProfit = totalProfit.subtract(revenue.subtract(cost));
-                }
+    private PeriodAgg aggregateInvoicesForDay(LocalDate day) {
+        PeriodAgg agg = new PeriodAgg();
+        if (day == null) return agg;
+
+        List<Invoice> invoices = safeInvoices().stream()
+            .filter(i -> i != null && i.getCreationDate() != null && i.getCreationDate().toLocalDate().equals(day))
+            .toList();
+
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        BigDecimal totalReturn = BigDecimal.ZERO;
+        BigDecimal totalCost = BigDecimal.ZERO;
+        int returnCount = 0;
+
+        for (Invoice inv : invoices) {
+            BigDecimal invTotal = nz(inv.calculateTotal());
+            if (inv.getType() == InvoiceType.RETURN) {
+                totalReturn = totalReturn.add(invTotal);
+                returnCount++;
+            } else {
+                totalRevenue = totalRevenue.add(invTotal);
+                totalCost = totalCost.add(calculateInvoiceCost(inv));
             }
         }
 
-        lblTodayInvoiceCount.setText(String.valueOf(invoiceCount));
-        lblTodayRevenue.setText(formatVnd0(totalRevenue) + " đ");
-        lblTodayProfit.setText(formatVnd0(totalProfit) + " đ");
-
-        // Color coding for profit
-        if (totalProfit.compareTo(java.math.BigDecimal.ZERO) >= 0) {
-            lblTodayProfit.setForeground(AppColors.SUCCESS);
-        } else {
-            lblTodayProfit.setForeground(AppColors.DANGER);
-        }
+        agg.doanhThuBan = totalRevenue;
+        agg.doanhThuTra = totalReturn;
+        agg.doanhThuThuan = totalRevenue.subtract(totalReturn);
+        agg.loiNhuan = totalRevenue.subtract(totalCost);
+        agg.soDonTraHang = returnCount;
+        return agg;
     }
 
-    private java.math.BigDecimal calculateLineCostBD(InvoiceLine line) {
-        java.math.BigDecimal totalCost = java.math.BigDecimal.ZERO;
+    private List<TimePoint> buildSeries7Ngay() {
+        LocalDate end = LocalDate.now();
+        LocalDate start = end.minusDays(6);
+        java.time.format.DateTimeFormatter f = java.time.format.DateTimeFormatter.ofPattern("dd/MM");
 
+        java.util.ArrayList<TimePoint> out = new java.util.ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            LocalDate d = start.plusDays(i);
+            PeriodAgg a = aggregateInvoicesForDay(d);
+            out.add(new TimePoint(d.format(f), a.doanhThuThuan, a.loiNhuan));
+        }
+        return out;
+    }
+
+    private List<TimePoint> buildSeriesTheoGioHomNay() {
+        LocalDate today = LocalDate.now();
+        List<Invoice> invoices = safeInvoices().stream()
+            .filter(i -> i != null && i.getCreationDate() != null && i.getCreationDate().toLocalDate().equals(today))
+            .toList();
+
+        java.util.Map<Integer, java.util.List<Invoice>> byHour = invoices.stream()
+            .collect(java.util.stream.Collectors.groupingBy(i -> i.getCreationDate().getHour()));
+
+        java.util.ArrayList<TimePoint> out = new java.util.ArrayList<>();
+        for (int h = 0; h < 24; h++) {
+            List<Invoice> bucket = byHour.getOrDefault(h, java.util.List.of());
+
+            BigDecimal rev = BigDecimal.ZERO;
+            BigDecimal ret = BigDecimal.ZERO;
+            BigDecimal cost = BigDecimal.ZERO;
+
+            for (Invoice inv : bucket) {
+                BigDecimal invTotal = nz(inv.calculateTotal());
+                if (inv.getType() == InvoiceType.RETURN) {
+                    ret = ret.add(invTotal);
+                } else {
+                    rev = rev.add(invTotal);
+                    cost = cost.add(calculateInvoiceCost(inv));
+                }
+            }
+
+            out.add(new TimePoint(String.format("%02d:00", h), rev.subtract(ret), rev.subtract(cost)));
+        }
+        return out;
+    }
+
+    private BigDecimal calculateInvoiceCost(Invoice inv) {
+        if (inv == null || inv.getInvoiceLineList() == null) return BigDecimal.ZERO;
+        BigDecimal total = BigDecimal.ZERO;
+        for (InvoiceLine line : inv.getInvoiceLineList()) {
+            if (line == null) continue;
+            total = total.add(calculateLineCost(line));
+        }
+        return total;
+    }
+
+    private BigDecimal calculateLineCost(InvoiceLine line) {
+        BigDecimal totalCost = BigDecimal.ZERO;
         if (line.getLotAllocations() != null) {
             for (LotAllocation allocation : line.getLotAllocations()) {
-                if (allocation.getLot() != null) {
-                    java.math.BigDecimal raw = allocation.getLot().getRawPrice();
-                    java.math.BigDecimal qty = java.math.BigDecimal.valueOf(allocation.getQuantity());
-                    if (raw != null) {
-                        totalCost = totalCost.add(raw.multiply(qty));
-                    }
-                }
+                if (allocation == null || allocation.getLot() == null) continue;
+                BigDecimal raw = allocation.getLot().getRawPrice();
+                if (raw == null) continue;
+                totalCost = totalCost.add(raw.multiply(BigDecimal.valueOf(allocation.getQuantity())));
             }
         }
-
         return totalCost;
     }
 
-    private void loadBestSellers() {
-        bestSellersModel.setRowCount(0);
+    private BigDecimal calculateCashMismatchForDay(LocalDate day) {
+        if (day == null) return BigDecimal.ZERO;
+        List<Shift> shifts = daoShift.listShiftsOpenedOn(day);
+        if (shifts == null || shifts.isEmpty()) return BigDecimal.ZERO;
 
-        List<Invoice> allInvoices = busInvoice.getAllInvoices();
-        if (allInvoices == null) return;
+        BigDecimal sum = BigDecimal.ZERO;
+        for (Shift s : shifts) {
+            BigDecimal startCash = nz(s.getStartCash());
+            BigDecimal systemCash = s.getSystemCash();
+            BigDecimal endCash = s.getEndCash();
 
-        LocalDate thirtyDaysAgo = LocalDate.now().minusDays(30);
-
-        // Calculate product statistics
-        Map<String, ProductStats> productStatsMap = new HashMap<>();
-
-        for (Invoice invoice : allInvoices) {
-            if (invoice.getCreationDate() != null &&
-                invoice.getCreationDate().toLocalDate().isAfter(thirtyDaysAgo) &&
-                invoice.getType() == InvoiceType.SALES) {
-
-                for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    if (line.getLineType() == LineType.SALE) {
-                        String productId = line.getProduct().getId();
-                        String productName = line.getProduct().getName();
-
-                        ProductStats stats = productStatsMap.getOrDefault(productId, new ProductStats(productName));
-                        stats.quantitySold += line.getQuantity();
-                        stats.revenue = stats.revenue.add(line.calculateSubtotal());
-                        stats.cost = stats.cost.add(calculateLineCostBD(line));
-
-                        productStatsMap.put(productId, stats);
-                    }
-                }
-            }
-        }
-
-        // Sort by quantity sold
-        List<Map.Entry<String, ProductStats>> sortedProducts = new ArrayList<>(productStatsMap.entrySet());
-        sortedProducts.sort((e1, e2) -> Integer.compare(e2.getValue().quantitySold, e1.getValue().quantitySold));
-
-        // Add top 10 to table
-        int rank = 1;
-        for (int i = 0; i < Math.min(10, sortedProducts.size()); i++) {
-            ProductStats stats = sortedProducts.get(i).getValue();
-            java.math.BigDecimal profit = stats.revenue.subtract(stats.cost);
-
-            bestSellersModel.addRow(new Object[]{
-                rank++,
-                stats.productName,
-                stats.quantitySold,
-                formatVnd0(stats.revenue) + " đ",
-                profit
-            });
-        }
-    }
-
-    private void loadTrendingProducts() {
-        trendingModel.setRowCount(0);
-
-        List<Invoice> allInvoices = busInvoice.getAllInvoices();
-        if (allInvoices == null) return;
-
-        String selectedPeriod = (String) cboComparisonPeriod.getSelectedItem();
-        int comparisonDays = switch (selectedPeriod) {
-            case "Hôm qua" -> 1;
-            case "7 ngày trước" -> 7;
-            case "Tháng trước" -> 30;
-            default -> 1;
-        };
-
-        LocalDate today = LocalDate.now();
-        LocalDate comparisonDate = today.minusDays(comparisonDays);
-
-        // Calculate current period (today)
-        Map<String, ProductTrend> currentStats = calculatePeriodStats(allInvoices, today, today);
-
-        // Calculate comparison period
-        Map<String, ProductTrend> comparisonStats = calculatePeriodStats(allInvoices, comparisonDate, comparisonDate);
-
-        // Find products with significant changes (>50% change)
-        List<TrendingProduct> trendingProducts = new ArrayList<>();
-
-        for (Map.Entry<String, ProductTrend> entry : currentStats.entrySet()) {
-            String productId = entry.getKey();
-            ProductTrend current = entry.getValue();
-            ProductTrend comparison = comparisonStats.getOrDefault(productId, new ProductTrend(current.productName));
-
-            int currentQty = current.quantity;
-            int comparisonQty = comparison.quantity;
-
-            // Calculate percentage change
-            double changePercent = 0;
-            if (comparisonQty > 0) {
-                changePercent = ((currentQty - comparisonQty) * 100.0) / comparisonQty;
-            } else if (currentQty > 0) {
-                changePercent = 100; // New product or first sale
-            }
-
-            // Only show products with >50% change
-            if (Math.abs(changePercent) >= 50 && (currentQty > 0 || comparisonQty > 0)) {
-                trendingProducts.add(new TrendingProduct(
-                    current.productName,
-                    comparisonQty,
-                    currentQty,
-                    changePercent
-                ));
-            }
-        }
-
-        // Sort by absolute change percentage
-        trendingProducts.sort((p1, p2) -> Double.compare(
-            Math.abs(p2.changePercent), Math.abs(p1.changePercent)
-        ));
-
-        // Add to table
-        for (TrendingProduct tp : trendingProducts) {
-            String trend = tp.changePercent > 0 ? "TĂNG" : "GIẢM";
-
-            trendingModel.addRow(new Object[]{
-                tp.productName,
-                tp.previousQuantity,
-                tp.currentQuantity,
-                String.format("%.1f%%", Math.abs(tp.changePercent)),
-                trend
-            });
-        }
-    }
-
-    private Map<String, ProductTrend> calculatePeriodStats(List<Invoice> invoices, LocalDate startDate, LocalDate endDate) {
-        Map<String, ProductTrend> stats = new HashMap<>();
-
-        for (Invoice invoice : invoices) {
-            if (invoice.getCreationDate() != null &&
-                invoice.getType() == InvoiceType.SALES) {
-
-                LocalDate invoiceDate = invoice.getCreationDate().toLocalDate();
-                if (!invoiceDate.isBefore(startDate) && !invoiceDate.isAfter(endDate)) {
-                    for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                        if (line.getLineType() == LineType.SALE) {
-                            String productId = line.getProduct().getId();
-                            String productName = line.getProduct().getName();
-
-                            ProductTrend trend = stats.getOrDefault(productId, new ProductTrend(productName));
-                            trend.quantity += line.getQuantity();
-                            stats.put(productId, trend);
-                        }
-                    }
-                }
-            }
-        }
-
-        return stats;
-    }
-
-    private void loadRevenueByHour() {
-        List<Invoice> allInvoices = busInvoice.getAllInvoices();
-        if (allInvoices == null) return;
-
-        LocalDate today = LocalDate.now();
-        Map<Integer, java.math.BigDecimal> revenueByHour = new TreeMap<>();
-        for (int i = 0; i < 24; i++) {
-            revenueByHour.put(i, java.math.BigDecimal.ZERO);
-        }
-
-        for (Invoice invoice : allInvoices) {
-            if (invoice.getCreationDate() != null &&
-                invoice.getCreationDate().toLocalDate().equals(today) &&
-                invoice.getType() == InvoiceType.SALES) {
-
-                int hour = invoice.getCreationDate().getHour();
-                revenueByHour.merge(hour, invoice.calculateTotal(), java.math.BigDecimal::add);
-            }
-        }
-
-        List<Integer> hours = new ArrayList<>(revenueByHour.keySet());
-        List<Double> revenues = revenueByHour.values().stream().map(java.math.BigDecimal::doubleValue).toList();
-
-        if (revenueChart.getSeriesMap().containsKey("Doanh thu")) {
-            revenueChart.updateXYSeries("Doanh thu", hours, revenues, null);
-        } else {
-            revenueChart.addSeries("Doanh thu", hours, revenues);
-        }
-
-        revenueChartPanel.revalidate();
-        revenueChartPanel.repaint();
-    }
-
-    private void loadCashReconciliation() {
-        List<Invoice> allInvoices = busInvoice.getAllInvoices();
-        if (allInvoices == null) return;
-
-        LocalDate today = LocalDate.now();
-        List<Invoice> todayInvoices = allInvoices.stream()
-            .filter(inv -> inv.getCreationDate() != null &&
-                          inv.getCreationDate().toLocalDate().equals(today))
-            .collect(Collectors.toList());
-
-        java.math.BigDecimal totalRevenue = java.math.BigDecimal.ZERO;
-        java.math.BigDecimal cashRevenue = java.math.BigDecimal.ZERO;
-        // Mock value for cash at the start of the shift
-        java.math.BigDecimal cashAtStart = java.math.BigDecimal.valueOf(5_000_000);
-        java.math.BigDecimal cashRate = new java.math.BigDecimal("0.70");
-
-        for (Invoice invoice : todayInvoices) {
-            java.math.BigDecimal invoiceTotal = invoice.calculateTotal();
-            if (invoice.getType() == InvoiceType.SALES) {
-                totalRevenue = totalRevenue.add(invoiceTotal);
-                cashRevenue = cashRevenue.add(invoiceTotal.multiply(cashRate));
-            } else if (invoice.getType() == InvoiceType.RETURN) {
-                totalRevenue = totalRevenue.subtract(invoiceTotal);
-                cashRevenue = cashRevenue.subtract(invoiceTotal.multiply(cashRate));
-            }
-        }
-
-        java.math.BigDecimal expectedCashAtEnd = cashAtStart.add(cashRevenue);
-
-        lblReconInvoiceCount.setText(String.format("<html><b>Số hóa đơn:</b><br/>%d</html>", todayInvoices.size()));
-        lblReconSystemRevenue.setText(String.format("<html><b>Doanh thu hệ thống:</b><br/>%s đ</html>", formatVnd0(totalRevenue)));
-        lblReconCashStart.setText(String.format("<html><b>Tiền đầu ca:</b><br/>%s đ</html>", formatVnd0(cashAtStart)));
-        lblReconCashEnd.setText(String.format("<html><b>Tiền cuối ca (dự kiến):</b><br/>%s đ</html>", formatVnd0(expectedCashAtEnd)));
-
-        // Simple reconciliation status check
-        // In a real app, this would compare expectedCashAtEnd with a manual count
-        boolean isMatched = true; // Placeholder
-        if (isMatched) {
-            lblReconStatus.setText("<html><b>Trạng thái:</b><br/><font color='green'>Khớp</font></html>");
-            lblCashReconciliation.setText("Khớp");
-            lblCashReconciliation.setForeground(AppColors.SUCCESS);
-        } else {
-            lblReconStatus.setText("<html><b>Trạng thái:</b><br/><font color='red'>Lệch</font></html>");
-            lblCashReconciliation.setText("Lệch");
-            lblCashReconciliation.setForeground(AppColors.DANGER);
-        }
-    }
-
-    private static String formatVnd0(java.math.BigDecimal amount) {
-        if (amount == null) amount = java.math.BigDecimal.ZERO;
-        // Grouping, 0 decimals (common for VND display)
-        return String.format("%,.0f", amount);
-    }
-
-    /**
-     * Public method to refresh dashboard data
-     */
-    public void refresh() {
-        loadData();
-    }
-
-    /**
-     * Set shift change listener to notify when shift is opened/closed
-     */
-    public void setShiftChangeListener(ShiftChangeListener listener) {
-        this.shiftChangeListener = listener;
-    }
-
-    // Helper classes
-    private static class ProductStats {
-        String productName;
-        int quantitySold;
-        java.math.BigDecimal revenue = java.math.BigDecimal.ZERO;
-        java.math.BigDecimal cost = java.math.BigDecimal.ZERO;
-
-        ProductStats(String productName) {
-            this.productName = productName;
-        }
-    }
-
-    private static class ProductTrend {
-        String productName;
-        int quantity;
-
-        ProductTrend(String productName) {
-            this.productName = productName;
-        }
-    }
-
-    private static class TrendingProduct {
-        String productName;
-        int previousQuantity;
-        int currentQuantity;
-        double changePercent;
-
-        TrendingProduct(String productName, int previousQuantity, int currentQuantity, double changePercent) {
-            this.productName = productName;
-            this.previousQuantity = previousQuantity;
-            this.currentQuantity = currentQuantity;
-            this.changePercent = changePercent;
-        }
-    }
-
-    // Custom Cell Renderers
-    private static class ProfitCellRenderer extends DefaultTableCellRenderer {
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                     boolean isSelected, boolean hasFocus, int row, int column) {
-            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-
-            if (value instanceof java.math.BigDecimal profit) {
-                setText(formatVnd0(profit) + " đ");
-
-                if (profit.compareTo(java.math.BigDecimal.ZERO) >= 0) {
-                    c.setForeground(AppColors.SUCCESS);
-                } else {
-                    c.setForeground(AppColors.DANGER);
-                }
-                setFont(getFont().deriveFont(Font.BOLD));
-            }
-
-            setHorizontalAlignment(RIGHT);
-            return c;
-        }
-    }
-
-    private static class TrendCellRenderer extends DefaultTableCellRenderer {
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                     boolean isSelected, boolean hasFocus, int row, int column) {
-            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-
-            if (value instanceof String) {
-                String changeStr = (String) value;
+            if (systemCash == null && s.getId() != null) {
                 try {
-                    double change = Double.parseDouble(changeStr.replace("%", ""));
-
-                    if (change > 0) {
-                        c.setForeground(AppColors.SUCCESS);
-                    } else {
-                        c.setForeground(AppColors.DANGER);
-                    }
-                    setFont(getFont().deriveFont(Font.BOLD));
-                } catch (Exception ignored) {}
-            }
-
-            setHorizontalAlignment(CENTER);
-            return c;
-        }
-    }
-
-    private static class TrendStatusCellRenderer extends DefaultTableCellRenderer {
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                     boolean isSelected, boolean hasFocus, int row, int column) {
-            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-
-            if (value instanceof String) {
-                String trend = (String) value;
-                setFont(getFont().deriveFont(Font.BOLD));
-
-                if ("TĂNG".equals(trend)) {
-                    c.setForeground(Color.WHITE);
-                    c.setBackground(AppColors.SUCCESS);
-                    setText("TĂNG");
-                } else if ("GIẢM".equals(trend)) {
-                    c.setForeground(Color.WHITE);
-                    c.setBackground(AppColors.DANGER);
-                    setText("GIẢM");
+                    systemCash = daoShift.calculateSystemCashForShift(s.getId());
+                } catch (Exception ignored) {
+                    systemCash = BigDecimal.ZERO;
                 }
             }
 
-            setHorizontalAlignment(CENTER);
-            return c;
+            BigDecimal expected = nz(systemCash).subtract(startCash); // doanh thu hệ thống
+            BigDecimal actual = nz(endCash);
+            sum = sum.add(actual.subtract(expected));
         }
+        return sum;
+    }
+
+    private List<TrendingProductRow> buildSanPhamDotBienTop(int topN) {
+        LocalDate today = LocalDate.now();
+        LocalDate from7 = today.minusDays(7);
+
+        List<Invoice> invoices = safeInvoices();
+
+        List<Invoice> todayInvoices = invoices.stream()
+            .filter(i -> i != null && i.getCreationDate() != null && i.getCreationDate().toLocalDate().equals(today))
+            .toList();
+
+        List<Invoice> sevenDayInvoices = invoices.stream()
+            .filter(i -> i != null && i.getCreationDate() != null)
+            .filter(i -> {
+                LocalDate d = i.getCreationDate().toLocalDate();
+                return (!d.isAfter(today.minusDays(1))) && (!d.isBefore(from7));
+            })
+            .toList();
+
+        java.util.Map<String, BigDecimal> todayRevByProduct = revenueByProduct(todayInvoices);
+        java.util.Map<String, java.util.List<BigDecimal>> dailyRevs = revenueByProductByDay(sevenDayInvoices);
+
+        java.util.ArrayList<TrendingProductRow> rows = new java.util.ArrayList<>();
+        for (var e : todayRevByProduct.entrySet()) {
+            String productId = e.getKey();
+            BigDecimal revToday = e.getValue();
+
+            BigDecimal avg7 = average(dailyRevs.getOrDefault(productId, java.util.List.of()));
+            if (avg7.compareTo(BigDecimal.ZERO) <= 0) continue;
+            if (revToday.compareTo(avg7.multiply(BigDecimal.valueOf(2))) <= 0) continue;
+
+            BigDecimal pct = revToday.subtract(avg7)
+                .divide(avg7, 6, java.math.RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+
+            Product p = busProduct.getProductById(productId);
+            String ten = p != null ? p.getName() : productId;
+            String nhom = p != null ? mapNhomSanPham(p.getCategory()) : "";
+
+            rows.add(new TrendingProductRow(productId, ten, nhom, revToday, avg7, pct));
+        }
+
+        rows.sort(java.util.Comparator.comparing(TrendingProductRow::getPhanTramTang).reversed());
+        if (rows.size() > topN) return rows.subList(0, topN);
+        return rows;
+    }
+
+    private java.util.Map<String, BigDecimal> revenueByProduct(List<Invoice> invoices) {
+        java.util.Map<String, BigDecimal> map = new java.util.HashMap<>();
+        for (Invoice inv : invoices) {
+            if (inv == null || inv.getInvoiceLineList() == null) continue;
+            if (inv.getType() == InvoiceType.RETURN) continue;
+            for (InvoiceLine line : inv.getInvoiceLineList()) {
+                if (line == null || line.getProduct() == null) continue;
+                String id = line.getProduct().getId();
+                map.put(id, map.getOrDefault(id, BigDecimal.ZERO).add(nz(line.calculateTotalAmount())));
+            }
+        }
+        return map;
+    }
+
+    private java.util.Map<String, java.util.List<BigDecimal>> revenueByProductByDay(List<Invoice> invoices) {
+        java.util.Map<java.time.LocalDate, java.util.List<Invoice>> byDay = invoices.stream()
+            .filter(i -> i != null && i.getCreationDate() != null)
+            .collect(java.util.stream.Collectors.groupingBy(i -> i.getCreationDate().toLocalDate()));
+
+        java.util.Map<String, java.util.List<BigDecimal>> out = new java.util.HashMap<>();
+        for (var e : byDay.entrySet()) {
+            java.util.Map<String, BigDecimal> rev = revenueByProduct(e.getValue());
+            for (var r : rev.entrySet()) {
+                out.computeIfAbsent(r.getKey(), k -> new java.util.ArrayList<>()).add(r.getValue());
+            }
+        }
+        return out;
+    }
+
+    private List<ShiftReconciliationRow> buildDoiSoatCaHomNay() {
+        LocalDate today = LocalDate.now();
+        List<Shift> shifts = daoShift.listShiftsOpenedOn(today);
+        if (shifts == null || shifts.isEmpty()) return java.util.List.of();
+
+        java.time.format.DateTimeFormatter dtfLocal = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        java.util.ArrayList<ShiftReconciliationRow> out = new java.util.ArrayList<>();
+        for (Shift s : shifts) {
+            BigDecimal start = s.getStartCash();
+            BigDecimal end = s.getEndCash();
+            BigDecimal systemCash = s.getSystemCash();
+
+            if (systemCash == null && s.getId() != null) {
+                try {
+                    systemCash = daoShift.calculateSystemCashForShift(s.getId());
+                } catch (Exception ignored) {
+                    systemCash = BigDecimal.ZERO;
+                }
+            }
+
+            BigDecimal doanhThuHeThong = nz(systemCash).subtract(nz(start));
+            BigDecimal tienThucTe = nz(end);
+            BigDecimal chenh = tienThucTe.subtract(doanhThuHeThong);
+
+            String tenNv = (s.getStaff() != null) ? s.getStaff().getFullName() : "";
+            String tg = (s.getStartTime() != null) ? s.getStartTime().format(dtfLocal) : "";
+
+            out.add(new ShiftReconciliationRow(s.getId(), tenNv, tg, start, end, doanhThuHeThong, tienThucTe, chenh));
+        }
+
+        return out;
+    }
+
+    private List<Invoice> safeInvoices() {
+        try {
+            List<Invoice> inv = busInvoice.getAllInvoices();
+            return inv != null ? inv : java.util.List.of();
+        } catch (Exception e) {
+            return java.util.List.of();
+        }
+    }
+
+    private static BigDecimal average(List<BigDecimal> values) {
+        if (values == null || values.isEmpty()) return BigDecimal.ZERO;
+        BigDecimal sum = BigDecimal.ZERO;
+        int n = 0;
+        for (BigDecimal v : values) {
+            if (v == null) continue;
+            sum = sum.add(v);
+            n++;
+        }
+        if (n == 0) return BigDecimal.ZERO;
+        return sum.divide(BigDecimal.valueOf(n), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private static BigDecimal nz(BigDecimal v) { return v != null ? v : BigDecimal.ZERO; }
+
+    private static String mapNhomSanPham(ProductCategory c) {
+        if (c == null) return "Thuốc không kê đơn";
+        return switch (c) {
+            case ETC -> "Thuốc kê đơn";
+            case OTC -> "Thuốc không kê đơn";
+            case SUPPLEMENT -> "Sản phẩm chức năng";
+        };
+    }
+
+    // ================== Components ==================
+
+    private enum KpiTone {
+        TICH_CUC, // xanh
+        NGUY_CO,  // đỏ
+        CANH_BAO, // vàng
+        TU_DONG   // tùy theo giá trị
+    }
+
+    private static class KpiCard extends JPanel {
+        private final JLabel lblName;
+        private final JLabel lblDesc;
+        private final JLabel lblValue;
+        private final JLabel lblTrend;
+
+        private KpiTone tone;
+
+        public KpiCard(String name, String desc, KpiTone tone) {
+            setLayout(new BorderLayout(6, 4));
+            setBackground(Color.WHITE);
+            setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(210, 210, 210), 1),
+                new EmptyBorder(10, 12, 10, 12)
+            ));
+
+            this.tone = tone;
+
+            lblName = new JLabel(name);
+            lblName.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+            lblDesc = new JLabel(desc);
+            lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            lblDesc.setForeground(new Color(90, 90, 90));
+
+            lblValue = new JLabel("--");
+            lblValue.setFont(new Font("Segoe UI", Font.BOLD, 20));
+
+            lblTrend = new JLabel("So sánh: --");
+            lblTrend.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+            JPanel top = new JPanel();
+            top.setOpaque(false);
+            top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+            top.add(lblName);
+            top.add(lblDesc);
+
+            add(top, BorderLayout.NORTH);
+            add(lblValue, BorderLayout.CENTER);
+            add(lblTrend, BorderLayout.SOUTH);
+
+            applyToneColor(Color.BLACK);
+        }
+
+        public void setValue(String value) {
+            lblValue.setText(value != null ? value : "--");
+        }
+
+        public void setTrend(BigDecimal percent, BigDecimal delta) {
+            BigDecimal pct = percent != null ? percent : BigDecimal.ZERO;
+            BigDecimal d = delta != null ? delta : BigDecimal.ZERO;
+
+            String sign = pct.compareTo(BigDecimal.ZERO) >= 0 ? "+" : "";
+            String t = String.format("So sánh: %s%.1f%% (Δ %s)", sign, pct.doubleValue(), formatSignedMoney(d));
+            lblTrend.setText(t);
+
+            // Màu trend theo hướng (xanh tăng, đỏ giảm) - ngoại trừ KPI rủi ro sẽ setTone bên ngoài.
+            if (pct.compareTo(BigDecimal.ZERO) >= 0) {
+                lblTrend.setForeground(AppColors.SUCCESS);
+            } else {
+                lblTrend.setForeground(AppColors.DANGER);
+            }
+        }
+
+        public void setTone(KpiTone tone) {
+            this.tone = tone;
+            Color c = switch (tone) {
+                case TICH_CUC -> AppColors.SUCCESS;
+                case NGUY_CO -> AppColors.DANGER;
+                case CANH_BAO -> AppColors.WARNING;
+                default -> AppColors.TEXT;
+            };
+            applyToneColor(c);
+        }
+
+        private void applyToneColor(Color c) {
+            lblName.setForeground(c);
+            lblValue.setForeground(c);
+        }
+
+        private String formatSignedMoney(BigDecimal value) {
+            if (value == null) value = BigDecimal.ZERO;
+            NumberFormat nf = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
+            String s = nf.format(value.abs());
+            if (value.compareTo(BigDecimal.ZERO) > 0) return "+" + s;
+            if (value.compareTo(BigDecimal.ZERO) < 0) return "-" + s;
+            return s;
+        }
+    }
+
+    private class PercentCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            setHorizontalAlignment(SwingConstants.RIGHT);
+            if (value instanceof BigDecimal bd) {
+                setText(String.format("%+.0f%%", bd.doubleValue()));
+                setForeground(bd.compareTo(BigDecimal.ZERO) >= 0 ? AppColors.SUCCESS : AppColors.DANGER);
+            } else {
+                setText(value != null ? value.toString() : "");
+                setForeground(AppColors.TEXT);
+            }
+            return this;
+        }
+    }
+
+    private class CashMismatchRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            setHorizontalAlignment(SwingConstants.RIGHT);
+
+            if (value instanceof BigDecimal bd) {
+                setText(currency.format(bd));
+                if (bd.compareTo(BigDecimal.ZERO) < 0) {
+                    setForeground(AppColors.DANGER);
+                } else if (bd.compareTo(BigDecimal.ZERO) > 0) {
+                    setForeground(AppColors.WARNING);
+                } else {
+                    setForeground(AppColors.SUCCESS);
+                }
+            } else {
+                setText(value != null ? value.toString() : "");
+                setForeground(AppColors.TEXT);
+            }
+            return this;
+        }
+    }
+
+    // ====== DTO/enum nội bộ cho dashboard (không tạo BUS/DAO mới) ======
+    private enum ComparisonPeriod {
+        HOM_QUA,
+        TUAN_TRUOC_CUNG_KY
+    }
+
+    private enum TimeGranularity {
+        THEO_NGAY_7_NGAY,
+        THEO_GIO_HOM_NAY
+    }
+
+    private static class KpiTrend {
+        private final BigDecimal current;
+        private final BigDecimal previous;
+
+        public KpiTrend(BigDecimal current, BigDecimal previous) {
+            this.current = nz(current);
+            this.previous = nz(previous);
+        }
+
+        public BigDecimal getCurrent() { return current; }
+        public BigDecimal getDelta() { return current.subtract(previous); }
+
+        public BigDecimal getPercentChange() {
+            if (previous.compareTo(BigDecimal.ZERO) == 0) {
+                if (current.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
+                return BigDecimal.valueOf(100);
+            }
+            return current.subtract(previous)
+                .divide(previous.abs(), 6, java.math.RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+        }
+    }
+
+    private static class ManagerKpis {
+        private final KpiTrend doanhThuThuan;
+        private final KpiTrend loiNhuan;
+        private final KpiTrend tongDonTraHang;
+        private final KpiTrend chenhLechTienMat;
+
+        public ManagerKpis(KpiTrend doanhThuThuan, KpiTrend loiNhuan, KpiTrend tongDonTraHang, KpiTrend chenhLechTienMat) {
+            this.doanhThuThuan = doanhThuThuan;
+            this.loiNhuan = loiNhuan;
+            this.tongDonTraHang = tongDonTraHang;
+            this.chenhLechTienMat = chenhLechTienMat;
+        }
+
+        public KpiTrend getDoanhThuThuan() { return doanhThuThuan; }
+        public KpiTrend getLoiNhuan() { return loiNhuan; }
+        public KpiTrend getTongDonTraHang() { return tongDonTraHang; }
+        public KpiTrend getChenhLechTienMat() { return chenhLechTienMat; }
+    }
+
+    private static class TimePoint {
+        private final String nhan;
+        private final BigDecimal doanhThuThuan;
+        private final BigDecimal loiNhuan;
+
+        public TimePoint(String nhan, BigDecimal doanhThuThuan, BigDecimal loiNhuan) {
+            this.nhan = nhan;
+            this.doanhThuThuan = nz(doanhThuThuan);
+            this.loiNhuan = nz(loiNhuan);
+        }
+
+        public String getNhan() { return nhan; }
+        public BigDecimal getDoanhThuThuan() { return doanhThuThuan; }
+        public BigDecimal getLoiNhuan() { return loiNhuan; }
+    }
+
+    private static class TrendingProductRow {
+        private final String ma;
+        private final String ten;
+        private final String nhom;
+        private final BigDecimal doanhThuHomNay;
+        private final BigDecimal doanhThuTrungBinh7Ngay;
+        private final BigDecimal phanTramTang;
+
+        public TrendingProductRow(String ma, String ten, String nhom, BigDecimal doanhThuHomNay, BigDecimal doanhThuTrungBinh7Ngay, BigDecimal phanTramTang) {
+            this.ma = ma;
+            this.ten = ten;
+            this.nhom = nhom;
+            this.doanhThuHomNay = nz(doanhThuHomNay);
+            this.doanhThuTrungBinh7Ngay = nz(doanhThuTrungBinh7Ngay);
+            this.phanTramTang = nz(phanTramTang);
+        }
+
+        public String getMa() { return ma; }
+        public String getTen() { return ten; }
+        public String getNhom() { return nhom; }
+        public BigDecimal getDoanhThuHomNay() { return doanhThuHomNay; }
+        public BigDecimal getDoanhThuTrungBinh7Ngay() { return doanhThuTrungBinh7Ngay; }
+        public BigDecimal getPhanTramTang() { return phanTramTang; }
+    }
+
+    private static class ShiftReconciliationRow {
+        private final String maCa;
+        private final String nhanVien;
+        private final String thoiGianMo;
+        private final BigDecimal tienDauCa;
+        private final BigDecimal tienCuoiCa;
+        private final BigDecimal doanhThuHeThong;
+        private final BigDecimal tienThucTe;
+        private final BigDecimal chenhlech;
+
+        public ShiftReconciliationRow(String maCa, String nhanVien, String thoiGianMo, BigDecimal tienDauCa, BigDecimal tienCuoiCa,
+                                     BigDecimal doanhThuHeThong, BigDecimal tienThucTe, BigDecimal chenhlech) {
+            this.maCa = maCa;
+            this.nhanVien = nhanVien;
+            this.thoiGianMo = thoiGianMo;
+            this.tienDauCa = nz(tienDauCa);
+            this.tienCuoiCa = nz(tienCuoiCa);
+            this.doanhThuHeThong = nz(doanhThuHeThong);
+            this.tienThucTe = nz(tienThucTe);
+            this.chenhlech = nz(chenhlech);
+        }
+
+        public String getMaCa() { return maCa; }
+        public String getNhanVien() { return nhanVien; }
+        public String getThoiGianMo() { return thoiGianMo; }
+        public BigDecimal getTienDauCa() { return tienDauCa; }
+        public BigDecimal getTienCuoiCa() { return tienCuoiCa; }
+        public BigDecimal getDoanhThuHeThong() { return doanhThuHeThong; }
+        public BigDecimal getTienThucTe() { return tienThucTe; }
+        public BigDecimal getChenhlech() { return chenhlech; }
+    }
+
+    // Cập nhật applyKpis / renderChart / loadDotBien / loadDoiSoat dùng DTO nội bộ
+    private void applyKpis(ManagerKpis k) {
+        if (k == null) return;
+
+        cardDoanhThuThuan.setValue(currency.format(k.getDoanhThuThuan().getCurrent()));
+        cardDoanhThuThuan.setTrend(k.getDoanhThuThuan().getPercentChange(), k.getDoanhThuThuan().getDelta());
+        cardDoanhThuThuan.setTone(KpiTone.TICH_CUC);
+
+        // Lợi nhuận: xanh nếu dương, đỏ nếu âm
+        BigDecimal profit = k.getLoiNhuan().getCurrent();
+        cardLoiNhuan.setValue(currency.format(profit));
+        cardLoiNhuan.setTrend(k.getLoiNhuan().getPercentChange(), k.getLoiNhuan().getDelta());
+        cardLoiNhuan.setTone(profit.compareTo(BigDecimal.ZERO) >= 0 ? KpiTone.TICH_CUC : KpiTone.NGUY_CO);
+
+        cardTraHang.setValue(formatInt(k.getTongDonTraHang().getCurrent()));
+        cardTraHang.setTrend(k.getTongDonTraHang().getPercentChange(), k.getTongDonTraHang().getDelta());
+        cardTraHang.setTone(KpiTone.CANH_BAO);
+
+        BigDecimal mismatch = k.getChenhLechTienMat().getCurrent();
+        cardChenhLechTienMat.setValue(currency.format(mismatch));
+        cardChenhLechTienMat.setTrend(k.getChenhLechTienMat().getPercentChange(), k.getChenhLechTienMat().getDelta());
+        cardChenhLechTienMat.setTone(mismatch.compareTo(BigDecimal.ZERO) == 0 ? KpiTone.TICH_CUC : KpiTone.NGUY_CO);
+    }
+
+    private void renderChart(List<TimePoint> points) {
+        chartWrap.removeAll();
+
+        if (points == null || points.isEmpty()) {
+            JLabel empty = new JLabel("Chưa có dữ liệu để vẽ biểu đồ.");
+            empty.setBorder(new EmptyBorder(12, 12, 12, 12));
+            chartWrap.add(empty, BorderLayout.CENTER);
+            chartWrap.revalidate();
+            chartWrap.repaint();
+            return;
+        }
+
+        List<String> x = points.stream().map(TimePoint::getNhan).toList();
+        List<Double> doanhThu = points.stream().map(p -> p.getDoanhThuThuan().doubleValue()).toList();
+        List<Double> loiNhuan = points.stream().map(p -> p.getLoiNhuan().doubleValue()).toList();
+
+        CategoryChart chart = new CategoryChartBuilder()
+            .width(600)
+            .height(280)
+            .title("Doanh thu thuần và Lợi nhuận")
+            .xAxisTitle("Thời gian")
+            .yAxisTitle("Giá trị (₫)")
+            .build();
+
+        chart.getStyler().setLegendVisible(true);
+        chart.getStyler().setChartBackgroundColor(Color.WHITE);
+        chart.getStyler().setPlotBackgroundColor(Color.WHITE);
+        chart.getStyler().setPlotGridLinesVisible(true);
+        chart.getStyler().setAxisTickLabelsFont(new Font("Segoe UI", Font.PLAIN, 11));
+        chart.getStyler().setLegendFont(new Font("Segoe UI", Font.PLAIN, 12));
+        chart.getStyler().setChartTitleFont(new Font("Segoe UI", Font.BOLD, 14));
+        chart.getStyler().setAvailableSpaceFill(.8);
+        chart.getStyler().setOverlapped(true);
+
+        chart.addSeries("Doanh thu thuần", x, doanhThu).setFillColor(AppColors.PRIMARY);
+        chart.addSeries("Lợi nhuận", x, loiNhuan).setFillColor(AppColors.SUCCESS);
+
+        chartWrap.add(new XChartPanel<>(chart), BorderLayout.CENTER);
+        chartWrap.revalidate();
+        chartWrap.repaint();
+    }
+
+    private void loadDotBien(List<TrendingProductRow> rows) {
+        mdlDotBien.setRowCount(0);
+        if (rows == null || rows.isEmpty()) return;
+        for (TrendingProductRow r : rows) {
+            mdlDotBien.addRow(new Object[]{
+                r.getMa(),
+                r.getTen(),
+                r.getNhom(),
+                currency.format(r.getDoanhThuHomNay()),
+                currency.format(r.getDoanhThuTrungBinh7Ngay()),
+                r.getPhanTramTang()
+            });
+        }
+    }
+
+    private void loadDoiSoat(List<ShiftReconciliationRow> rows) {
+        mdlDoiSoat.setRowCount(0);
+        if (rows == null || rows.isEmpty()) return;
+        for (ShiftReconciliationRow r : rows) {
+            mdlDoiSoat.addRow(new Object[]{
+                r.getMaCa(),
+                r.getNhanVien(),
+                r.getThoiGianMo(),
+                currency.format(r.getTienDauCa()),
+                currency.format(r.getTienCuoiCa()),
+                currency.format(r.getDoanhThuHeThong()),
+                currency.format(r.getTienThucTe()),
+                r.getChenhlech()
+            });
+        }
+    }
+
+    // ================= UI helpers =================
+
+    private void styleTable(JTable tbl) {
+        tbl.setRowHeight(28);
+        tbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tbl.setGridColor(new Color(220, 220, 220));
+        tbl.setShowGrid(true);
+        tbl.setFillsViewportHeight(true);
+
+        JTableHeader header = tbl.getTableHeader();
+        header.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        header.setBackground(AppColors.LIGHT);
+        header.setForeground(Color.WHITE);
+        header.setPreferredSize(new Dimension(0, 34));
+
+        DefaultTableCellRenderer left = new DefaultTableCellRenderer();
+        left.setHorizontalAlignment(SwingConstants.LEFT);
+        tbl.setDefaultRenderer(Object.class, left);
+    }
+
+    private String formatInt(BigDecimal bd) {
+        if (bd == null) return "0";
+        return String.valueOf(bd.setScale(0, RoundingMode.HALF_UP).intValue());
     }
 }

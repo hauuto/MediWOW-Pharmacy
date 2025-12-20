@@ -130,7 +130,10 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
         setActiveButton(btnHome);
         cardLayout.show(pnlMain, "dashboard");
-        dashboard.refresh(); // Ensure first show always displays fresh data
+        if (dashboard != null) {
+            // Use data-change hook as the canonical refresh trigger
+            dashboard.onDataChanged();
+        }
 
         Locale locale = Locale.of("vi", "VN");
         DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss EEEE, dd/MM/yyyy", locale);
@@ -152,7 +155,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
             setActiveButton(btnHome);
             cardLayout.show(pnlMain, "dashboard");
             if (dashboard != null) {
-                dashboard.refresh();
+                dashboard.onDataChanged();
             }
         } else if (src == btnSales) {
             setActiveButton(btnSales);
