@@ -34,8 +34,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private final List<Product> products;
     private final List<Promotion> promotions;
     private final Map<String, Product> productMap = new HashMap<>();
-    private final Map<Integer, String> previousUOMMap = new HashMap<>();
-    private final Map<Integer, String> oldUOMIdMap = new HashMap<>();
+    private final Map<Integer, MeasurementName> previousUOMMap = new HashMap<>();
+    private final Map<Integer, MeasurementName> oldUOMIdMap = new HashMap<>();
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
     private JScrollPane scrInvoiceLine;
@@ -233,6 +233,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             txtPrescriptionCode.requestFocusInWindow(); return;
         }
         UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
+        MeasurementName baseMeasurement = busProduct.getOrCreateMeasurementName(product.getBaseUnitOfMeasure());
+
         for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
             if (mdlInvoiceLine.getValueAt(i, 0).equals(product.getId()) && mdlInvoiceLine.getValueAt(i, 2).equals(product.getBaseUnitOfMeasure())) {
                 int qty = (int) mdlInvoiceLine.getValueAt(i, 3) + 1;
@@ -242,8 +244,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                 // Calculate unit price
                 Lot lot = product.getOldestLotAvailable();
                 double unitPrice = lot != null ? lot.getRawPrice() * (baseUOM != null ? baseUOM.getBasePriceConversionRate() : 1) : 0.0;
-                invoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(),
-                    new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice));
+                invoice.updateInvoiceLine(product.getId(), baseMeasurement,
+                    new InvoiceLine(product, invoice, baseMeasurement, LineType.SALE, qty, unitPrice));
                 updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice(); return;
             }
         }
@@ -252,9 +254,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         mdlInvoiceLine.addRow(new Object[]{product.getId(), product.getName(), product.getBaseUnitOfMeasure(), 1, price, price});
         productMap.put(product.getId(), product);
         int row = mdlInvoiceLine.getRowCount() - 1;
-        previousUOMMap.put(row, product.getBaseUnitOfMeasure());
-        oldUOMIdMap.put(row, product.getBaseUnitOfMeasure());
-        invoice.addInvoiceLine(new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price));
+        previousUOMMap.put(row, baseMeasurement);
+        oldUOMIdMap.put(row, baseMeasurement);
+        invoice.addInvoiceLine(new InvoiceLine(product, invoice, baseMeasurement, LineType.SALE, 1, price));
         updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
     }
 
@@ -278,8 +280,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
             if (i != row && mdlInvoiceLine.getValueAt(i, 0).equals(productId) && mdlInvoiceLine.getValueAt(i, 2).equals(uomName)) {
                 SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại!", "Cảnh báo trùng lặp", JOptionPane.WARNING_MESSAGE));
-                String prev = previousUOMMap.get(row);
-                mdlInvoiceLine.setValueAt(prev != null ? prev : product.getBaseUnitOfMeasure(), row, 2);
+                MeasurementName prev = previousUOMMap.get(row);
+                mdlInvoiceLine.setValueAt(prev != null ? prev.getName() : product.getBaseUnitOfMeasure(), row, 2);
                 return;
             }
         }
@@ -288,11 +290,12 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         double price = lot != null ? lot.getRawPrice() * (uom != null ? uom.getBasePriceConversionRate() : 1) : 0.0;
         mdlInvoiceLine.setValueAt(price, row, 4);
         mdlInvoiceLine.setValueAt(price * quantity, row, 5);
-        String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
-        invoice.updateInvoiceLine(productId, oldUomName,
-            new InvoiceLine(product, invoice, uomName, LineType.SALE, quantity, price));
-        oldUOMIdMap.put(row, uomName);
-        previousUOMMap.put(row, uomName);
+        MeasurementName oldUom = oldUOMIdMap.getOrDefault(row, null);
+        MeasurementName newUom = busProduct.getOrCreateMeasurementName(uomName);
+        invoice.updateInvoiceLine(productId, oldUom,
+            new InvoiceLine(product, invoice, newUom, LineType.SALE, quantity, price));
+        oldUOMIdMap.put(row, newUom);
+        previousUOMMap.put(row, newUom);
         updateVatDisplay(); updateTotalDisplay();
     }
 
@@ -465,11 +468,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         for (int i = rows.length - 1; i >= 0; i--) {
             int row = rows[i];
             String id = (String) mdlInvoiceLine.getValueAt(row, 0);
-            Product p = productMap.get(id);
-            if (p != null) {
-                String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
-                invoice.removeInvoiceLine(id, uomName);
-            }
+            String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+            MeasurementName uom = busProduct.getOrCreateMeasurementName(uomName);
+            invoice.removeInvoiceLine(id, uom);
             mdlInvoiceLine.removeRow(row);
         }
         previousUOMMap.clear(); oldUOMIdMap.clear();
@@ -481,9 +482,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (JOptionPane.showConfirmDialog(parentWindow, "Bạn có chắc chắn muốn xóa tất cả sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
         for (int i = mdlInvoiceLine.getRowCount() - 1; i >= 0; i--) {
             String id = (String) mdlInvoiceLine.getValueAt(i, 0);
-            Product p = productMap.get(id);
             String uomName = (String) mdlInvoiceLine.getValueAt(i, 2);
-            if (p != null) invoice.removeInvoiceLine(id, uomName);
+            MeasurementName uom = busProduct.getOrCreateMeasurementName(uomName);
+            invoice.removeInvoiceLine(id, uom);
         }
         mdlInvoiceLine.setRowCount(0);
         previousUOMMap.clear(); oldUOMIdMap.clear(); productMap.clear();

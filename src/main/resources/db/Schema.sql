@@ -121,7 +121,7 @@ CREATE TABLE PromotionCondition (
                                     target NVARCHAR(50) NOT NULL,
                                     value DECIMAL(18,2),
                                     product NVARCHAR(50),
-                                    unitOfMeasure NVARCHAR(100),
+                                    unitOfMeasure INT,
 
                                     FOREIGN KEY (promotion) REFERENCES Promotion(id),
                                     FOREIGN KEY (product, unitOfMeasure)
@@ -137,7 +137,7 @@ CREATE TABLE PromotionAction (
                                  target NVARCHAR(50) NOT NULL,
                                  value DECIMAL(18,2),
                                  product NVARCHAR(50),
-                                 unitOfMeasure NVARCHAR(100),
+                                 unitOfMeasure INT,
 
                                  FOREIGN KEY (promotion) REFERENCES Promotion(id),
                                  FOREIGN KEY (product, unitOfMeasure)
@@ -171,7 +171,7 @@ CREATE TABLE InvoiceLine (
                              id NVARCHAR(50) PRIMARY KEY, -- ID riêng cho dòng này
                              invoice NVARCHAR(50) NOT NULL,
                              product NVARCHAR(50) NOT NULL,
-                             unitOfMeasure NVARCHAR(100) NOT NULL, -- Chỉ lưu tên (phần 'name' của UOM)
+                             unitOfMeasure INT NOT NULL, -- Chỉ lưu tên (phần 'name' của UOM)
                              quantity INT NOT NULL,
                              unitPrice DECIMAL(18,2) NOT NULL, -- Giá snapshot tại thời điểm bán
                              lineType NVARCHAR(50) NOT NULL CHECK (lineType IN ('SALE', 'RETURN', 'EXCHANGE_OUT', 'EXCHANGE_IN')),
@@ -180,7 +180,7 @@ CREATE TABLE InvoiceLine (
                              FOREIGN KEY (product) REFERENCES Product(id),
 
     -- Khóa ngoại phức hợp trỏ về bảng UnitOfMeasure(product, name)
-                             FOREIGN KEY (product, unitOfMeasure) REFERENCES UnitOfMeasure(product, name)
+                             FOREIGN KEY (product, unitOfMeasure) REFERENCES UnitOfMeasure(product, measurementId)
 );
 
 -- 13. LotAllocation Table (Inventory Control) -> MỚI HOÀN TOÀN

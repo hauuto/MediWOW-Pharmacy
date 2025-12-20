@@ -76,7 +76,7 @@ public class DAO_Invoice implements IInvoice {
                     .setParameter("id", "TEMP") // Trigger will replace this
                     .setParameter("invoice", generatedInvoiceId)
                     .setParameter("product", line.getProduct().getId())
-                    .setParameter("unitOfMeasure", line.getUnitOfMeasure())
+                    .setParameter("unitOfMeasure", line.getUnitOfMeasure().getId())
                     .setParameter("quantity", line.getQuantity())
                     .setParameter("unitPrice", line.getUnitPrice())
                     .setParameter("lineType", line.getLineType().name())

@@ -24,8 +24,9 @@ public class InvoiceLine {
     @JoinColumn(name = "product", nullable = false)
     private Product product;
 
-    @Column(name = "unitOfMeasure", nullable = false, length = 100)
-    private String unitOfMeasure;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "unitOfMeasure", nullable = false)
+    private MeasurementName unitOfMeasure;
 
     @Column(name = "quantity", nullable = false)
     private int quantity;
@@ -59,7 +60,7 @@ public class InvoiceLine {
      * Minimal constructor
      */
     public InvoiceLine(Product product, Invoice invoice,
-                       String unitOfMeasure, LineType lineType,
+                       MeasurementName unitOfMeasure, LineType lineType,
                        int quantity, double unitPrice) {
         this.product = product;
         this.invoice = invoice;
@@ -73,7 +74,7 @@ public class InvoiceLine {
      * Full constructor
      */
     public InvoiceLine(String id, Product product, Invoice invoice,
-                       String unitOfMeasure, LineType lineType,
+                       MeasurementName unitOfMeasure, LineType lineType,
                        int quantity, double unitPrice) {
         this.id = id;
         this.product = product;
@@ -102,7 +103,7 @@ public class InvoiceLine {
         return quantity;
     }
 
-    public String getUnitOfMeasure() {
+    public MeasurementName getUnitOfMeasure() {
         return unitOfMeasure;
     }
 
@@ -134,7 +135,7 @@ public class InvoiceLine {
         this.quantity = quantity;
     }
 
-    public void setUnitOfMeasure(String unitOfMeasure) {
+    public void setUnitOfMeasure(MeasurementName unitOfMeasure) {
         this.unitOfMeasure = unitOfMeasure;
     }
 
