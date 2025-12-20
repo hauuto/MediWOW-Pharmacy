@@ -27,6 +27,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private final BUS_Invoice busInvoice = new BUS_Invoice();
     private final BUS_Promotion busPromotion = new BUS_Promotion();
     private final BUS_Shift busShift = new BUS_Shift();
+    private final BUS_Customer busCustomer = new BUS_Customer();
     private final Staff currentStaff;
     private final Invoice invoice;
     private final List<String> previousPrescriptionCodes;
@@ -40,7 +41,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private JTable tblInvoiceLine;
     private JScrollPane scrInvoiceLine;
     private JButton btnBarcodeScan, btnProcessPayment;
-    private JTextField txtSearchInput, txtPrescriptionCode, txtVat, txtPromotionSearch, txtTotal;
+    private JTextField txtSearchInput, txtPrescriptionCode, txtVat, txtPromotionSearch, txtTotal, txtShiftId, txtCustomerName;
     private JFormattedTextField txtCustomerPayment;
     private JPanel pnlCashOptions;
     private boolean barcodeScanningEnabled = false;
@@ -633,13 +634,28 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         v.add(Box.createVerticalStrut(82)); v.add(th); v.add(Box.createVerticalStrut(20));
 
         Box presc = Box.createHorizontalBox();
-        TitledBorder pb = BorderFactory.createTitledBorder("Thông tin kê đơn thuốc");
+        TitledBorder pb = BorderFactory.createTitledBorder("Thông tin chung");
         pb.setTitleFont(new Font("Arial", Font.BOLD, 16)); pb.setTitleColor(AppColors.PRIMARY);
         presc.setBorder(pb);
         v.add(presc); v.add(Box.createVerticalStrut(40));
         Box pv = Box.createVerticalBox(); presc.add(pv);
+
+        // Shift ID field (uneditable)
+        txtShiftId = new JTextField(); txtShiftId.setEditable(false); txtShiftId.setFocusable(false);
+        pv.add(generateLabelAndTextField(new JLabel("Mã ca:"), txtShiftId, "", "Mã ca làm việc", 112));
+        pv.add(Box.createVerticalStrut(10));
+
+        // Ensure Shift ID is always from the current open shift
+        refreshOpenShiftAndUI();
+
+        // Prescription code field
         txtPrescriptionCode = new JTextField(); txtPrescriptionCode.setName("txtPrescriptionCode"); txtPrescriptionCode.addFocusListener(this);
         pv.add(generateLabelAndTextField(new JLabel("Mã đơn kê thuốc:"), txtPrescriptionCode, "Điền mã đơn kê thuốc (nếu có)...", "Điền mã đơn kê thuốc", 39));
+        pv.add(Box.createVerticalStrut(10));
+
+        // Customer name field
+        txtCustomerName = new JTextField(); txtCustomerName.setName("txtCustomerName");
+        pv.add(generateLabelAndTextField(new JLabel("Tên khách hàng:"), txtCustomerName, "Điền tên khách hàng (nếu có)...", "Điền tên khách hàng", 46));
         pv.add(Box.createVerticalStrut(10));
 
         Box pay = Box.createHorizontalBox();
@@ -920,6 +936,17 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (txtTotal != null && invoice != null) {
             txtTotal.setText(createCurrencyFormat().format(invoice.calculateTotal()));
             updateCashButtons();
+            updateBankPaymentAmount();
+        }
+    }
+
+    /**
+     * Update customer payment field when Bank payment method is selected
+     * to always reflect the current invoice total.
+     */
+    private void updateBankPaymentAmount() {
+        if (invoice != null && invoice.getPaymentMethod() == PaymentMethod.BANK_TRANSFER && txtCustomerPayment != null) {
+            txtCustomerPayment.setValue(invoice.calculateTotal().longValue());
         }
     }
 
@@ -1070,6 +1097,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     private void completeSaleAndGenerateInvoice() {
         try {
+            // Make sure invoice uses the latest open shift before saving
+            refreshOpenShiftAndUI();
+
             // Deduct lot quantities based on lot allocations
             for (InvoiceLine line : invoice.getInvoiceLineList()) {
                 for (LotAllocation allocation : line.getLotAllocations()) {
@@ -1077,6 +1107,19 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                     if (!success) {
                         throw new RuntimeException("Không thể cập nhật số lượng lô: " + allocation.getLot().getId());
                     }
+                }
+            }
+
+            // Create and save customer if customer name is provided
+            String customerName = getCustomerNameValue();
+            if (customerName != null && !customerName.isEmpty()) {
+                try {
+                    PrescribedCustomer customer = new PrescribedCustomer(customerName);
+                    busCustomer.addCustomer(customer);
+                    invoice.setPrescribedCustomer(customer);
+                } catch (Exception e) {
+                    System.err.println("Warning: Could not save customer: " + e.getMessage());
+                    // Continue with invoice without customer reference
                 }
             }
 
@@ -1174,6 +1217,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         txtPrescriptionCode.setForeground(AppColors.PLACEHOLDER_TEXT);
         invoice.setPrescriptionCode(null);
 
+        // Reset customer name
+        txtCustomerName.setText("Điền tên khách hàng (nếu có)...");
+        txtCustomerName.setForeground(AppColors.PLACEHOLDER_TEXT);
+        invoice.setPrescribedCustomer(null);
+
         // Reset promotion
         txtPromotionSearch.setText("Điền mã hoặc tên khuyến mãi...");
         txtPromotionSearch.setForeground(AppColors.PLACEHOLDER_TEXT);
@@ -1186,5 +1234,49 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         updateVatDisplay();
         updateTotalDisplay();
         validatePrescriptionCodeForInvoice();
+    }
+
+    /**
+     * Get customer name value from text field (returns null if placeholder or empty)
+     */
+    private String getCustomerNameValue() {
+        if (txtCustomerName == null) return null;
+        String text = txtCustomerName.getText().trim();
+        if (text.isEmpty() || text.equals("Điền tên khách hàng (nếu có)...") ||
+            txtCustomerName.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
+            return null;
+        }
+        return text;
+    }
+
+    /**
+     * Always fetch the current open shift on this workstation and sync UI + invoice.
+     * Important: shifts can change while the tab is still open.
+     */
+    private void refreshOpenShiftAndUI() {
+        try {
+            String workstation = busShift.getCurrentWorkstation();
+            Shift openShift = busShift.getOpenShiftOnWorkstation(workstation);
+
+            if (openShift != null) {
+                currentShift = openShift;
+                if (invoice != null) {
+                    invoice.setShift(openShift);
+                }
+                if (txtShiftId != null) {
+                    txtShiftId.setText(openShift.getId());
+                }
+            } else {
+                // Keep the existing shift; don't force dialog from background refresh.
+                if (txtShiftId != null) {
+                    txtShiftId.setText(currentShift != null ? currentShift.getId() : "N/A");
+                }
+            }
+        } catch (Exception ex) {
+            // Don't break UI for shift lookup failures
+            if (txtShiftId != null) {
+                txtShiftId.setText(currentShift != null ? currentShift.getId() : "N/A");
+            }
+        }
     }
 }

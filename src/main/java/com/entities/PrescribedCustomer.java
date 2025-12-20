@@ -34,6 +34,19 @@ public class PrescribedCustomer {
 
     protected PrescribedCustomer() {}
 
+    /**
+     * Quick constructor for creating customer with just a name
+     * @param name Customer name (required)
+     */
+    public PrescribedCustomer(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Tên khách hàng không được để trống");
+        }
+        this.name = name.trim();
+        this.phoneNumber = null;
+        this.address = null;
+    }
+
     public PrescribedCustomer(String id, String name, String phoneNumber, String address) {
         this.id = id;
         this.name = name;
