@@ -22,6 +22,7 @@ public interface IProduct {
     List<UnitOfMeasure> getAllUnitOfMeasures();
 
     boolean addProduct(Product p);
+    boolean updateProduct(Product p);
     List<Product> getAllProducts();
 
     // ==== Duplicate checks for Create/Update ====

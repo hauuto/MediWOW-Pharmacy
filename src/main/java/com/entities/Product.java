@@ -57,10 +57,10 @@ public class Product {
     @Column(name = "baseUnitOfMeasure", nullable = false)
     private String baseUnitOfMeasure;
 
-    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Lot> lotList = new HashSet<>();
 
-    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UnitOfMeasure> unitOfMeasureList = new HashSet<>();
 
 

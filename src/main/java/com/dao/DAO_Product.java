@@ -11,7 +11,9 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.Hibernate;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class DAO_Product implements IProduct {
     private final SessionFactory sessionFactory;
@@ -208,6 +210,164 @@ public class DAO_Product implements IProduct {
         } finally {
             if (session != null) session.close();
         }
+    }
+
+    @Override
+    public boolean updateProduct(Product p) {
+        Transaction tx = null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            tx = session.beginTransaction();
+
+            // Fetch the existing product with its UOMs
+            Product existing = session.createQuery(
+                    "SELECT DISTINCT p FROM Product p " +
+                            "LEFT JOIN FETCH p.unitOfMeasureList u " +
+                            "LEFT JOIN FETCH u.measurement " +
+                            "WHERE p.id = :id",
+                    Product.class)
+                    .setParameter("id", p.getId())
+                    .uniqueResult();
+
+            if (existing == null) {
+                return false;
+            }
+
+            // Update basic fields
+            existing.setName(p.getName());
+            existing.setShortName(p.getShortName());
+            existing.setBarcode(p.getBarcode());
+            existing.setCategory(p.getCategory());
+            existing.setForm(p.getForm());
+            existing.setActiveIngredient(p.getActiveIngredient());
+            existing.setManufacturer(p.getManufacturer());
+            existing.setStrength(p.getStrength());
+            existing.setDescription(p.getDescription());
+            existing.setVat(p.getVat());
+            existing.setBaseUnitOfMeasure(p.getBaseUnitOfMeasure());
+
+            // Handle UnitOfMeasure updates
+            if (p.getUnitOfMeasureList() != null) {
+                // Find UOMs that are no longer in the new list
+                Set<UnitOfMeasure> toRemove = new HashSet<>();
+                for (UnitOfMeasure existingUom : existing.getUnitOfMeasureList()) {
+                    boolean found = false;
+                    for (UnitOfMeasure newUom : p.getUnitOfMeasureList()) {
+                        if (newUom.getMeasurement() != null &&
+                            existingUom.getMeasurement() != null &&
+                            newUom.getMeasurement().getId().equals(existingUom.getMeasurement().getId())) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        // Check if this UOM is referenced by PromotionAction or PromotionCondition
+                        boolean isReferenced = isUnitOfMeasureReferenced(session, existingUom);
+                        if (!isReferenced) {
+                            toRemove.add(existingUom);
+                        }
+                        // If referenced, we keep it in the list (don't delete)
+                    }
+                }
+
+                // Remove orphaned UOMs that are not referenced
+                for (UnitOfMeasure uom : toRemove) {
+                    existing.getUnitOfMeasureList().remove(uom);
+                    session.remove(uom);
+                }
+
+                // Add or update UOMs
+                for (UnitOfMeasure newUom : p.getUnitOfMeasureList()) {
+                    if (newUom.getMeasurement() == null) continue;
+
+                    UnitOfMeasure existingUom = null;
+                    for (UnitOfMeasure u : existing.getUnitOfMeasureList()) {
+                        if (u.getMeasurement() != null &&
+                            u.getMeasurement().getId().equals(newUom.getMeasurement().getId())) {
+                            existingUom = u;
+                            break;
+                        }
+                    }
+
+                    if (existingUom != null) {
+                        // Update existing UOM
+                        existingUom.setBaseUnitConversionRate(newUom.getBaseUnitConversionRate());
+                        existingUom.setPrice(newUom.getPrice());
+                    } else {
+                        // Add new UOM - need to get managed MeasurementName
+                        MeasurementName managedMeasurement = session.get(MeasurementName.class, newUom.getMeasurement().getId());
+                        if (managedMeasurement != null) {
+                            UnitOfMeasure uomToAdd = new UnitOfMeasure(existing, managedMeasurement, newUom.getPrice(), newUom.getBaseUnitConversionRate());
+                            existing.getUnitOfMeasureList().add(uomToAdd);
+                        }
+                    }
+                }
+            }
+
+            session.merge(existing);
+            tx.commit();
+            return true;
+        } catch (Exception e) {
+            if (tx != null) tx.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+
+    /**
+     * Check if a UnitOfMeasure is referenced by PromotionAction, PromotionCondition, or InvoiceLine
+     */
+    private boolean isUnitOfMeasureReferenced(Session session, UnitOfMeasure uom) {
+        if (uom == null || uom.getProduct() == null || uom.getMeasurement() == null) {
+            return false;
+        }
+
+        String productId = uom.getProduct().getId();
+        Integer measurementId = uom.getMeasurement().getId();
+
+        // Check PromotionAction references
+        Long actionCount = session.createQuery(
+                "SELECT COUNT(pa) FROM PromotionAction pa " +
+                "WHERE pa.productUOM.product.id = :productId " +
+                "AND pa.productUOM.measurement.id = :measurementId",
+                Long.class)
+                .setParameter("productId", productId)
+                .setParameter("measurementId", measurementId)
+                .getSingleResult();
+
+        if (actionCount > 0) {
+            return true;
+        }
+
+        // Check PromotionCondition references
+        Long conditionCount = session.createQuery(
+                "SELECT COUNT(pc) FROM PromotionCondition pc " +
+                "WHERE pc.productUOM.product.id = :productId " +
+                "AND pc.productUOM.measurement.id = :measurementId",
+                Long.class)
+                .setParameter("productId", productId)
+                .setParameter("measurementId", measurementId)
+                .getSingleResult();
+
+        if (conditionCount > 0) {
+            return true;
+        }
+
+        // Check InvoiceLine references - InvoiceLine stores measurementId as unitOfMeasure column
+        // The FK is (product, unitOfMeasure) -> UnitOfMeasure(product, measurementId)
+        Long invoiceLineCount = session.createQuery(
+                "SELECT COUNT(il) FROM InvoiceLine il " +
+                "WHERE il.product.id = :productId " +
+                "AND il.unitOfMeasure = :measurementId",
+                Long.class)
+                .setParameter("productId", productId)
+                .setParameter("measurementId", String.valueOf(measurementId))
+                .getSingleResult();
+
+        return invoiceLineCount > 0;
     }
 
     @Override
