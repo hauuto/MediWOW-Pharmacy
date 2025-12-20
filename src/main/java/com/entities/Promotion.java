@@ -111,5 +111,4 @@ public class Promotion {
         this.actions.remove(action);
         action.setPromotion(null);
     }
-
 }

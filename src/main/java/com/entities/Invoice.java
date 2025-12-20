@@ -208,14 +208,14 @@ public class Invoice {
     /**
      * Updates an existing InvoiceLine in the invoice.
      */
-    public boolean updateInvoiceLine(String oldProductId, MeasurementName oldUom, InvoiceLine newInvoiceLine) {
+    public boolean updateInvoiceLine(String oldProductId, String oldUomName, InvoiceLine newInvoiceLine) {
         if (newInvoiceLine == null)
             return false;
 
         InvoiceLine oldLine = null;
         for (InvoiceLine line : invoiceLineList) {
             if (line.getProduct().getId().equals(oldProductId) &&
-                    line.getUnitOfMeasure().equals(oldUom)) {
+                    line.getUnitOfMeasure().equals(oldUomName)) {
                 oldLine = line;
                 break;
             }
@@ -243,10 +243,10 @@ public class Invoice {
     /**
      * Removes an InvoiceLine from the invoice.
      */
-    public boolean removeInvoiceLine(String productId, MeasurementName unitOfMeasure) {
+    public boolean removeInvoiceLine(String productId, String unitOfMeasureName) {
         return invoiceLineList.removeIf(line ->
                 line.getProduct().getId().equals(productId) &&
-                        line.getUnitOfMeasure().equals(unitOfMeasure)
+                        line.getUnitOfMeasure().equals(unitOfMeasureName)
         );
     }
 

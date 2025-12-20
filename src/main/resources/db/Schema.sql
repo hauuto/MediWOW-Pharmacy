@@ -64,30 +64,27 @@ CREATE TABLE Product (
                          strength NVARCHAR(100),
                          description NVARCHAR(MAX),
                          baseUnitOfMeasure NVARCHAR(50),
-                         image NVARCHAR(500),
                          creationDate DATETIME NOT NULL DEFAULT GETDATE(),
                          updateDate DATETIME
 );
 
 -- 5. MeasurementName Table (Dictionary for UOM names)
-CREATE TABLE MeasurementName (
-                                 id INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
-                                 name NVARCHAR(100) NOT NULL UNIQUE
+CREATE TABLE MeasurementName(
+                                name NVARCHAR(100) PRIMARY KEY
 );
 
 -- 6. UnitOfMeasure Table
 -- Primary Key: (product, name) -> Composite Key
 CREATE TABLE UnitOfMeasure (
                                product NVARCHAR(50) NOT NULL,
-                               measurementId INT NOT NULL,
-                               price DECIMAL(18,2) NOT NULL,
-                               baseUnitConversionRate DECIMAL(18,4) NOT NULL,
+                               name NVARCHAR(100) NOT NULL,
+                               price DECIMAL(18,2) NOT NULL, -- Giá niêm yết
+                               baseUnitConversionRate DECIMAL(18,4) NOT NULL, -- Sửa thành Decimal để chính xác tỷ lệ
 
                                FOREIGN KEY (product) REFERENCES Product(id) ON DELETE CASCADE,
-                               FOREIGN KEY (measurementId) REFERENCES MeasurementName(id) ON DELETE CASCADE,
-                               PRIMARY KEY (product, measurementId)
+                               FOREIGN KEY (name) REFERENCES MeasurementName(name) ON DELETE CASCADE,
+                               PRIMARY KEY (product, name)
 );
-
 
 -- 7. Lot Table
 CREATE TABLE Lot (
@@ -122,11 +119,11 @@ CREATE TABLE PromotionCondition (
                                     target NVARCHAR(50) NOT NULL,
                                     value DECIMAL(18,2),
                                     product NVARCHAR(50),
-                                    unitOfMeasure INT,
+                                    unitOfMeasure NVARCHAR(100),
 
                                     FOREIGN KEY (promotion) REFERENCES Promotion(id),
                                     FOREIGN KEY (product, unitOfMeasure)
-                                        REFERENCES UnitOfMeasure(product, measurementId)
+                                        REFERENCES UnitOfMeasure(product, name)
 );
 
 -- 10. PromotionAction Table
@@ -138,11 +135,11 @@ CREATE TABLE PromotionAction (
                                  target NVARCHAR(50) NOT NULL,
                                  value DECIMAL(18,2),
                                  product NVARCHAR(50),
-                                 unitOfMeasure INT,
+                                 unitOfMeasure NVARCHAR(100),
 
                                  FOREIGN KEY (promotion) REFERENCES Promotion(id),
                                  FOREIGN KEY (product, unitOfMeasure)
-                                     REFERENCES UnitOfMeasure(product, measurementId)
+                                     REFERENCES UnitOfMeasure(product, name)
 );
 
 -- 11. Invoice Table
@@ -172,7 +169,7 @@ CREATE TABLE InvoiceLine (
                              id NVARCHAR(50) PRIMARY KEY, -- ID riêng cho dòng này
                              invoice NVARCHAR(50) NOT NULL,
                              product NVARCHAR(50) NOT NULL,
-                             unitOfMeasure INT NOT NULL, -- Chỉ lưu tên (phần 'name' của UOM)
+                             unitOfMeasure NVARCHAR(100) NOT NULL, -- Chỉ lưu tên (phần 'name' của UOM)
                              quantity INT NOT NULL,
                              unitPrice DECIMAL(18,2) NOT NULL, -- Giá snapshot tại thời điểm bán
                              lineType NVARCHAR(50) NOT NULL CHECK (lineType IN ('SALE', 'RETURN', 'EXCHANGE_OUT', 'EXCHANGE_IN')),
@@ -181,7 +178,7 @@ CREATE TABLE InvoiceLine (
                              FOREIGN KEY (product) REFERENCES Product(id),
 
     -- Khóa ngoại phức hợp trỏ về bảng UnitOfMeasure(product, name)
-                             FOREIGN KEY (product, unitOfMeasure) REFERENCES UnitOfMeasure(product, measurementId)
+                             FOREIGN KEY (product, unitOfMeasure) REFERENCES UnitOfMeasure(product, name)
 );
 
 -- 13. LotAllocation Table (Inventory Control) -> MỚI HOÀN TOÀN
