@@ -49,9 +49,10 @@ public class InvoiceLine {
     protected InvoiceLine() {}
 
     /**
-     * Constructor without ID - Hibernate will auto-generate UUID
+     * Constructor without ID - auto-generates UUID
      */
     public InvoiceLine(Product product, Invoice invoice, String unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
+        this.id = "IL-" + UUID.randomUUID().toString(); // Auto-generate unique ID
         this.product = product;
         this.invoice = invoice;
         this.unitOfMeasure = unitOfMeasure;
