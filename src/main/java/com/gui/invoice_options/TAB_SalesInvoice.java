@@ -1,7 +1,6 @@
 package com.gui.invoice_options;
 
 import com.bus.*;
-import com.dao.DAO_Product;
 import com.entities.*;
 import com.enums.*;
 import com.gui.DIALOG_MomoQRCode;
@@ -35,8 +34,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private final List<Product> products;
     private final List<Promotion> promotions;
     private final Map<String, Product> productMap = new HashMap<>();
-    private final Map<Integer, Integer> previousUOMMap = new HashMap<>();
-    private final Map<Integer, Integer> oldUOMIdMap = new HashMap<>();
+    private final Map<Integer, String> previousUOMMap = new HashMap<>();
+    private final Map<Integer, String> oldUOMIdMap = new HashMap<>();
     private final Map<Integer, Integer> previousQuantityMap = new HashMap<>();
     private DefaultTableModel mdlInvoiceLine;
     private JTable tblInvoiceLine;
@@ -58,10 +57,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private Shift currentShift;
     private ShiftChangeListener shiftChangeListener;
     private DataChangeListener dataChangeListener;
-    private DAO_Product daoProduct;
+
     public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener) {
         this(creator, shiftChangeListener, null);
-
     }
 
     public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener, DataChangeListener dataChangeListener) {
@@ -77,7 +75,6 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         promotions = busPromotion.getAllPromotions().stream().filter(Promotion::getIsActive).toList();
         createSplitPane();
-        daoProduct = new DAO_Product();
     }
 
     private Shift ensureCurrentShift() {
@@ -237,7 +234,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' là thuốc ETC.\nVui lòng nhập mã đơn thuốc hợp lệ.", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
             txtPrescriptionCode.requestFocusInWindow(); return;
         }
-        MeasurementName msName = daoProduct.findMeasurementNameByName(product.getBaseUnitOfMeasure());
+
         isUpdatingInvoiceLine = true;
         try {
             UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
@@ -253,7 +250,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                             : java.math.BigDecimal.ONE;
                     java.math.BigDecimal unitPrice = rawPrice.multiply(basePriceConversion);
 
-                    InvoiceLine tempLine = new InvoiceLine(product, invoice, msName, LineType.SALE, qty, unitPrice);
+                    InvoiceLine tempLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice);
                     if (!tempLine.allocateLots()) {
                         int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
                         JOptionPane.showMessageDialog(parentWindow,
@@ -268,9 +265,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                     mdlInvoiceLine.setValueAt(price.multiply(java.math.BigDecimal.valueOf(qty)), i, 5);
 
                     // Update invoice line with lot allocations
-                    InvoiceLine updatedLine = new InvoiceLine(product, invoice, msName, LineType.SALE, qty, unitPrice);
+                    InvoiceLine updatedLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, qty, unitPrice);
                     updatedLine.allocateLots();
-                    invoice.updateInvoiceLine(product.getId(), msName, updatedLine);
+                    invoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(), updatedLine);
                     previousQuantityMap.put(i, qty);
                     updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice(); return;
                 }
@@ -279,9 +276,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             java.math.BigDecimal price = lot != null ? lot.getRawPrice() : java.math.BigDecimal.ZERO;
 
             // Create new invoice line and allocate lots
-            InvoiceLine newLine = new InvoiceLine(product, invoice, msName, LineType.SALE, 1, price);
+            InvoiceLine newLine = new InvoiceLine(product, invoice, product.getBaseUnitOfMeasure(), LineType.SALE, 1, price);
             if (!newLine.allocateLots()) {
-                int remaining = getRemainingInventoryInUOM(product, msName.getName());
+                int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
                 JOptionPane.showMessageDialog(parentWindow,
                     "Số lượng yêu cầu vượt quá tồn kho!\nSản phẩm: " + product.getName() +
                     "\nTồn kho còn lại: " + remaining + " " + product.getBaseUnitOfMeasure(),
@@ -292,8 +289,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             mdlInvoiceLine.addRow(new Object[]{product.getId(), product.getName(), product.getBaseUnitOfMeasure(), 1, price, price});
             productMap.put(product.getId(), product);
             int row = mdlInvoiceLine.getRowCount() - 1;
-            previousUOMMap.put(row, msName.getId());
-            oldUOMIdMap.put(row, msName.getId());
+            previousUOMMap.put(row, product.getBaseUnitOfMeasure());
+            oldUOMIdMap.put(row, product.getBaseUnitOfMeasure());
             previousQuantityMap.put(row, 1);
             invoice.addInvoiceLine(newLine);
             updateVatDisplay(); updateTotalDisplay(); validatePrescriptionCodeForInvoice();
@@ -305,10 +302,10 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private UnitOfMeasure findUnitOfMeasure(Product product, String name) {
         if (name.equals(product.getBaseUnitOfMeasure())) {
             for (UnitOfMeasure uom : product.getUnitOfMeasureList())
-                if (uom.getMeasurement().getName().equals(name)) return uom;
+                if (uom.getName().equals(name)) return uom;
         }
         for (UnitOfMeasure uom : product.getUnitOfMeasureList())
-            if (uom.getMeasurement().getName().equals(name)) return uom;
+            if (uom.getName().equals(name)) return uom;
         return null;
     }
 
@@ -350,8 +347,6 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         try {
             String productId = (String) mdlInvoiceLine.getValueAt(row, 0);
             String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
-            MeasurementName msName = daoProduct.findMeasurementNameByName(uomName);
-
             int quantity = (int) mdlInvoiceLine.getValueAt(row, 3);
             Product product = productMap.get(productId);
             if (product == null) return;
@@ -359,7 +354,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             for (int i = 0; i < mdlInvoiceLine.getRowCount(); i++) {
                 if (i != row && mdlInvoiceLine.getValueAt(i, 0).equals(productId) && mdlInvoiceLine.getValueAt(i, 2).equals(uomName)) {
                     JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' với đơn vị '" + uomName + "' đã tồn tại!", "Cảnh báo trùng lặp", JOptionPane.WARNING_MESSAGE);
-                    String prev = String.valueOf(previousUOMMap.get(row));
+                    String prev = previousUOMMap.get(row);
                     mdlInvoiceLine.setValueAt(prev != null ? prev : product.getBaseUnitOfMeasure(), row, 2);
                     return;
                 }
@@ -374,8 +369,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             java.math.BigDecimal price = rawPrice.multiply(basePriceConversion);
 
             // Create invoice line and check lot allocation
-            String oldUomName = String.valueOf(oldUOMIdMap.getOrDefault(row, msName.getId()));
-            InvoiceLine newLine = new InvoiceLine(product, invoice, msName, LineType.SALE, quantity, price);
+            String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
+            InvoiceLine newLine = new InvoiceLine(product, invoice, uomName, LineType.SALE, quantity, price);
             if (!newLine.allocateLots()) {
                 // Insufficient inventory - revert changes
                 int remaining = getRemainingInventoryInUOM(product, uomName);
@@ -385,7 +380,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                     "Không đủ tồn kho", JOptionPane.WARNING_MESSAGE);
 
                 // Revert to previous values
-                String prevUom = String.valueOf(previousUOMMap.get(row));
+                String prevUom = previousUOMMap.get(row);
                 if (prevUom != null) {
                     mdlInvoiceLine.setValueAt(prevUom, row, 2);
                 }
@@ -397,9 +392,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
             mdlInvoiceLine.setValueAt(price, row, 4);
             mdlInvoiceLine.setValueAt(price.multiply(java.math.BigDecimal.valueOf(quantity)), row, 5);
-            invoice.updateInvoiceLine(productId, msName, newLine);
-            oldUOMIdMap.put(row, msName.getId());
-            previousUOMMap.put(row, msName.getId());
+            invoice.updateInvoiceLine(productId, oldUomName, newLine);
+            oldUOMIdMap.put(row, uomName);
+            previousUOMMap.put(row, uomName);
             previousQuantityMap.put(row, quantity);
             updateVatDisplay(); updateTotalDisplay();
         } finally {
@@ -582,9 +577,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         for (int i = rows.length - 1; i >= 0; i--) {
             int row = rows[i];
             String id = (String) mdlInvoiceLine.getValueAt(row, 0);
-            String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
-            MeasurementName uom = busProduct.getOrCreateMeasurementName(uomName);
-            invoice.removeInvoiceLine(id, uom);
+            Product p = productMap.get(id);
+            if (p != null) {
+                String uomName = (String) mdlInvoiceLine.getValueAt(row, 2);
+                invoice.removeInvoiceLine(id, uomName);
+            }
             mdlInvoiceLine.removeRow(row);
         }
         previousUOMMap.clear(); oldUOMIdMap.clear(); previousQuantityMap.clear();
@@ -596,9 +593,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         if (JOptionPane.showConfirmDialog(parentWindow, "Bạn có chắc chắn muốn xóa tất cả sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
         for (int i = mdlInvoiceLine.getRowCount() - 1; i >= 0; i--) {
             String id = (String) mdlInvoiceLine.getValueAt(i, 0);
+            Product p = productMap.get(id);
             String uomName = (String) mdlInvoiceLine.getValueAt(i, 2);
-            MeasurementName uom = busProduct.getOrCreateMeasurementName(uomName);
-            invoice.removeInvoiceLine(id, uom);
+            if (p != null) invoice.removeInvoiceLine(id, uomName);
         }
         mdlInvoiceLine.setRowCount(0);
         previousUOMMap.clear(); oldUOMIdMap.clear(); previousQuantityMap.clear(); productMap.clear();
@@ -795,7 +792,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             if (p != null) {
                 comboBox.addItem(p.getBaseUnitOfMeasure());
                 for (UnitOfMeasure u : p.getUnitOfMeasureList())
-                    if (!u.getMeasurement().getName().equals(p.getBaseUnitOfMeasure())) comboBox.addItem(u.getMeasurement().getName());
+                    if (!u.getName().equals(p.getBaseUnitOfMeasure())) comboBox.addItem(u.getName());
             }
             if (v != null) comboBox.setSelectedItem(v);
             return comboBox;

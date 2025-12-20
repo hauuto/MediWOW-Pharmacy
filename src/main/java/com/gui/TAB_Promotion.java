@@ -18,8 +18,6 @@ import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -217,7 +215,7 @@ public class TAB_Promotion extends JPanel {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
         table = new JTable(tableModel);
-        styleTable(table, false);
+        styleTable(table);
 
         // Chọn dòng -> hiển thị chi tiết
         table.getSelectionModel().addListSelectionListener(e -> {
@@ -455,27 +453,6 @@ public class TAB_Promotion extends JPanel {
                 // cột 0: Target, cột 3: Comparator (đã đổi vị trí)
                 cm.getColumn(0).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Target.values())));
                 cm.getColumn(3).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Comp.values())));
-
-                // Thêm validation cho cột Giá trị (cột 4) - không cho số âm và chữ cái
-                cm.getColumn(4).setCellEditor(new DefaultCellEditor(new JTextField()) {
-                    @Override
-                    public boolean stopCellEditing() {
-                        String value = ((JTextField) getComponent()).getText().trim();
-                        if (!value.isEmpty()) {
-                            try {
-                                double val = Double.parseDouble(value);
-                                if (val < 0) {
-                                    JOptionPane.showMessageDialog(table, "Giá trị không được là số âm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                                    return false;
-                                }
-                            } catch (NumberFormatException e) {
-                                JOptionPane.showMessageDialog(table, "Giá trị phải là số hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                                return false;
-                            }
-                        }
-                        return super.stopCellEditing();
-                    }
-                });
             } catch (Exception ignored) {}
         } else {
             try {
@@ -483,27 +460,6 @@ public class TAB_Promotion extends JPanel {
                 // cột 0: ActionType, cột 1: Target (đã đổi vị trí từ 3 -> 1)
                 cm.getColumn(0).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.ActionType.values())));
                 cm.getColumn(1).setCellEditor(new DefaultCellEditor(new JComboBox<>(PromotionEnum.Target.values())));
-
-                // Thêm validation cho cột Giá trị (cột 2) - không cho số âm và chữ cái
-                cm.getColumn(2).setCellEditor(new DefaultCellEditor(new JTextField()) {
-                    @Override
-                    public boolean stopCellEditing() {
-                        String value = ((JTextField) getComponent()).getText().trim();
-                        if (!value.isEmpty()) {
-                            try {
-                                double val = Double.parseDouble(value);
-                                if (val < 0) {
-                                    JOptionPane.showMessageDialog(table, "Giá trị không được là số âm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                                    return false;
-                                }
-                            } catch (NumberFormatException e) {
-                                JOptionPane.showMessageDialog(table, "Giá trị phải là số hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-                                return false;
-                            }
-                        }
-                        return super.stopCellEditing();
-                    }
-                });
             } catch (Exception ignored) {}
         }
 
@@ -520,11 +476,6 @@ public class TAB_Promotion extends JPanel {
         JTable table = new JTable(model) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                // Kiểm tra chế độ editing - nếu đang ở chế độ xem (không phải adding/editing), disable tất cả
-                if (isViewing && !isEditingFields) {
-                    return false;
-                }
-
                 // Kiểm tra logic ẩn/hiện dựa trên các trường khác
                 if (isCondition) {
                     // Với điều kiện: nếu Target = ORDER_SUBTOTAL -> disable cột Sản phẩm (1) và Đơn vị (2)
@@ -537,7 +488,7 @@ public class TAB_Promotion extends JPanel {
                             return false; // Không cho edit Sản phẩm và Đơn vị
                         }
                     }
-                    // Chỉ cho phép chỉnh sửa sản phẩm khi Target = PRODUCT
+                    // Yêu cầu 2: Chỉ cho phép chỉnh sửa sản phẩm khi Target = PRODUCT
                     if (column == 1) { // Cột sản phẩm
                         if (targetObj == null) return false;
                         PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
@@ -546,9 +497,38 @@ public class TAB_Promotion extends JPanel {
                         return target == PromotionEnum.Target.PRODUCT;
                     }
                 } else {
-                    // Với hành động: Chỉ dựa vào Target, không quan tâm ActionType
+                    // Với hành động: logic phức tạp hơn
                     // NEW ORDER: 0=ActionType, 1=Target, 2=Value, 3=Product, 4=UOM
+                    Object typeObj = model.getValueAt(row, 0);
                     Object targetObj = model.getValueAt(row, 1);
+
+                    if (typeObj != null) {
+                        PromotionEnum.ActionType actionType = (typeObj instanceof PromotionEnum.ActionType)
+                            ? (PromotionEnum.ActionType) typeObj
+                            : PromotionEnum.ActionType.valueOf(typeObj.toString());
+
+                        // PERCENT_DISCOUNT, FIXED_DISCOUNT: không cho nhập Sản phẩm (3) và Đơn vị (4)
+                        if ((actionType == PromotionEnum.ActionType.PERCENT_DISCOUNT ||
+                             actionType == PromotionEnum.ActionType.FIXED_DISCOUNT) &&
+                            (column == 3 || column == 4)) {
+                            return false;
+                        }
+
+                        // PRODUCT_GIFT: Target (cột 1) phải là PRODUCT và không cho đổi
+                        if (actionType == PromotionEnum.ActionType.PRODUCT_GIFT && column == 1) {
+                            // Auto set to PRODUCT
+                            if (model.getValueAt(row, 1) == null ||
+                                !model.getValueAt(row, 1).equals(PromotionEnum.Target.PRODUCT)) {
+                                model.setValueAt(PromotionEnum.Target.PRODUCT, row, 1);
+                            }
+                            return false;
+                        }
+
+                        // PRODUCT_GIFT: cho phép chọn sản phẩm và đơn vị
+                        if (actionType == PromotionEnum.ActionType.PRODUCT_GIFT && (column == 3 || column == 4)) {
+                            return true;
+                        }
+                    }
 
                     // Chỉ cho phép chỉnh sửa sản phẩm khi Target = PRODUCT
                     if (column == 3) { // Cột sản phẩm
@@ -567,12 +547,22 @@ public class TAB_Promotion extends JPanel {
                             : PromotionEnum.Target.valueOf(targetObj.toString());
                         return target == PromotionEnum.Target.PRODUCT;
                     }
+
+                    // Nếu Target = ORDER_SUBTOTAL -> disable Sản phẩm và Đơn vị
+                    if (targetObj != null && (column == 3 || column == 4)) {
+                        PromotionEnum.Target target = (targetObj instanceof PromotionEnum.Target)
+                            ? (PromotionEnum.Target) targetObj
+                            : PromotionEnum.Target.valueOf(targetObj.toString());
+                        if (target == PromotionEnum.Target.ORDER_SUBTOTAL) {
+                            return false;
+                        }
+                    }
                 }
                 return true;
             }
         };
 
-        styleTable(table, true); // Hiển thị viền cho bảng điều kiện và hành động
+        styleTable(table);
 
         // VÔ HIỆU HÓA KÉO THẢ CỘT
         table.getTableHeader().setReorderingAllowed(false);
@@ -584,22 +574,13 @@ public class TAB_Promotion extends JPanel {
         // Yêu cầu 4: Các ô bị disable nên có màu xám
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(
-                    JTable table, Object value,
+            public Component getTableCellRendererComponent(JTable table, Object value,
                     boolean isSelected, boolean hasFocus, int row, int column) {
-
-                // Ép measurementName về String để tránh lazy
-                if (value instanceof com.entities.MeasurementName m) {
-                    value = m.getName();
-                }
-
-                Component c = super.getTableCellRendererComponent(
-                        table, value, isSelected, hasFocus, row, column
-                );
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
                 if (!table.isCellEditable(row, column)) {
-                    c.setBackground(new Color(240, 240, 240));
-                    c.setForeground(new Color(150, 150, 150));
+                    c.setBackground(new Color(240, 240, 240)); // Màu xám nhạt cho ô disabled
+                    c.setForeground(new Color(150, 150, 150)); // Chữ xám
                 } else if (isSelected) {
                     c.setBackground(new Color(200, 230, 255));
                     c.setForeground(Color.BLACK);
@@ -610,7 +591,6 @@ public class TAB_Promotion extends JPanel {
                 return c;
             }
         });
-
 
         TableModelListener listener = e -> {
             // Yêu cầu 5: Chỉ thêm hàng mới khi hàng cuối được điền đầy đủ
@@ -763,9 +743,9 @@ public class TAB_Promotion extends JPanel {
                         }
 
                         // Yêu cầu 3: Combobox cho đơn vị
-                        List<String> names = new ArrayList<>();
+                        java.util.List<String> names = new java.util.ArrayList<>();
                         for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
-                            if (u != null && u.getMeasurement()!= null) names.add(u.getMeasurement().getName());
+                            if (u != null && u.getName() != null) names.add(u.getName());
                         }
                         if (names.isEmpty()) {
                             JOptionPane.showMessageDialog(table, "Sản phẩm chưa có đơn vị tính.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -775,30 +755,6 @@ public class TAB_Promotion extends JPanel {
                         Object selected = JOptionPane.showInputDialog(table, "Chọn đơn vị tính:", "Đơn vị tính", JOptionPane.PLAIN_MESSAGE, null, names.toArray(), names.get(0));
                         if (selected != null) {
                             model.setValueAt(selected.toString(), row, col);
-                        }
-                    }
-                }
-            }
-        });
-
-        // Thêm KeyListener để xử lý phím Delete cho việc xóa dòng
-        table.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_DELETE) {
-                    int row = table.getSelectedRow();
-                    if (row >= 0) {
-                        // Xác nhận xóa
-                        int confirm = JOptionPane.showConfirmDialog(table,
-                                "Bạn có chắc muốn xóa dòng này?",
-                                "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
-                        if (confirm == JOptionPane.YES_OPTION) {
-                            // Xóa dòng khỏi model
-                            model.removeRow(row);
-                            // Thêm dòng trống mới nếu còn thiếu
-                            if (model.getRowCount() == 0) {
-                                model.addRow(new Object[model.getColumnCount()]);
-                            }
                         }
                     }
                 }
@@ -1042,8 +998,7 @@ public class TAB_Promotion extends JPanel {
             BigDecimal val1BD = parseBigDecimal(val1Obj);
 
             UnitOfMeasure uom = null;
-            if (target == PromotionEnum.Target.PRODUCT) {
-                // Lưu UnitOfMeasure cho tất cả các loại action khi target là PRODUCT
+            if (target == PromotionEnum.Target.PRODUCT && type == PromotionEnum.ActionType.PRODUCT_GIFT) {
                 // Extract product ID from client property
                 String productId = (String) actTable.getClientProperty("product_" + i + "_3");
                 if (productId != null && uomNameObj != null && !uomNameObj.toString().trim().isEmpty()) {
@@ -1306,7 +1261,7 @@ public class TAB_Promotion extends JPanel {
                 condModel.addRow(new Object[]{
                     cond.getTarget(),  // 0: Mục tiêu
                     productDisplay,  // 1: Sản phẩm (tên + mã)
-                    cond.getProductUOM() != null ? cond.getProductUOM().getMeasurement() : "",  // 2: Đơn vị
+                    cond.getProductUOM() != null ? cond.getProductUOM().getName() : "",  // 2: Đơn vị
                     cond.getComparator(),  // 3: Toán tử
                     cond.getValue()  // 4: Giá trị
                 });
@@ -1342,7 +1297,7 @@ public class TAB_Promotion extends JPanel {
                     act.getTarget(),  // 1: Mục tiêu
                     act.getValue(),  // 2: Giá trị
                     productDisplay,  // 3: Sản phẩm (tên + mã)
-                    act.getProductUOM() != null ? act.getProductUOM().getMeasurement() : ""  // 4: Đơn vị
+                    act.getProductUOM() != null ? act.getProductUOM().getName() : ""  // 4: Đơn vị
                 });
 
                 // Store product ID in client property
@@ -1432,14 +1387,9 @@ public class TAB_Promotion extends JPanel {
         dpEndDate.setEnabled(editable);
         cbTypeField.setEnabled(editable);
         cbStatusField.setEnabled(editable);
-
-        // Repaint tables to update the cell rendering based on new editable state
-        if (condTable != null) {
-            condTable.repaint();
-        }
-        if (actTable != null) {
-            actTable.repaint();
-        }
+        // cond and act tables: enabling/disabling editing via setEnabled
+        if (condTable != null) condTable.setEnabled(editable);
+        if (actTable != null) actTable.setEnabled(editable);
     }
 
     private void clearFormFields() {
@@ -1480,8 +1430,8 @@ public class TAB_Promotion extends JPanel {
         btn.setPreferredSize(new Dimension(120, 35));
     }
 
-
-    private void styleTable(JTable table, boolean showGrid) {
+    /** Style table */
+    private void styleTable(JTable table) {
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setRowHeight(30);
         table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -1490,7 +1440,6 @@ public class TAB_Promotion extends JPanel {
         table.setSelectionBackground(new Color(200, 230, 255));
         table.setSelectionForeground(Color.BLACK);
         table.setGridColor(new Color(220, 230, 240));
-        table.setShowGrid(showGrid); // Hiển thị viền nếu showGrid = true
     }
 
     /** Tạo filter card */

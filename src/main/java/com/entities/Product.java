@@ -5,21 +5,21 @@ import com.enums.ProductCategory;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Table(name = "Product")
 public class Product {
 
     @Id
-    @Column(name = "id", updatable = false, nullable = false, length = 50)
+    @UuidGenerator
+    @Column(name = "id", insertable = false, updatable = false, nullable = false, length = 50)
     private String id;
 
     @Column(name = "barcode", unique = true)
@@ -57,15 +57,11 @@ public class Product {
     @Column(name = "baseUnitOfMeasure", nullable = false)
     private String baseUnitOfMeasure;
 
-    @Column(name = "image")
-    private String image;
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<UnitOfMeasure> unitOfMeasureList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Lot> lotList = new HashSet<>();
-
-    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<UnitOfMeasure> unitOfMeasureList = new HashSet<>();
-
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Lot> lotList = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "creationDate", updatable = false)
@@ -79,7 +75,7 @@ public class Product {
 
     public Product(String id, String barcode, ProductCategory category, DosageForm form, String name, String shortName,
                    String manufacturer, String activeIngredient, double vat, String strength, String description,
-                   String baseUnitOfMeasure, Set<UnitOfMeasure> unitOfMeasureList, Set<Lot> lotList, LocalDateTime updateDate) {
+                   String baseUnitOfMeasure, List<UnitOfMeasure> unitOfMeasureList, List<Lot> lotList, LocalDateTime updateDate) {
         this.id = id;
         setBarcode(barcode);
         setCategory(category);
@@ -179,18 +175,15 @@ public class Product {
         this.baseUnitOfMeasure = baseUnitOfMeasure.trim();
     }
 
-    public String getImage() { return image; }
-    public void setImage(String image) { this.image = (image == null) ? null : image.trim(); }
-
-    public Set<UnitOfMeasure> getUnitOfMeasureList() { return unitOfMeasureList; }
-    public void setUnitOfMeasureList(Set<UnitOfMeasure> unitOfMeasureList) {
-        this.unitOfMeasureList = (unitOfMeasureList == null) ? new HashSet<>() : new HashSet<>(unitOfMeasureList);
+    public List<UnitOfMeasure> getUnitOfMeasureList() { return unitOfMeasureList; }
+    public void setUnitOfMeasureList(List<UnitOfMeasure> unitOfMeasureList) {
+        this.unitOfMeasureList = (unitOfMeasureList == null) ? new ArrayList<>() : new ArrayList<>(unitOfMeasureList);
         for (UnitOfMeasure u : this.unitOfMeasureList) if (u != null) u.setProduct(this); // quan hệ 2 chiều
     }
 
-    public Set<Lot> getLotList() { return lotList; }
-    public void setLotList(Set<Lot> lotList) {
-        this.lotList = (lotList == null) ? new HashSet<>() : new HashSet<>(lotList);
+    public List<Lot> getLotList() { return lotList; }
+    public void setLotList(List<Lot> lotList) {
+        this.lotList = (lotList == null) ? new ArrayList<>() : new ArrayList<>(lotList);
         for (Lot l : this.lotList) if (l != null) l.setProduct(this); // quan hệ 2 chiều
     }
 
