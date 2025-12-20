@@ -1282,6 +1282,7 @@ public class TAB_Product {
     // ==== Parsers ====
     private Integer parsePositiveInt(Object v)      { try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return null; s = s.replace(".", "").replace(",", ""); int x = Integer.parseInt(s); return x > 0 ? x : null; } catch (Exception e) { return null; } }
     private Integer parseNonNegativeInt(Object v)   { try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return null; s = s.replace(".", "").replace(",", ""); int x = Integer.parseInt(s); return x >= 0 ? x : null; } catch (Exception e) { return null; } }
+    private double parseNonNegativeDouble(Object v)   { try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return 0.0; s = s.replace(".", "").replace(",", ""); double x = Double.parseDouble(s); return x >= 0 ? x : null; } catch (Exception e) { return 0.0; } }
 
     private java.math.BigDecimal parseNonNegativeBigDecimal(Object v) {
         try {
@@ -1410,11 +1411,11 @@ public class TAB_Product {
         for (int r = 0; r < uomModel.getRowCount(); r++) {
             // Không cần kiểm tra cột ID nữa - UOM không có ID riêng
             MeasurementName name = (MeasurementName) uomModel.getValueAt(r, UOM_COL_NAME);
-            Integer rate = parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE));
+            BigDecimal rate = BigDecimal.valueOf(parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE)));
             if (name == null || rate == null) continue; // chỉ bỏ dòng thiếu name hoặc rate
             // Note: UnitOfMeasure now uses composite key (product, measurementId) and requires price
             // Assuming price is calculated from lot's raw price * conversion rate
-            double price = 0.0; // TODO: Calculate actual price based on business logic
+            BigDecimal price = BigDecimal.valueOf(0.0); // TODO: Calculate actual price based on business logic
             UnitOfMeasure u = new UnitOfMeasure(p, name, price, rate);
             u.setProduct(p);
             uoms.add(u);
@@ -1434,7 +1435,7 @@ public class TAB_Product {
             LotStatus status = mapLotStatusVN(st);
 
             // Don't generate ID here - let database trigger handle it
-            Lot lot = new Lot(null, bn, p, (qty == null ? 0 : qty), (price == null ? 0.0 : price), expiry, status);
+            Lot lot = new Lot(null, bn, p, (qty == null ? 0 : qty), (price == null ? BigDecimal.valueOf(0.0) : price), expiry, status);
             lots.add(lot);
         }
         p.setLotList(lots);
@@ -1476,7 +1477,7 @@ public class TAB_Product {
         for (int r = 0; r < uomModel.getRowCount(); r++) {
             Object idObj = uomModel.getValueAt(r, UOM_COL_ID);
             Object nameObj = uomModel.getValueAt(r, UOM_COL_NAME);
-            Integer rate = parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE));
+            BigDecimal rate = BigDecimal.valueOf(parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE)));
 
             MeasurementName measurementName = null;
             if (nameObj instanceof MeasurementName mn) {
@@ -1500,11 +1501,11 @@ public class TAB_Product {
 
             if (existingUom != null) {
                 // Update existing UOM
-                existingUom.setBaseUnitConversionRate(BigDecimal.valueOf(rate));
+                existingUom.setBaseUnitConversionRate(rate);
                 uoms.add(existingUom);
             } else {
                 // Create new UOM
-                double price = 0.0; // Price will be calculated based on business logic
+                BigDecimal price = BigDecimal.valueOf(0.0); // Price will be calculated based on business logic
                 UnitOfMeasure newUom = new UnitOfMeasure(p, measurementName, price, rate);
                 uoms.add(newUom);
             }
@@ -1548,7 +1549,7 @@ public class TAB_Product {
             if (existingLot != null) {
                 // Update existing Lot
                 existingLot.setQuantity(qty != null ? qty : 0);
-                existingLot.setRawPrice(price != null ? price : 0.0);
+                existingLot.setRawPrice(BigDecimal.valueOf(price != null ? price : 0.0));
                 if (expiry != null) existingLot.setExpiryDate(expiry);
                 existingLot.setStatus(status);
                 lots.add(existingLot);
@@ -1557,7 +1558,7 @@ public class TAB_Product {
                 String lotId = UUID.randomUUID().toString();
                 Lot newLot = new Lot(lotId, batchNumber, p,
                     qty != null ? qty : 0,
-                    price != null ? price : 0.0,
+                    BigDecimal.valueOf(price),
                     expiry,
                     status);
                 lots.add(newLot);

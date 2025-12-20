@@ -88,7 +88,7 @@ public class DAO_Invoice implements IInvoice {
                     "SELECT TOP 1 id FROM InvoiceLine WHERE invoice = :invoiceId AND product = :productId AND unitOfMeasure = :uom ORDER BY id DESC", String.class)
                     .setParameter("invoiceId", generatedInvoiceId)
                     .setParameter("productId", line.getProduct().getId())
-                    .setParameter("uom", line.getUnitOfMeasure())
+                    .setParameter("uom", line.getUnitOfMeasure().getId())
                     .uniqueResult();
 
                 // Save LotAllocations for this invoice line

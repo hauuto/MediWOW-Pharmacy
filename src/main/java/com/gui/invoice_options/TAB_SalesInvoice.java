@@ -61,7 +61,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private DAO_Product daoProduct;
     public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener) {
         this(creator, shiftChangeListener, null);
-        daoProduct = new DAO_Product();
+
     }
 
     public TAB_SalesInvoice(Staff creator, ShiftChangeListener shiftChangeListener, DataChangeListener dataChangeListener) {
@@ -77,6 +77,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         promotions = busPromotion.getAllPromotions().stream().filter(Promotion::getIsActive).toList();
         createSplitPane();
+        daoProduct = new DAO_Product();
     }
 
     private Shift ensureCurrentShift() {

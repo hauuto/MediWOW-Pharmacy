@@ -132,7 +132,7 @@ public class ReceiptThermalPrinter {
                 }
                 productName = truncateText(removeAccents(productName), MAX_PRODUCT_NAME_LENGTH);
 
-                String uom = truncateText(removeAccents(line.getUnitOfMeasure()), 6);
+                String uom = truncateText(removeAccents(line.getUnitOfMeasure().getName()), 6);
                 String qty = String.valueOf(line.getQuantity());
                 String subtotal = formatCurrency(line.calculateSubtotal());
 
