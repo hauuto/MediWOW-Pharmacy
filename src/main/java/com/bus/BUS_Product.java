@@ -8,6 +8,7 @@ import com.entities.Product;
 import com.entities.UnitOfMeasure;
 import com.interfaces.IProduct;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.text.Normalizer;
 import java.util.Comparator;
@@ -134,7 +135,8 @@ public class BUS_Product implements IProduct {
         if (p.getBaseUnitOfMeasure() == null || p.getBaseUnitOfMeasure().trim().isEmpty())
             throw new IllegalArgumentException("Đơn vị tính gốc không được để trống");
 
-        if (p.getVat() < 0 || p.getVat() > 100)
+        java.math.BigDecimal vat = (p.getVat() != null) ? p.getVat() : java.math.BigDecimal.ZERO;
+        if (vat.compareTo(java.math.BigDecimal.ZERO) < 0 || vat.compareTo(java.math.BigDecimal.valueOf(100)) > 0)
             throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
 
         // Lot: khi thêm mới, yêu cầu >= 1 dòng (theo UI validate)
@@ -145,7 +147,11 @@ public class BUS_Product implements IProduct {
             if (lot.getBatchNumber() == null || lot.getBatchNumber().trim().isEmpty())
                 throw new IllegalArgumentException("Mã lô không được để trống");
             if (lot.getQuantity() < 0) throw new IllegalArgumentException("Số lượng lô phải ≥ 0");
-            if (lot.getRawPrice() < 0) throw new IllegalArgumentException("Giá lô phải ≥ 0");
+
+            java.math.BigDecimal rawPrice = lot.getRawPrice();
+            if (rawPrice != null && rawPrice.compareTo(java.math.BigDecimal.ZERO) < 0)
+                throw new IllegalArgumentException("Giá lô phải ≥ 0");
+
             if (lot.getExpiryDate() == null) throw new IllegalArgumentException("Lô phải có hạn sử dụng");
         }
     }
@@ -188,8 +194,11 @@ public class BUS_Product implements IProduct {
         if (p.getBaseUnitOfMeasure() == null || p.getBaseUnitOfMeasure().trim().isEmpty())
             throw new IllegalArgumentException("Đơn vị tính gốc không được để trống");
 
-        if (p.getVat() < 0 || p.getVat() > 100)
+        BigDecimal vat = p.getVat();
+        if (vat.compareTo(BigDecimal.ZERO) < 0 || vat.compareTo(BigDecimal.valueOf(100)) > 0) {
             throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
+        }
+
     }
 
     private void checkDuplicatesForUpdate(Product p) {
@@ -247,7 +256,38 @@ public class BUS_Product implements IProduct {
     }
 
     /**
-     * Get all MeasurementName entities from database
+     * Deduct a specific quantity from a lot
+     * @param lotId The ID of the lot
+     * @param quantityToDeduct The quantity to deduct
+     * @return true if successful, false otherwise
+     */
+    public boolean deductLotQuantity(String lotId, int quantityToDeduct) {
+        if (lotId == null || lotId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Lot ID cannot be null or empty");
+        }
+        if (quantityToDeduct <= 0) {
+            throw new IllegalArgumentException("Quantity to deduct must be positive");
+        }
+        return dao.deductLotQuantity(lotId, quantityToDeduct);
+    }
+
+    /**
+     * Update the quantity of a specific lot to a new value
+     * @param lotId The ID of the lot
+     * @param newQuantity The new quantity value
+     * @return true if successful, false otherwise
+     */
+    public boolean updateLotQuantity(String lotId, int newQuantity) {
+        if (lotId == null || lotId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Lot ID cannot be null or empty");
+        }
+        if (newQuantity < 0) {
+            throw new IllegalArgumentException("Quantity cannot be negative");
+        }
+        return dao.updateLotQuantity(lotId, newQuantity);
+    }
+
+    /* Get all MeasurementName entities from database
      */
     public List<MeasurementName> getAllMeasurementNames() {
         return dao.getAllMeasurementNames();

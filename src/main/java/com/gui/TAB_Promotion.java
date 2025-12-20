@@ -992,8 +992,7 @@ public class TAB_Promotion extends JPanel {
                 ? (PromotionEnum.Comp) compObj
                 : PromotionEnum.Comp.valueOf(compObj.toString());
 
-            Double val1 = parseDouble(val1Obj);
-            BigDecimal val1BD = val1 != null ? BigDecimal.valueOf(val1) : null;
+            BigDecimal val1BD = parseBigDecimal(val1Obj);
 
             UnitOfMeasure uom = null;
             if (target == PromotionEnum.Target.PRODUCT) {
@@ -1040,8 +1039,7 @@ public class TAB_Promotion extends JPanel {
                 ? (PromotionEnum.Target) targetObj
                 : PromotionEnum.Target.valueOf(targetObj.toString());
 
-            Double val1 = parseDouble(val1Obj);
-            BigDecimal val1BD = val1 != null ? BigDecimal.valueOf(val1) : null;
+            BigDecimal val1BD = parseBigDecimal(val1Obj);
 
             UnitOfMeasure uom = null;
             if (target == PromotionEnum.Target.PRODUCT) {
@@ -1104,19 +1102,36 @@ public class TAB_Promotion extends JPanel {
         return prefix + String.format("%04d", maxNum + 1);
     }
 
-    /** Helper để parse Double từ Object */
-    private Double parseDouble(Object obj) {
+    /** Helper để parse BigDecimal từ Object (money/percent). */
+    private java.math.BigDecimal parseBigDecimal(Object obj) {
         if (obj == null) return null;
         try {
-            if (obj instanceof Double) return (Double) obj;
-            if (obj instanceof Number) return ((Number) obj).doubleValue();
+            if (obj instanceof java.math.BigDecimal) {
+                return ((java.math.BigDecimal) obj).setScale(2, java.math.RoundingMode.HALF_UP);
+            }
+            if (obj instanceof Number) {
+                // Avoid constructing from double binary fraction by going through string when possible
+                String s = String.valueOf(obj);
+                return new java.math.BigDecimal(s).setScale(2, java.math.RoundingMode.HALF_UP);
+            }
             String str = obj.toString().trim();
             if (str.isEmpty()) return null;
-            return Double.parseDouble(str);
+
+            // allow inputs like "1.234.567" or "1,234,567" or "1.234,56"
+            str = str.replace("Đ", "").replace("₫", "").trim();
+            // if comma is decimal separator (no dot), convert to dot
+            if (str.contains(",") && !str.contains(".")) {
+                str = str.replace(",", ".");
+            }
+            // remove thousands separators (either . or , when followed by 3 digits)
+            str = str.replaceAll("(?<=\\d)[,\\.](?=\\d{3}(\\D|$))", "");
+
+            return new java.math.BigDecimal(str).setScale(2, java.math.RoundingMode.HALF_UP);
         } catch (Exception e) {
             return null;
         }
     }
+
 
     /** Xử lý tìm kiếm */
     private void handleSearch() {

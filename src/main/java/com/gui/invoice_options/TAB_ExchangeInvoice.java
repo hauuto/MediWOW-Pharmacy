@@ -424,7 +424,11 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         private final DecimalFormat fmt = createCurrencyFormat();
         public CurrencyRenderer() { setHorizontalAlignment(SwingConstants.RIGHT); setFont(new Font("Arial", Font.PLAIN, 16)); }
         public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
-            if (v instanceof Number) v = fmt.format(((Number) v).doubleValue());
+            if (v instanceof java.math.BigDecimal bd) {
+                v = fmt.format(bd);
+            } else if (v instanceof Number) {
+                v = fmt.format(((Number) v).doubleValue());
+            }
             return super.getTableCellRendererComponent(t, v, s, f, r, c);
         }
     }

@@ -24,6 +24,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.*;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -33,8 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;               // Date, List, ArrayList, BitSet, ...
 import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
+
 import com.bus.BUS_Product;
 import com.entities.Product;
 import com.entities.UnitOfMeasure;         // ⇦ NEW
@@ -511,7 +511,7 @@ public class TAB_Product {
         }
     }
     private void addLotRowAndFocus() {
-        lotModel.addRow(new Object[]{null, 0, 0.0, "", LOT_STATUS_OPTIONS[0]});
+        lotModel.addRow(new Object[]{null, 0, java.math.BigDecimal.ZERO, "", LOT_STATUS_OPTIONS[0]});
         int r = lotModel.getRowCount() - 1;
         tblLot.changeSelection(r, LOT_COL_QTY, false, false);
         tblLot.requestFocusInWindow();
@@ -1152,8 +1152,11 @@ public class TAB_Product {
 
     private void applyDefaultVatByCategory() {
         String cat = String.valueOf(cbCategoryDetail.getSelectedItem());
-        double vat = (cat != null && cat.toLowerCase().contains("sản phẩm chức năng")) ? 10.0 : 5.0;
-        spVat.setValue(vat);
+        java.math.BigDecimal vat = (cat != null && cat.toLowerCase().contains("sản phẩm chức năng"))
+                ? java.math.BigDecimal.TEN
+                : java.math.BigDecimal.valueOf(5);
+        // Spinner expects a Number; keep BigDecimal source-of-truth, convert only at the UI boundary.
+        spVat.setValue(vat.doubleValue());
     }
 
     private void onCancel() {
@@ -1202,7 +1205,7 @@ public class TAB_Product {
                 return false;
             }
 
-            Double p = parseNonNegativeDouble(lotModel.getValueAt(r, LOT_COL_PRICE));
+            java.math.BigDecimal p = parseNonNegativeBigDecimal(lotModel.getValueAt(r, LOT_COL_PRICE));
             if (p == null) {
                 selectAndStartEdit(tblLot, r, LOT_COL_PRICE);
                 warn("Giá phải là số ≥ 0 (dòng " + (r + 1) + ").");
@@ -1279,7 +1282,19 @@ public class TAB_Product {
     // ==== Parsers ====
     private Integer parsePositiveInt(Object v)      { try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return null; s = s.replace(".", "").replace(",", ""); int x = Integer.parseInt(s); return x > 0 ? x : null; } catch (Exception e) { return null; } }
     private Integer parseNonNegativeInt(Object v)   { try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return null; s = s.replace(".", "").replace(",", ""); int x = Integer.parseInt(s); return x >= 0 ? x : null; } catch (Exception e) { return null; } }
-    private Double  parseNonNegativeDouble(Object v){ try { String s = String.valueOf(v).trim().replaceAll("\\s", ""); if (s.isEmpty()) return null; if (s.contains(",") && !s.contains(".")) s = s.replace(",", "."); s = s.replaceAll("(?<=\\d)[,\\.](?=\\d{3}(\\D|$))", ""); double d = Double.parseDouble(s); return d >= 0 ? d : null; } catch (Exception e) { return null; } }
+
+    private java.math.BigDecimal parseNonNegativeBigDecimal(Object v) {
+        try {
+            String s = String.valueOf(v).trim().replaceAll("\\s", "");
+            if (s.isEmpty()) return null;
+            if (s.contains(",") && !s.contains(".")) s = s.replace(",", ".");
+            s = s.replaceAll("(?<=\\d)[,\\.](?=\\d{3}(\\D|$))", "");
+            java.math.BigDecimal bd = new java.math.BigDecimal(s);
+            return bd.compareTo(java.math.BigDecimal.ZERO) >= 0 ? bd.setScale(2, java.math.RoundingMode.HALF_UP) : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     // Strict dd/MM/yy | dd/MM/yyyy
     private boolean isValidDateDMY(String s) {
@@ -1411,7 +1426,7 @@ public class TAB_Product {
         for (int r = 0; r < lotModel.getRowCount(); r++) {
             String bn = valStr(lotModel.getValueAt(r, LOT_COL_ID));
             Integer qty = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY));
-            Double price = parseNonNegativeDouble(lotModel.getValueAt(r, LOT_COL_PRICE));
+            java.math.BigDecimal price = parseNonNegativeBigDecimal(lotModel.getValueAt(r, LOT_COL_PRICE));
             String exp = valStr(lotModel.getValueAt(r, LOT_COL_HSD));
             String st  = valStr(lotModel.getValueAt(r, LOT_COL_STAT));
 
@@ -1485,7 +1500,7 @@ public class TAB_Product {
 
             if (existingUom != null) {
                 // Update existing UOM
-                existingUom.setBaseUnitConversionRate(rate);
+                existingUom.setBaseUnitConversionRate(BigDecimal.valueOf(rate));
                 uoms.add(existingUom);
             } else {
                 // Create new UOM
@@ -1654,10 +1669,10 @@ public class TAB_Product {
         lotModel.setRowCount(0);
         if (p.getLotList() != null) {
             for (Lot l : p.getLotList()) {
-                String lotId = safe(l.getBatchNumber()); // nếu getter là getBatchNumber() thì đổi lại
+                String lotId = safe(l.getBatchNumber());
                 Integer qty  = l.getQuantity();
-                Double price = l.getRawPrice();
-                String hsd   = formatDMY(l.getExpiryDate()); // LocalDateTime -> "dd/MM/yyyy"
+                java.math.BigDecimal price = l.getRawPrice();
+                String hsd   = formatDMY(l.getExpiryDate());
                 String stat  = mapLotStatusEnumToVN(l.getStatus());
 
                 lotModel.addRow(new Object[]{ lotId, qty, price, hsd, stat });

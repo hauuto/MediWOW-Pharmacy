@@ -3,6 +3,7 @@ package com.dao;
 import com.entities.Shift;
 import com.entities.Staff;
 import com.enums.ShiftStatus;
+import com.interfaces.IShift;
 import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -10,14 +11,18 @@ import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
-public class DAO_Shift {
+public class DAO_Shift implements IShift {
     private final SessionFactory sessionFactory;
 
     public DAO_Shift() {
         this.sessionFactory = HibernateUtil.getSessionFactory();
     }
 
+    // ===== DAO-level operations =====
+
+    @Override
     public Shift getOpenShiftByStaffId(String staffId) {
         if (staffId == null || staffId.isBlank()) return null;
         Session session = null;
@@ -42,6 +47,7 @@ public class DAO_Shift {
      * @param workstation Workstation identifier
      * @return Open shift on that workstation, or null
      */
+    @Override
     public Shift getOpenShiftByWorkstation(String workstation) {
         if (workstation == null || workstation.isBlank()) return null;
         Session session = null;
@@ -74,6 +80,7 @@ public class DAO_Shift {
         }
     }
 
+    @Override
     public Shift openShift(Staff staff, BigDecimal startCash, String notes, String workstation) {
         Transaction transaction = null;
         Session session = null;
@@ -113,6 +120,7 @@ public class DAO_Shift {
         }
     }
 
+    @Override
     public Shift closeShift(String shiftId, BigDecimal endCash, BigDecimal systemCash, String notes, Staff closedBy, String closeReason) {
         Transaction transaction = null;
         Session session = null;
@@ -162,6 +170,7 @@ public class DAO_Shift {
         }
     }
 
+    @Override
     public BigDecimal calculateSystemCashForShift(String shiftId) {
         Session session = null;
         try {
@@ -173,47 +182,38 @@ public class DAO_Shift {
 
             BigDecimal startCash = shift.getStartCash() != null ? shift.getStartCash() : BigDecimal.ZERO;
 
-            // Calculate cash from SALES invoices (add to cash)
-            String hqlSales = "SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) " +
-                            "FROM InvoiceLine il " +
-                            "WHERE il.invoice.shift.id = :shiftId " +
-                            "AND il.invoice.type = 'SALES' " +
-                            "AND il.invoice.paymentMethod = 'CASH'";
-
-            Double salesCashDouble = session.createQuery(hqlSales, Double.class)
+            // Get all CASH invoices for this shift
+            String hql = "FROM Invoice i WHERE i.shift.id = :shiftId AND i.paymentMethod = 'CASH'";
+            List<com.entities.Invoice> invoices = session.createQuery(hql, com.entities.Invoice.class)
                 .setParameter("shiftId", shiftId)
-                .uniqueResult();
+                .list();
 
-            BigDecimal salesCash = salesCashDouble != null ? BigDecimal.valueOf(salesCashDouble) : BigDecimal.ZERO;
+            // Calculate cash using BigDecimal totals
+            BigDecimal salesCash = BigDecimal.ZERO;
+            BigDecimal returnCash = BigDecimal.ZERO;
+            BigDecimal exchangeCash = BigDecimal.ZERO;
 
-            // Calculate cash from RETURN invoices (subtract from cash)
-            String hqlReturn = "SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) " +
-                             "FROM InvoiceLine il " +
-                             "WHERE il.invoice.shift.id = :shiftId " +
-                             "AND il.invoice.type = 'RETURN' " +
-                             "AND il.invoice.paymentMethod = 'CASH'";
+            for (com.entities.Invoice invoice : invoices) {
+                BigDecimal total = invoice.calculateTotal();
 
-            Double returnCashDouble = session.createQuery(hqlReturn, Double.class)
-                .setParameter("shiftId", shiftId)
-                .uniqueResult();
-
-            BigDecimal returnCash = returnCashDouble != null ? BigDecimal.valueOf(returnCashDouble) : BigDecimal.ZERO;
-
-            // Calculate cash from EXCHANGE invoices (add to cash)
-            String hqlExchange = "SELECT COALESCE(SUM(il.quantity * il.unitPrice), 0) " +
-                               "FROM InvoiceLine il " +
-                               "WHERE il.invoice.shift.id = :shiftId " +
-                               "AND il.invoice.type = 'EXCHANGE' " +
-                               "AND il.invoice.paymentMethod = 'CASH'";
-
-            Double exchangeCashDouble = session.createQuery(hqlExchange, Double.class)
-                .setParameter("shiftId", shiftId)
-                .uniqueResult();
-
-            BigDecimal exchangeCash = exchangeCashDouble != null ? BigDecimal.valueOf(exchangeCashDouble) : BigDecimal.ZERO;
+                switch (invoice.getType()) {
+                    case SALES:
+                        salesCash = salesCash.add(total);
+                        break;
+                    case RETURN:
+                        returnCash = returnCash.add(total);
+                        break;
+                    case EXCHANGE:
+                        exchangeCash = exchangeCash.add(total);
+                        break;
+                }
+            }
 
             // Calculate total: startCash + sales - return + exchange
-            return startCash.add(salesCash).subtract(returnCash).add(exchangeCash);
+            return startCash
+                .add(salesCash)
+                .subtract(returnCash)
+                .add(exchangeCash);
 
         } finally {
             if (session != null && session.isOpen()) {
@@ -221,5 +221,41 @@ public class DAO_Shift {
             }
         }
     }
-}
 
+    // ===== Business-layer methods are not supported by DAO_Shift =====
+
+    @Override
+    public Shift getCurrentOpenShiftForStaff(Staff staff) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public Shift getOpenShiftOnWorkstation(String workstation) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public String getCurrentWorkstation() {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public Shift openShift(Staff staff, BigDecimal startCash, String notes) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public Shift closeShift(Shift shift, BigDecimal endCash, String notes, Staff closingStaff) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public Shift closeShift(Shift shift, BigDecimal endCash, String notes, Staff closingStaff, String closeReason) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+
+    @Override
+    public BigDecimal calculateSystemCashForShift(Shift shift) {
+        throw new UnsupportedOperationException("DAO_Shift does not support business operations");
+    }
+}

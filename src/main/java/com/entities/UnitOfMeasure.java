@@ -2,6 +2,8 @@ package com.entities;
 
 import jakarta.persistence.*;
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 
 /**
@@ -22,32 +24,35 @@ public class UnitOfMeasure {
     @JoinColumn(name = "measurementId", nullable = false)
     private MeasurementName measurement;
 
-    @Column(name = "price", nullable = false)
-    private double price;
+    @Column(name = "price", nullable = false, precision = 18, scale = 2)
+    private BigDecimal price;
 
-    @Column(name = "baseUnitConversionRate", nullable = false)
-    private double baseUnitConversionRate;
+    @Column(name = "baseUnitConversionRate", nullable = false, precision = 18, scale = 4)
+    private BigDecimal baseUnitConversionRate;
 
     @Transient
-    private double basePriceConversionRate;
+    private BigDecimal basePriceConversionRate;
 
     protected UnitOfMeasure() {}
 
     public UnitOfMeasure(Product product,
                          MeasurementName measurement,
-                         double price,
-                         double baseUnitConversionRate) {
+                         BigDecimal price,
+                         BigDecimal baseUnitConversionRate) {
         this.product = product;
         this.measurement = measurement;
         this.price = price;
         this.baseUnitConversionRate = baseUnitConversionRate;
-        this.basePriceConversionRate = 1 / baseUnitConversionRate;
+        calculateDerivedFields();
     }
 
     @PostLoad
     private void calculateDerivedFields() {
-        if (baseUnitConversionRate != 0) {
-            basePriceConversionRate = 1 / baseUnitConversionRate;
+        if (baseUnitConversionRate != null && baseUnitConversionRate.compareTo(BigDecimal.ZERO) != 0) {
+            // basePriceConversionRate = 1 / baseUnitConversionRate
+            basePriceConversionRate = BigDecimal.ONE.divide(baseUnitConversionRate, 10, RoundingMode.HALF_UP);
+        } else {
+            basePriceConversionRate = BigDecimal.ONE;
         }
     }
 
@@ -74,24 +79,32 @@ public class UnitOfMeasure {
         this.product = product;
     }
 
-    public double getPrice() {
+    public String getName() {
+        return measurement.getName();
+    }
+
+    public void setName(String name) {
+        this.measurement.setName(name);
+    }
+
+    public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(double price) {
+    public void setPrice(BigDecimal price) {
         this.price = price;
     }
 
-    public double getBaseUnitConversionRate() {
+    public BigDecimal getBaseUnitConversionRate() {
         return baseUnitConversionRate;
     }
 
-    public void setBaseUnitConversionRate(double baseUnitConversionRate) {
+    public void setBaseUnitConversionRate(BigDecimal baseUnitConversionRate) {
         this.baseUnitConversionRate = baseUnitConversionRate;
-        this.basePriceConversionRate = 1 / baseUnitConversionRate;
+        calculateDerivedFields();
     }
 
-    public double getBasePriceConversionRate() {
+    public BigDecimal getBasePriceConversionRate() {
         return basePriceConversionRate;
     }
 

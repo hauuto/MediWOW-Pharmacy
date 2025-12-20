@@ -25,12 +25,10 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.swing.Timer;
 
 /**
  * Dashboard cho Nhân viên (Dược sĩ)
@@ -79,15 +77,11 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
 
     private JButton btnCloseShift;
 
-    // Auto-refresh timer
-    private Timer refreshTimer;
-
     // Constants
     private static final int LOW_STOCK_THRESHOLD = 100; // Định mức tồn kho thấp
     private static final int CRITICAL_STOCK_THRESHOLD = 10; // Ngưỡng tồn kho nguy hiểm
     private static final int EXPIRY_WARNING_DAYS = 90; // Cảnh báo thuốc còn 90 ngày hết hạn
     private static final int EXPIRY_DANGER_DAYS = 30; // Cảnh báo nguy hiểm còn 30 ngày
-    private static final int AUTO_REFRESH_INTERVAL = 5000; // Auto-refresh every 5 seconds
 
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -106,7 +100,6 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
         initComponents();
         loadData();
         loadShiftData();
-        startAutoRefresh();
     }
 
     private void initComponents() {
@@ -600,7 +593,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
 
     private JTable createStyledTable(DefaultTableModel model) {
         JTable table = new JTable(model);
-        table.setRowHeight(30);
+        table.setRowHeight(36);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setSelectionBackground(new Color(AppColors.SECONDARY.getRed(), AppColors.SECONDARY.getGreen(), AppColors.SECONDARY.getBlue(), 50));
         table.setSelectionForeground(AppColors.TEXT);
@@ -778,7 +771,6 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
                 sb.append(formatComparator(condition.getComparator()));
                 sb.append(" ");
                 sb.append(formatCurrency(condition.getPrimaryValue()));
-
 //                if (condition.getComparator() == PromotionEnum.Comp.BETWEEN && condition.getSecondaryValue() != null) {
 //                    sb.append(" - ");
 //                    sb.append(formatCurrency(condition.getSecondaryValue()));
@@ -824,16 +816,18 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
         }
     }
 
-    private String formatCurrency(Double value) {
-        if (value == null) return "0 ₫";
-        return String.format("%,.0f ₫", value);
+    private String formatCurrency(java.math.BigDecimal value) {
+        if (value == null) return currencyFormat.format(java.math.BigDecimal.ZERO);
+        return currencyFormat.format(value);
     }
+
 
     /**
      * Public method to refresh dashboard data
      */
     public void refresh() {
         loadData();
+        loadShiftData();
     }
 
     /**
@@ -861,37 +855,95 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
             .filter(inv -> inv.getType() == InvoiceType.SALES)
             .collect(Collectors.toList());
 
-        // Count quantities sold per product
-        Map<Product, Integer> productSalesMap = new HashMap<>();
+        // Aggregate quantity sold per (product, unitOfMeasure)
+        class ProductUomKey {
+            private final String productId;
+            private final String uom;
+
+            private ProductUomKey(String productId, String uom) {
+                this.productId = productId;
+                this.uom = uom;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                ProductUomKey that = (ProductUomKey) o;
+                return Objects.equals(productId, that.productId) && Objects.equals(uom, that.uom);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(productId, uom);
+            }
+        }
+
+        class ProductUomSale {
+            private final Product product;
+            private final String uom;
+            private final int quantity;
+
+            private ProductUomSale(Product product, String uom, int quantity) {
+                this.product = product;
+                this.uom = uom;
+                this.quantity = quantity;
+            }
+        }
+
+        Map<ProductUomKey, ProductUomSale> sales = new HashMap<>();
 
         for (Invoice invoice : shiftInvoices) {
-            if (invoice.getInvoiceLineList() != null) {
-                for (InvoiceLine line : invoice.getInvoiceLineList()) {
-                    Product product = line.getProduct();
-                    int quantity = line.getQuantity();
-                    productSalesMap.merge(product, quantity, Integer::sum);
+            if (invoice.getInvoiceLineList() == null) continue;
+
+            for (InvoiceLine line : invoice.getInvoiceLineList()) {
+                if (line == null) continue;
+
+                Product product = line.getProduct();
+                if (product == null) continue;
+
+                int quantity = line.getQuantity();
+                if (quantity <= 0) continue;
+
+                String uom = line.getUnitOfMeasure();
+                if (uom == null || uom.trim().isEmpty()) {
+                    uom = product.getBaseUnitOfMeasure();
+                }
+
+                ProductUomKey key = new ProductUomKey(product.getId(), uom);
+                ProductUomSale existing = sales.get(key);
+                if (existing == null) {
+                    sales.put(key, new ProductUomSale(product, uom, quantity));
+                } else {
+                    sales.put(key, new ProductUomSale(product, uom, existing.quantity + quantity));
                 }
             }
         }
 
-        // Sort by quantity sold (descending) and take top 5
-        List<Map.Entry<Product, Integer>> topProducts = productSalesMap.entrySet().stream()
-            .sorted((e1, e2) -> Integer.compare(e2.getValue(), e1.getValue()))
+        List<ProductUomSale> topRows = sales.values().stream()
+            // Primary: quantity desc
+            .sorted((a, b) -> {
+                int cmp = Integer.compare(b.quantity, a.quantity);
+                if (cmp != 0) return cmp;
+                // Secondary: product name asc
+                String an = a.product != null ? a.product.getName() : "";
+                String bn = b.product != null ? b.product.getName() : "";
+                cmp = an.compareToIgnoreCase(bn);
+                if (cmp != 0) return cmp;
+                // Tertiary: uom asc
+                return String.valueOf(a.uom).compareToIgnoreCase(String.valueOf(b.uom));
+            })
             .limit(5)
             .collect(Collectors.toList());
 
-        // Add to table
         int rank = 1;
-        for (Map.Entry<Product, Integer> entry : topProducts) {
-            Product product = entry.getKey();
-            int quantity = entry.getValue();
-
+        for (ProductUomSale row : topRows) {
             topSellingModel.addRow(new Object[]{
                 rank++,
-                product.getId(),
-                product.getName(),
-                quantity,
-                product.getBaseUnitOfMeasure()
+                row.product != null ? row.product.getId() : "N/A",
+                row.product != null ? row.product.getName() : "N/A",
+                row.quantity,
+                row.uom
             });
         }
     }
@@ -910,12 +962,11 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
         if (currentShift != null) {
             List<Invoice> allInvoices = busInvoice.getAllInvoices();
             if (allInvoices != null) {
-                double revenueSum = allInvoices.stream()
+                shiftRevenue = allInvoices.stream()
                     .filter(inv -> inv.getShift() != null && inv.getShift().getId().equals(currentShift.getId()))
                     .filter(inv -> inv.getType() == InvoiceType.SALES)
                     .map(Invoice::calculateTotal)
-                    .reduce(0.0, Double::sum);
-                shiftRevenue = BigDecimal.valueOf(revenueSum);
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             }
         }
         lblCardShiftRevenue.setText(currencyFormat.format(shiftRevenue));
@@ -1322,70 +1373,28 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
         return card;
     }
 
-    /**
-     * Start auto-refresh timer to update dashboard data periodically
-     */
-    private void startAutoRefresh() {
-        if (refreshTimer != null && refreshTimer.isRunning()) {
-            refreshTimer.stop();
-        }
-
-        refreshTimer = new Timer(AUTO_REFRESH_INTERVAL, e -> {
-            try {
-                loadData();
-                loadShiftData();
-            } catch (Exception ex) {
-                // Silent fail - don't interrupt user with errors during auto-refresh
-                System.err.println("Auto-refresh error: " + ex.getMessage());
-            }
-        });
-        refreshTimer.setRepeats(true);
-        refreshTimer.start();
-    }
-
-    /**
-     * Stop auto-refresh timer when component is no longer needed
-     */
-    public void stopAutoRefresh() {
-        if (refreshTimer != null && refreshTimer.isRunning()) {
-            refreshTimer.stop();
-        }
-    }
-
     // DataChangeListener implementation
     @Override
     public void onInvoiceCreated() {
         // Immediately refresh dashboard when a new invoice is created
-        SwingUtilities.invokeLater(() -> {
-            loadData();
-            loadShiftData();
-        });
+        SwingUtilities.invokeLater(this::refresh);
     }
 
     @Override
     public void onProductChanged() {
         // Immediately refresh dashboard when products change
-        SwingUtilities.invokeLater(() -> {
-            loadData();
-            loadShiftData();
-        });
+        SwingUtilities.invokeLater(this::refresh);
     }
 
     @Override
     public void onPromotionChanged() {
         // Immediately refresh dashboard when promotions change
-        SwingUtilities.invokeLater(() -> {
-            loadData();
-            loadShiftData();
-        });
+        SwingUtilities.invokeLater(this::refresh);
     }
 
     @Override
     public void onDataChanged() {
         // General data change - refresh everything
-        SwingUtilities.invokeLater(() -> {
-            loadData();
-            loadShiftData();
-        });
+        SwingUtilities.invokeLater(this::refresh);
     }
 }

@@ -24,6 +24,11 @@ VALUES ( 'MANAGER', 'admin',
         N'Administrator', NULL, NULL, NULL,
         '2025-01-01', 1,0,0);
 
+-- insert into dbo.Staff (id, username, password, fullName, licenseNumber, phoneNumber, email, hireDate, isActive, role, isFirstLogin, mustChangePassword)
+-- values  (N'MAN2025-0005', N'admin', N'$2a$12$vVXxXrKyAGhRge.lO0ihZ.0Nl7PghqZLqSpRwvpoDnC8qe3uZC1TK', N'Administrator', null, null, null, N'2025-01-01', 1, N'MANAGER', 0, 0),
+--         (N'PHA2025-0001', N'nhanvien250001', N'$2a$12$jdwZLPjlfqJxBT5NBI4hBuyoAeDUHGe7qGlAx13GoDjJBFN18iO/i', N'Tô Thanh Hậu', N'05495/CCHN-D-SYT-HNO', N'0868182546', N'thanhhau670@gmail.com', N'2025-12-17', 1, N'PHARMACIST', 0, 0),
+--         (N'PHA2025-0002', N'nhanvien250002', N'$2a$12$Rvqmwr26PRsqdRPoQpC4fOH6rR8ygi.KAIx4Lj6gFSSpJsU2TyPye', N'Tô Tô', N'02495/CCHN-D-SYT-HNO', N'0234567890', N'hauuto.job@gmail.com', N'2025-12-18', 1, N'PHARMACIST', 0, 0);
+
 -- =====================================================
 -- 2. PRESCRIBED CUSTOMER DATA
 -- =====================================================

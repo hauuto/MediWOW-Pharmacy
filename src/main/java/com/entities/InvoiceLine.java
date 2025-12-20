@@ -1,9 +1,13 @@
 package com.entities;
 
 import com.enums.LineType;
+import com.enums.LotStatus;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -31,8 +35,8 @@ public class InvoiceLine {
     @Column(name = "quantity", nullable = false)
     private int quantity;
 
-    @Column(name = "unitPrice", nullable = false)
-    private double unitPrice;
+    @Column(name = "unitPrice", nullable = false, precision = 18, scale = 2)
+    private BigDecimal unitPrice;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "lineType", nullable = false, length = 50)
@@ -61,7 +65,7 @@ public class InvoiceLine {
      */
     public InvoiceLine(Product product, Invoice invoice,
                        MeasurementName unitOfMeasure, LineType lineType,
-                       int quantity, double unitPrice) {
+                       int quantity, BigDecimal unitPrice) {
         this.product = product;
         this.invoice = invoice;
         this.unitOfMeasure = unitOfMeasure;
@@ -75,7 +79,7 @@ public class InvoiceLine {
      */
     public InvoiceLine(String id, Product product, Invoice invoice,
                        MeasurementName unitOfMeasure, LineType lineType,
-                       int quantity, double unitPrice) {
+                       int quantity, BigDecimal unitPrice) {
         this.id = id;
         this.product = product;
         this.invoice = invoice;
@@ -111,8 +115,12 @@ public class InvoiceLine {
         return lineType;
     }
 
-    public double getUnitPrice() {
+    public BigDecimal getUnitPrice() {
         return unitPrice;
+    }
+
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
     }
 
     public List<LotAllocation> getLotAllocations() {
@@ -143,34 +151,140 @@ public class InvoiceLine {
         this.lineType = lineType;
     }
 
-    public void setUnitPrice(double unitPrice) {
-        this.unitPrice = unitPrice;
-    }
 
     public void setLotAllocations(List<LotAllocation> lotAllocations) {
         this.lotAllocations = lotAllocations;
     }
 
+    // =====================================================
+    // Money calculations (BigDecimal is the source of truth)
+    // =====================================================
+
+    /** Calculate the subtotal of this invoice line. */
+    public BigDecimal calculateSubtotal() {
+        if (unitPrice == null) return BigDecimal.ZERO;
+        return unitPrice.multiply(BigDecimal.valueOf(quantity));
+    }
+
+    /** Calculate the VAT amount for this invoice line. */
+    public BigDecimal calculateVatAmount() {
+        if (product == null) return BigDecimal.ZERO;
+        BigDecimal vatPercent = product.getVat() != null ? product.getVat() : BigDecimal.ZERO;
+        BigDecimal vatRate = vatPercent.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+        return calculateSubtotal().multiply(vatRate);
+    }
+
+    /** Calculate the total amount (subtotal + VAT) for this invoice line. */
+    public BigDecimal calculateTotalAmount() {
+        return calculateSubtotal().add(calculateVatAmount());
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Allocates lots to this invoice line using FIFO (First-In-First-Out) principle.
+     * Converts the quantity from the current UOM to base UOM, then selects oldest available lots.
+     *
+     * @return true if sufficient inventory exists and lots were allocated successfully, false otherwise
+     */
+    public boolean allocateLots() {
+        // Clear existing allocations
+        lotAllocations.clear();
+
+        if (product == null || quantity <= 0) {
+            return false;
+        }
+
+        // Convert quantity to base UOM
+        int baseQuantityNeeded = convertToBaseQuantity();
+
+        // Get all available lots sorted by expiry date (FIFO - oldest first)
+        List<Lot> availableLots = product.getLotList().stream()
+                .filter(lot -> lot.getStatus() == LotStatus.AVAILABLE && lot.getQuantity() > 0)
+                .sorted(Comparator.comparing(Lot::getExpiryDate))
+                .toList();
+
+        // Check if we have enough inventory
+        int totalAvailable = availableLots.stream().mapToInt(Lot::getQuantity).sum();
+        if (totalAvailable < baseQuantityNeeded) {
+            return false; // Insufficient inventory
+        }
+
+        // Allocate lots using FIFO
+        int remainingQuantity = baseQuantityNeeded;
+        for (Lot lot : availableLots) {
+            if (remainingQuantity <= 0) {
+                break;
+            }
+
+            int allocatedQuantity = Math.min(remainingQuantity, lot.getQuantity());
+
+            // Create lot allocation with generated ID
+            String allocationId = "LA-" + UUID.randomUUID().toString();
+            LotAllocation allocation = new LotAllocation(allocationId, this, lot, allocatedQuantity);
+            lotAllocations.add(allocation);
+
+            remainingQuantity -= allocatedQuantity;
+        }
+
+        return remainingQuantity == 0;
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Converts the current quantity from the current UOM to base UOM quantity.
+     * Formula: baseQuantity = currentQuantity / baseUnitConversionRate
+     *
+     * @return The quantity in base UOM units
+     */
+    public int convertToBaseQuantity() {
+        if (unitOfMeasure == null || unitOfMeasure.equals(product.getBaseUnitOfMeasure())) {
+            return quantity;
+        }
+
+        // Find the UOM conversion rate
+        UnitOfMeasure uom = product.getUnitOfMeasureList().stream()
+                .filter(u -> u.getName().equals(unitOfMeasure))
+                .findFirst()
+                .orElse(null);
+
+        if (uom == null || uom.getBaseUnitConversionRate() == null || uom.getBaseUnitConversionRate().compareTo(java.math.BigDecimal.ZERO) == 0) {
+            return quantity; // Fallback to original quantity if UOM not found
+        }
+
+        // Convert: baseQuantity = ceil(currentQuantity / baseUnitConversionRate)
+        // e.g., if baseUnitConversionRate = 0.1 (1 box = 10 tablets), then 2 boxes = ceil(2 / 0.1) = 20 tablets
+        java.math.BigDecimal q = java.math.BigDecimal.valueOf(quantity);
+        java.math.BigDecimal base = q.divide(uom.getBaseUnitConversionRate(), 10, java.math.RoundingMode.CEILING);
+        return base.setScale(0, java.math.RoundingMode.CEILING).intValue();
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Gets the total base quantity needed for this invoice line.
+     *
+     * @return The quantity in base UOM units
+     */
+    public int getBaseQuantityNeeded() {
+        return convertToBaseQuantity();
+    }
+
+    /**
+     * @author Bùi Quốc Trụ
+     *
+     * Clears all lot allocations for this invoice line.
+     */
+    public void clearLotAllocations() {
+        lotAllocations.clear();
+        }
     /**
      * Helper for allocation
      */
     public void addLotAllocation(LotAllocation allocation) {
         allocation.setInvoiceLine(this);
         lotAllocations.add(allocation);
-    }
-
-    // ------------------ CALCULATIONS ------------------
-
-    public double calculateSubtotal() {
-        return unitPrice * quantity;
-    }
-
-    public double calculateVatAmount() {
-        return calculateSubtotal() * (product.getVat() / 100.0);
-    }
-
-    public double calculateTotalAmount() {
-        return calculateSubtotal() + calculateVatAmount();
     }
 
     // ------------------ EQUALS/HASHCODE ------------------
