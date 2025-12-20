@@ -71,41 +71,39 @@ VALUES ('PRO2025-0005', '8934567890127', 'SUPPLEMENT', 'SOLID', N'Omega 3 Fish O
 -- 4. MEASUREMENT NAME DATA (Dictionary for UOM names)
 -- =====================================================
 
-INSERT INTO MeasurementName (name) VALUES (N'Viên');
-INSERT INTO MeasurementName (name) VALUES (N'Vỉ');
-INSERT INTO MeasurementName (name) VALUES (N'Hộp');
-INSERT INTO MeasurementName (name) VALUES (N'ml');
-INSERT INTO MeasurementName (name) VALUES (N'Chai');
-INSERT INTO MeasurementName (name) VALUES (N'Lọ');
-INSERT INTO MeasurementName (name) VALUES (N'Gói');
-INSERT INTO MeasurementName (name) VALUES (N'Ống');
-INSERT INTO MeasurementName (name) VALUES (N'Tuýp');
+INSERT INTO MeasurementName (name)
+VALUES (N'Viên'),(N'Vỉ'),(N'Hộp'),(N'ml'),(N'Chai'),(N'Lọ'),(N'Gói'),(N'Ống'),(N'Tuýp');
 
 -- =====================================================
 -- 5. UNIT OF MEASURE DATA
 -- =====================================================
 
 -- UOMs for Paracetamol (PRO2025-0001) - base unit: Viên
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0001', N'Viên', 200.00, 1.0000);
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0001', N'Vỉ', 2000.00, 0.1000);
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0001', N'Hộp', 20000.00, 0.0100);
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0001', 1, 200.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0001', 2, 2000.00, 0.1000),  -- Vỉ
+                                                                                      ('PRO2025-0001', 3, 20000.00, 0.0100); -- Hộp
 
 -- UOMs for Vitamin C (PRO2025-0002) - base unit: ml
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0002', N'ml', 100.00, 1.0000);
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0002', N'Chai', 10000.00, 0.0100);
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0002', 4, 100.00, 1.0000),  -- ml
+                                                                                      ('PRO2025-0002', 5, 10000.00, 0.0100);-- Chai
 
 -- UOMs for Amoxicillin (PRO2025-0003) - base unit: Viên
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0003', N'Viên', 500.00, 1.0000);
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0003', N'Vỉ', 5000.00, 0.1000);
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0003', N'Hộp', 50000.00, 0.0100);
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0003', 1, 500.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0003', 2, 5000.00, 0.1000),  -- Vỉ
+                                                                                      ('PRO2025-0003', 3, 50000.00, 0.0100); -- Hộp
 
 -- UOMs for Omeprazole (PRO2025-0004) - base unit: ml
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0004', N'ml', 200.00, 1.0000);
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0004', N'Chai', 24000.00, 0.0083);
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0004', 4, 200.00, 1.0000),   -- ml
+                                                                                      ('PRO2025-0004', 5, 24000.00, 0.0083); -- Chai
 
 -- UOMs for Omega 3 (PRO2025-0005) - base unit: Viên
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0005', N'Viên', 1500.00, 1.0000);
-INSERT INTO UnitOfMeasure (product, name, price, baseUnitConversionRate) VALUES ('PRO2025-0005', N'Lọ', 90000.00, 0.0167);
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0005', 1, 1500.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0005', 6, 90000.00, 0.0167);  -- Lọ
 
 -- =====================================================
 -- 6. LOT DATA (Each product has at least 2 lots, at least 2 lots are unavailable)
@@ -215,10 +213,10 @@ VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0001', 'CUS2025
 
 -- Invoice Lines for Invoice 1
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0001', 'INV2025-0001', 'PRO2025-0001', N'Hộp', 3, 20000.00, 'SALE');
+VALUES ('ILN2025-0001', 'INV2025-0001', 'PRO2025-0001', 3, 3, 20000.00, 'SALE');
 
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0002', 'INV2025-0001', 'PRO2025-0003', N'Viên', 20, 500.00, 'SALE');
+VALUES ('ILN2025-0002', 'INV2025-0001', 'PRO2025-0003', 1, 20, 500.00, 'SALE');
 
 -- LotAllocation for Invoice 1 Lines
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0001', 'ILN2025-0001', 'LOT2025-0001', 3);
@@ -230,10 +228,10 @@ VALUES ('INV2025-0002', 'SALES', '2025-01-22 10:15:00', 'MAN2025-0001', NULL, NU
 
 -- Invoice Lines for Invoice 2
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0003', 'INV2025-0002', 'PRO2025-0002', N'Chai', 2, 10000.00, 'SALE');
+VALUES ('ILN2025-0003', 'INV2025-0002', 'PRO2025-0002', 5, 2, 10000.00, 'SALE');
 
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0004', 'INV2025-0002', 'PRO2025-0005', N'Viên', 30, 1500.00, 'SALE');
+VALUES ('ILN2025-0004', 'INV2025-0002', 'PRO2025-0005', 1, 30, 1500.00, 'SALE');
 
 -- LotAllocation for Invoice 2 Lines
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0003', 'ILN2025-0003', 'LOT2025-0004', 2);
@@ -245,10 +243,10 @@ VALUES ('INV2025-0003', 'SALES', '2025-01-22 14:20:00', 'MAN2025-0001', 'CUS2025
 
 -- Invoice Lines for Invoice 3
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0005', 'INV2025-0003', 'PRO2025-0004', N'Chai', 2, 24000.00, 'SALE');
+VALUES ('ILN2025-0005', 'INV2025-0003', 'PRO2025-0004', 5, 2, 24000.00, 'SALE');
 
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0006', 'INV2025-0003', 'PRO2025-0001', N'Vỉ', 5, 2000.00, 'SALE');
+VALUES ('ILN2025-0006', 'INV2025-0003', 'PRO2025-0001', 2, 5, 2000.00, 'SALE');
 
 -- LotAllocation for Invoice 3 Lines
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0005', 'ILN2025-0005', 'LOT2025-0009', 2);
@@ -260,13 +258,13 @@ VALUES ('INV2025-0004', 'SALES', '2025-01-23 11:45:00', 'MAN2025-0001', 'CUS2025
 
 -- Invoice Lines for Invoice 4
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0007', 'INV2025-0004', 'PRO2025-0001', N'Hộp', 10, 20000.00, 'SALE');
+VALUES ('ILN2025-0007', 'INV2025-0004', 'PRO2025-0001', 3, 10, 20000.00, 'SALE');
 
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0008', 'INV2025-0004', 'PRO2025-0002', N'Chai', 5, 10000.00, 'SALE');
+VALUES ('ILN2025-0008', 'INV2025-0004', 'PRO2025-0002', 5, 5, 10000.00, 'SALE');
 
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0009', 'INV2025-0004', 'PRO2025-0005', N'Lọ', 3, 90000.00, 'SALE');
+VALUES ('ILN2025-0009', 'INV2025-0004', 'PRO2025-0005', 6, 3, 90000.00, 'SALE');
 
 -- LotAllocation for Invoice 4 Lines
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0007', 'ILN2025-0007', 'LOT2025-0001', 8);
@@ -280,7 +278,7 @@ VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0001', NULL, NU
 
 -- Invoice Lines for Invoice 5
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0010', 'INV2025-0005', 'PRO2025-0001', N'Viên', 20, 200.00, 'SALE');
+VALUES ('ILN2025-0010', 'INV2025-0005', 'PRO2025-0001', 1, 20, 200.00, 'SALE');
 
 -- LotAllocation for Invoice 5 Lines
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0011', 'ILN2025-0010', 'LOT2025-0001', 20);
@@ -291,7 +289,7 @@ VALUES ('INV2025-0006', 'RETURN', '2025-01-23 15:30:00', 'MAN2025-0001', NULL, N
 
 -- Invoice Lines for Invoice 6 (Return)
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0011', 'INV2025-0006', 'PRO2025-0005', N'Viên', 10, 1500.00, 'RETURN');
+VALUES ('ILN2025-0011', 'INV2025-0006', 'PRO2025-0005', 1, 10, 1500.00, 'RETURN');
 
 -- LotAllocation for Invoice 6 (Return - returning to lot)
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0012', 'ILN2025-0011', 'LOT2025-0011', 10);
@@ -302,10 +300,10 @@ VALUES ('INV2025-0007', 'EXCHANGE', '2025-01-24 10:00:00', 'MAN2025-0001', 'CUS2
 
 -- Invoice Lines for Invoice 7 (Exchange)
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0012', 'INV2025-0007', 'PRO2025-0001', N'Hộp', 2, 20000.00, 'EXCHANGE_OUT');
+VALUES ('ILN2025-0012', 'INV2025-0007', 'PRO2025-0001', 3, 2, 20000.00, 'EXCHANGE_OUT');
 
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0013', 'INV2025-0007', 'PRO2025-0003', N'Hộp', 1, 50000.00, 'EXCHANGE_IN');
+VALUES ('ILN2025-0013', 'INV2025-0007', 'PRO2025-0003', 3, 1, 50000.00, 'EXCHANGE_IN');
 
 -- LotAllocation for Invoice 7 (Exchange)
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0013', 'ILN2025-0012', 'LOT2025-0001', 2);
@@ -317,10 +315,10 @@ VALUES ('INV2025-0008', 'SALES', '2025-01-26 17:30:00', 'MAN2025-0001', 'CUS2025
 
 -- Invoice Lines for Invoice 8
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0014', 'INV2025-0008', 'PRO2025-0005', N'Lọ', 3, 90000.00, 'SALE');
+VALUES ('ILN2025-0014', 'INV2025-0008', 'PRO2025-0005', 6, 3, 90000.00, 'SALE');
 
 INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES ('ILN2025-0015', 'INV2025-0008', 'PRO2025-0002', N'Chai', 1, 0.00, 'SALE');
+VALUES ('ILN2025-0015', 'INV2025-0008', 'PRO2025-0002', 5, 1, 0.00, 'SALE');
 
 -- LotAllocation for Invoice 8
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0015', 'ILN2025-0014', 'LOT2025-0012', 3);

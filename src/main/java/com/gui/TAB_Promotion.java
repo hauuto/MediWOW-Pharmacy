@@ -18,6 +18,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -215,7 +217,7 @@ public class TAB_Promotion extends JPanel {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
         table = new JTable(tableModel);
-        styleTable(table);
+        styleTable(table, false);
 
         // Chọn dòng -> hiển thị chi tiết
         table.getSelectionModel().addListSelectionListener(e -> {
@@ -570,7 +572,7 @@ public class TAB_Promotion extends JPanel {
             }
         };
 
-        styleTable(table);
+        styleTable(table, true); // Hiển thị viền cho bảng điều kiện và hành động
 
         // VÔ HIỆU HÓA KÉO THẢ CỘT
         table.getTableHeader().setReorderingAllowed(false);
@@ -582,13 +584,22 @@ public class TAB_Promotion extends JPanel {
         // Yêu cầu 4: Các ô bị disable nên có màu xám
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value,
+            public Component getTableCellRendererComponent(
+                    JTable table, Object value,
                     boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+                // Ép measurementName về String để tránh lazy
+                if (value instanceof com.entities.MeasurementName m) {
+                    value = m.getName();
+                }
+
+                Component c = super.getTableCellRendererComponent(
+                        table, value, isSelected, hasFocus, row, column
+                );
 
                 if (!table.isCellEditable(row, column)) {
-                    c.setBackground(new Color(240, 240, 240)); // Màu xám nhạt cho ô disabled
-                    c.setForeground(new Color(150, 150, 150)); // Chữ xám
+                    c.setBackground(new Color(240, 240, 240));
+                    c.setForeground(new Color(150, 150, 150));
                 } else if (isSelected) {
                     c.setBackground(new Color(200, 230, 255));
                     c.setForeground(Color.BLACK);
@@ -599,6 +610,7 @@ public class TAB_Promotion extends JPanel {
                 return c;
             }
         });
+
 
         TableModelListener listener = e -> {
             // Yêu cầu 5: Chỉ thêm hàng mới khi hàng cuối được điền đầy đủ
@@ -751,9 +763,9 @@ public class TAB_Promotion extends JPanel {
                         }
 
                         // Yêu cầu 3: Combobox cho đơn vị
-                        java.util.List<String> names = new java.util.ArrayList<>();
+                        List<String> names = new ArrayList<>();
                         for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
-                            if (u != null && u.getName() != null) names.add(u.getName());
+                            if (u != null && u.getMeasurement()!= null) names.add(u.getMeasurement().getName());
                         }
                         if (names.isEmpty()) {
                             JOptionPane.showMessageDialog(table, "Sản phẩm chưa có đơn vị tính.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -763,6 +775,30 @@ public class TAB_Promotion extends JPanel {
                         Object selected = JOptionPane.showInputDialog(table, "Chọn đơn vị tính:", "Đơn vị tính", JOptionPane.PLAIN_MESSAGE, null, names.toArray(), names.get(0));
                         if (selected != null) {
                             model.setValueAt(selected.toString(), row, col);
+                        }
+                    }
+                }
+            }
+        });
+
+        // Thêm KeyListener để xử lý phím Delete cho việc xóa dòng
+        table.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_DELETE) {
+                    int row = table.getSelectedRow();
+                    if (row >= 0) {
+                        // Xác nhận xóa
+                        int confirm = JOptionPane.showConfirmDialog(table,
+                                "Bạn có chắc muốn xóa dòng này?",
+                                "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
+                        if (confirm == JOptionPane.YES_OPTION) {
+                            // Xóa dòng khỏi model
+                            model.removeRow(row);
+                            // Thêm dòng trống mới nếu còn thiếu
+                            if (model.getRowCount() == 0) {
+                                model.addRow(new Object[model.getColumnCount()]);
+                            }
                         }
                     }
                 }
@@ -1255,7 +1291,7 @@ public class TAB_Promotion extends JPanel {
                 condModel.addRow(new Object[]{
                     cond.getTarget(),  // 0: Mục tiêu
                     productDisplay,  // 1: Sản phẩm (tên + mã)
-                    cond.getProductUOM() != null ? cond.getProductUOM().getName() : "",  // 2: Đơn vị
+                    cond.getProductUOM() != null ? cond.getProductUOM().getMeasurement() : "",  // 2: Đơn vị
                     cond.getComparator(),  // 3: Toán tử
                     cond.getValue()  // 4: Giá trị
                 });
@@ -1291,7 +1327,7 @@ public class TAB_Promotion extends JPanel {
                     act.getTarget(),  // 1: Mục tiêu
                     act.getValue(),  // 2: Giá trị
                     productDisplay,  // 3: Sản phẩm (tên + mã)
-                    act.getProductUOM() != null ? act.getProductUOM().getName() : ""  // 4: Đơn vị
+                    act.getProductUOM() != null ? act.getProductUOM().getMeasurement() : ""  // 4: Đơn vị
                 });
 
                 // Store product ID in client property
@@ -1429,8 +1465,8 @@ public class TAB_Promotion extends JPanel {
         btn.setPreferredSize(new Dimension(120, 35));
     }
 
-    /** Style table */
-    private void styleTable(JTable table) {
+
+    private void styleTable(JTable table, boolean showGrid) {
         table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         table.setRowHeight(30);
         table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -1439,6 +1475,7 @@ public class TAB_Promotion extends JPanel {
         table.setSelectionBackground(new Color(200, 230, 255));
         table.setSelectionForeground(Color.BLACK);
         table.setGridColor(new Color(220, 230, 240));
+        table.setShowGrid(showGrid); // Hiển thị viền nếu showGrid = true
     }
 
     /** Tạo filter card */

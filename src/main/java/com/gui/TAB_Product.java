@@ -1,5 +1,6 @@
 package com.gui;
 
+import com.entities.MeasurementName;
 import com.utils.AppColors;
 
 import javax.swing.*;
@@ -1289,12 +1290,12 @@ public class TAB_Product {
         p.setBaseUnitOfMeasure(txtBaseUom.getText().trim());
 
         // UOM (không bắt buộc). Chỉ tạo nếu có mã ĐV (cột 0) — nếu ID trống, bỏ qua dòng đó.
-        java.util.List<UnitOfMeasure> uoms = new java.util.ArrayList<>();
+        Set<UnitOfMeasure> uoms = new HashSet<>();
         for (int r = 0; r < uomModel.getRowCount(); r++) {
             String id = valStr(uomModel.getValueAt(r, UOM_COL_ID));
-            String name = valStr(uomModel.getValueAt(r, UOM_COL_NAME));
+            MeasurementName name = (MeasurementName) uomModel.getValueAt(r, UOM_COL_NAME);
             Integer rate = parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE));
-            if (id.isEmpty() || name.isEmpty() || rate == null) continue; // bỏ dòng thiếu
+            if (id.isEmpty() || name == null || rate == null) continue; // bỏ dòng thiếu
             // Note: UnitOfMeasure now uses composite key (product, name) and requires price
             // Assuming price is calculated from lot's raw price * conversion rate
             double price = 0.0; // TODO: Calculate actual price based on business logic
@@ -1305,7 +1306,7 @@ public class TAB_Product {
         p.setUnitOfMeasureList(uoms);
 
         // LOT (bắt buộc ≥ 1 dòng theo validateBeforeSave)
-        java.util.List<Lot> lots = new java.util.ArrayList<>();
+        Set<Lot> lots = new HashSet<>();
         for (int r = 0; r < lotModel.getRowCount(); r++) {
             String bn = valStr(lotModel.getValueAt(r, LOT_COL_ID));
             Integer qty = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY));
@@ -1317,7 +1318,7 @@ public class TAB_Product {
             LotStatus status = mapLotStatusVN(st);
 
             // Generate UUID for new lot id, use batchNumber as is
-            String lotId = java.util.UUID.randomUUID().toString();
+            String lotId = UUID.randomUUID().toString();
             Lot lot = new Lot(lotId, bn, p, (qty == null ? 0 : qty), (price == null ? 0.0 : price), expiry, status);
             lot.setProduct(p);
             lots.add(lot);
@@ -1394,8 +1395,8 @@ public class TAB_Product {
         if (p.getUnitOfMeasureList() != null) {
             for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
                 uomModel.addRow(new Object[]{
-                        safe(u.getName()), // UnitOfMeasure now uses composite key, use name as ID
-                        safe(u.getName()),
+                        safe(u.getMeasurement().getName()), // UnitOfMeasure now uses composite key, use name as ID
+                        safe(u.getMeasurement().getName()),
                         u.getBaseUnitConversionRate()
                 });
             }

@@ -69,22 +69,24 @@ CREATE TABLE Product (
 );
 
 -- 5. MeasurementName Table (Dictionary for UOM names)
-CREATE TABLE MeasurementName(
-                                name NVARCHAR(100) PRIMARY KEY
+CREATE TABLE MeasurementName (
+                                 id INT NOT NULL IDENTITY(1,1) PRIMARY KEY,
+                                 name NVARCHAR(100) NOT NULL UNIQUE
 );
 
 -- 6. UnitOfMeasure Table
 -- Primary Key: (product, name) -> Composite Key
 CREATE TABLE UnitOfMeasure (
                                product NVARCHAR(50) NOT NULL,
-                               name NVARCHAR(100) NOT NULL,
-                               price DECIMAL(18,2) NOT NULL, -- Giá niêm yết
-                               baseUnitConversionRate DECIMAL(18,4) NOT NULL, -- Sửa thành Decimal để chính xác tỷ lệ
+                               measurementId INT NOT NULL,
+                               price DECIMAL(18,2) NOT NULL,
+                               baseUnitConversionRate DECIMAL(18,4) NOT NULL,
 
                                FOREIGN KEY (product) REFERENCES Product(id) ON DELETE CASCADE,
-                               FOREIGN KEY (name) REFERENCES MeasurementName(name) ON DELETE CASCADE,
-                               PRIMARY KEY (product, name)
+                               FOREIGN KEY (measurementId) REFERENCES MeasurementName(id) ON DELETE CASCADE,
+                               PRIMARY KEY (product, measurementId)
 );
+
 
 -- 7. Lot Table
 CREATE TABLE Lot (
@@ -123,7 +125,7 @@ CREATE TABLE PromotionCondition (
 
                                     FOREIGN KEY (promotion) REFERENCES Promotion(id),
                                     FOREIGN KEY (product, unitOfMeasure)
-                                        REFERENCES UnitOfMeasure(product, name)
+                                        REFERENCES UnitOfMeasure(product, measurementId)
 );
 
 -- 10. PromotionAction Table
@@ -139,7 +141,7 @@ CREATE TABLE PromotionAction (
 
                                  FOREIGN KEY (promotion) REFERENCES Promotion(id),
                                  FOREIGN KEY (product, unitOfMeasure)
-                                     REFERENCES UnitOfMeasure(product, name)
+                                     REFERENCES UnitOfMeasure(product, measurementId)
 );
 
 -- 11. Invoice Table

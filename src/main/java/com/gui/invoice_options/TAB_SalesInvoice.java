@@ -261,10 +261,10 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private UnitOfMeasure findUnitOfMeasure(Product product, String name) {
         if (name.equals(product.getBaseUnitOfMeasure())) {
             for (UnitOfMeasure uom : product.getUnitOfMeasureList())
-                if (uom.getName().equals(name)) return uom;
+                if (uom.getMeasurement().getName().equals(name)) return uom;
         }
         for (UnitOfMeasure uom : product.getUnitOfMeasureList())
-            if (uom.getName().equals(name)) return uom;
+            if (uom.getMeasurement().getName().equals(name)) return uom;
         return null;
     }
 
@@ -660,7 +660,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             if (p != null) {
                 comboBox.addItem(p.getBaseUnitOfMeasure());
                 for (UnitOfMeasure u : p.getUnitOfMeasureList())
-                    if (!u.getName().equals(p.getBaseUnitOfMeasure())) comboBox.addItem(u.getName());
+                    if (!u.getMeasurement().getName().equals(p.getBaseUnitOfMeasure())) comboBox.addItem(u.getMeasurement().getName());
             }
             if (v != null) comboBox.setSelectedItem(v);
             return comboBox;

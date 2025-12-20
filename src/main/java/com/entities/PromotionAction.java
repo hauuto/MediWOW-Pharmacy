@@ -36,7 +36,7 @@ public class PromotionAction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumns({
             @JoinColumn(name = "product", referencedColumnName = "product", insertable = true, updatable = true),
-            @JoinColumn(name = "unitOfMeasure", referencedColumnName = "name", insertable = true, updatable = true)
+            @JoinColumn(name = "unitOfMeasure", referencedColumnName = "measurementId", insertable = true, updatable = true)
     })
     private UnitOfMeasure productUOM;
 

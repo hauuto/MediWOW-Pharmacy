@@ -25,6 +25,11 @@ public class BUS_Product implements IProduct {
     @Override public Lot getLotByBatchNumber(String batchNumber) { return (batchNumber == null || batchNumber.isBlank()) ? null : dao.getLotByBatchNumber(batchNumber); }
 
     @Override
+    public UnitOfMeasure getUnitOfMeasureById(String productId, Integer measurementId) {
+        return null;
+    }
+
+    @Override
     public Lot getLotById(String id) {
         return null;
     }
