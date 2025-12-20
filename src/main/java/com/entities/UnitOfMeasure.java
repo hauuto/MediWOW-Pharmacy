@@ -1,27 +1,28 @@
 package com.entities;
 
 import jakarta.persistence.*;
-
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
 /**
- * @author Bùi Quốc Trụ, Nguyễn Thanh Khôi
+ * UnitOfMeasure entity
  */
 @Entity
 @Table(name = "UnitOfMeasure")
 @IdClass(UnitOfMeasure.UnitOfMeasureId.class)
 public class UnitOfMeasure {
+
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product", nullable = false)
     private Product product;
 
     @Id
-    @Column(name = "name", length = 100)
-    private String name;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "measurementId", nullable = false)
+    private MeasurementName measurement;
 
     @Column(name = "price", nullable = false, precision = 18, scale = 2)
     private BigDecimal price;
@@ -34,9 +35,12 @@ public class UnitOfMeasure {
 
     protected UnitOfMeasure() {}
 
-    public UnitOfMeasure(Product product, String name, BigDecimal price, BigDecimal baseUnitConversionRate) {
+    public UnitOfMeasure(Product product,
+                         MeasurementName measurement,
+                         BigDecimal price,
+                         BigDecimal baseUnitConversionRate) {
         this.product = product;
-        this.name = name;
+        this.measurement = measurement;
         this.price = price;
         this.baseUnitConversionRate = baseUnitConversionRate;
         calculateDerivedFields();
@@ -53,11 +57,22 @@ public class UnitOfMeasure {
     }
 
     public UnitOfMeasureId getId() {
-        return new UnitOfMeasureId(product.getId(), name);
+        return new UnitOfMeasureId(
+                product != null ? product.getId() : null,
+                measurement != null ? measurement.getId() : null
+        );
     }
 
     public Product getProduct() {
         return product;
+    }
+
+    public MeasurementName getMeasurement() {
+        return measurement;
+    }
+
+    public void setMeasurement(MeasurementName measurement) {
+        this.measurement = measurement;
     }
 
     public void setProduct(Product product) {
@@ -65,11 +80,11 @@ public class UnitOfMeasure {
     }
 
     public String getName() {
-        return name;
+        return measurement.getName();
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.measurement.setName(name);
     }
 
     public BigDecimal getPrice() {
@@ -95,53 +110,67 @@ public class UnitOfMeasure {
 
     @Override
     public int hashCode() {
-        return Objects.hash(product.getId(), name);
+        return Objects.hash(
+                product != null ? product.getId() : null,
+                measurement != null ? measurement.getId() : null
+        );
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-
-        if (obj == null || getClass() != obj.getClass())
-            return false;
+        if (this == obj) return true;
+        if (!(obj instanceof UnitOfMeasure)) return false;
 
         UnitOfMeasure other = (UnitOfMeasure) obj;
-        return Objects.equals(product.getId(), other.product.getId()) &&
-               Objects.equals(name, other.name);
+
+        return Objects.equals(
+                product != null ? product.getId() : null,
+                other.product != null ? other.product.getId() : null
+        ) && Objects.equals(
+                measurement != null ? measurement.getId() : null,
+                other.measurement != null ? other.measurement.getId() : null
+        );
     }
 
     @Override
     public String toString() {
-        return super.toString();
+        return "UnitOfMeasure{" +
+                "product=" + (product != null ? product.getId() : null) +
+                ", measurement=" + (measurement != null ? measurement.getName() : null) +
+                ", price=" + price +
+                ", baseUnitConversionRate=" + baseUnitConversionRate +
+                '}';
     }
 
     /**
-     * Composite key class for UnitOfMeasure
+     * Composite key for UnitOfMeasure
      */
     public static class UnitOfMeasureId implements Serializable {
         private String product;
-        private String name;
+        private Integer measurement;
 
         public UnitOfMeasureId() {}
 
-        public UnitOfMeasureId(String product, String name) {
+        public UnitOfMeasureId(String product, Integer measurement) {
             this.product = product;
-            this.name = name;
+            this.measurement = measurement;
         }
+
+        public String getProduct() { return product; }
+        public Integer getMeasurement() { return measurement; }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (!(o instanceof UnitOfMeasureId)) return false;
             UnitOfMeasureId that = (UnitOfMeasureId) o;
             return Objects.equals(product, that.product) &&
-                   Objects.equals(name, that.name);
+                    Objects.equals(measurement, that.measurement);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(product, name);
+            return Objects.hash(product, measurement);
         }
     }
 }

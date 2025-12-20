@@ -905,7 +905,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
                 int quantity = line.getQuantity();
                 if (quantity <= 0) continue;
 
-                String uom = line.getUnitOfMeasure();
+                String uom = line.getUnitOfMeasure().getName();
                 if (uom == null || uom.trim().isEmpty()) {
                     uom = product.getBaseUnitOfMeasure();
                 }

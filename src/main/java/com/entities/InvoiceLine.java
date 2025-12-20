@@ -12,12 +12,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * @author Bùi Quốc Trụ
- */
 @Entity
 @Table(name = "InvoiceLine")
 public class InvoiceLine {
+
     @Id
     @Column(name = "id", updatable = false, nullable = false, length = 50)
     private String id;
@@ -30,8 +28,9 @@ public class InvoiceLine {
     @JoinColumn(name = "product", nullable = false)
     private Product product;
 
-    @Column(name = "unitOfMeasure", nullable = false, length = 100)
-    private String unitOfMeasure;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "unitOfMeasure", nullable = false)
+    private MeasurementName unitOfMeasure;
 
     @Column(name = "quantity", nullable = false)
     private int quantity;
@@ -43,16 +42,30 @@ public class InvoiceLine {
     @Column(name = "lineType", nullable = false, length = 50)
     private LineType lineType;
 
-    @OneToMany(mappedBy = "invoiceLine", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "invoiceLine",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
     private List<LotAllocation> lotAllocations = new ArrayList<>();
 
     protected InvoiceLine() {}
 
     /**
-     * Constructor without ID - auto-generates UUID
+     * Auto-generate ID if not set
      */
-    public InvoiceLine(Product product, Invoice invoice, String unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
-        this.id = "IL-" + UUID.randomUUID().toString(); // Auto-generate unique ID
+    @PrePersist
+    private void ensureId() {
+        if (this.id == null) {
+            this.id = "ILN-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
+        }
+    }
+
+    /**
+     * Minimal constructor
+     */
+    public InvoiceLine(Product product, Invoice invoice,
+                       MeasurementName unitOfMeasure, LineType lineType,
+                       int quantity, BigDecimal unitPrice) {
         this.product = product;
         this.invoice = invoice;
         this.unitOfMeasure = unitOfMeasure;
@@ -61,7 +74,12 @@ public class InvoiceLine {
         this.unitPrice = unitPrice;
     }
 
-    public InvoiceLine(String id, Product product, Invoice invoice, String unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
+    /**
+     * Full constructor
+     */
+    public InvoiceLine(String id, Product product, Invoice invoice,
+                       MeasurementName unitOfMeasure, LineType lineType,
+                       int quantity, BigDecimal unitPrice) {
         this.id = id;
         this.product = product;
         this.invoice = invoice;
@@ -70,53 +88,31 @@ public class InvoiceLine {
         this.quantity = quantity;
         this.unitPrice = unitPrice;
     }
+
+    // ------------------ GETTERS/SETTERS ------------------
 
     public String getId() {
         return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
     }
 
     public Product getProduct() {
         return product;
     }
 
-    public void setProduct(Product product) {
-        this.product = product;
-    }
-
     public Invoice getInvoice() {
         return invoice;
-    }
-
-    public void setInvoice(Invoice invoice) {
-        this.invoice = invoice;
     }
 
     public int getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
-    public String getUnitOfMeasure() {
+    public MeasurementName getUnitOfMeasure() {
         return unitOfMeasure;
-    }
-
-    public void setUnitOfMeasure(String unitOfMeasure) {
-        this.unitOfMeasure = unitOfMeasure;
     }
 
     public LineType getLineType() {
         return lineType;
-    }
-
-    public void setLineType(LineType lineType) {
-        this.lineType = lineType;
     }
 
     public BigDecimal getUnitPrice() {
@@ -130,6 +126,31 @@ public class InvoiceLine {
     public List<LotAllocation> getLotAllocations() {
         return lotAllocations;
     }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public void setInvoice(Invoice invoice) {
+        this.invoice = invoice;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public void setUnitOfMeasure(MeasurementName unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
+    }
+
+    public void setLineType(LineType lineType) {
+        this.lineType = lineType;
+    }
+
 
     public void setLotAllocations(List<LotAllocation> lotAllocations) {
         this.lotAllocations = lotAllocations;
@@ -257,7 +278,16 @@ public class InvoiceLine {
      */
     public void clearLotAllocations() {
         lotAllocations.clear();
+        }
+    /**
+     * Helper for allocation
+     */
+    public void addLotAllocation(LotAllocation allocation) {
+        allocation.setInvoiceLine(this);
+        lotAllocations.add(allocation);
     }
+
+    // ------------------ EQUALS/HASHCODE ------------------
 
     @Override
     public int hashCode() {
@@ -266,18 +296,23 @@ public class InvoiceLine {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-
-        if (obj == null || getClass() != obj.getClass())
-            return false;
-
+        if (this == obj) return true;
+        if (!(obj instanceof InvoiceLine)) return false;
         InvoiceLine other = (InvoiceLine) obj;
         return Objects.equals(id, other.id);
     }
 
+    // ------------------ TOSTRING ------------------
+
     @Override
     public String toString() {
-        return super.toString();
+        return "InvoiceLine{" +
+                "id='" + id + '\'' +
+                ", product=" + (product != null ? product.getId() : null) +
+                ", unitOfMeasure='" + unitOfMeasure + '\'' +
+                ", qty=" + quantity +
+                ", unitPrice=" + unitPrice +
+                ", lineType=" + lineType +
+                '}';
     }
 }
