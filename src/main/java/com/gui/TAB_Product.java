@@ -112,6 +112,9 @@ public class TAB_Product {
 
     private static final String DEFAULT_IMG_PATH = "\\src\\main\\resources\\images\\products\\etc\\etc1.jpg";
 
+    // Store the current image path (full path)
+    private String currentImagePath = null;
+
     // ==== Danh sách MeasurementName từ DB ====
     private List<MeasurementName> allMeasurementNames = new ArrayList<>();
 
@@ -559,7 +562,6 @@ public class TAB_Product {
                             productModel.setValueAt(mapCategoryCodeToVN(p.getCategory().toString()), idx, 2);
                             productModel.setValueAt(p.getActiveIngredient(), idx, 3);
                             productModel.setValueAt(p.getManufacturer(), idx, 4);
-                            productModel.setValueAt("—", idx, 5); // trạng thái UI (chưa lưu DB)
                         }
 
                         JOptionPane.showMessageDialog(pProduct, "Thêm sản phẩm thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
@@ -776,11 +778,22 @@ public class TAB_Product {
     private void setImage(String path) {
         try {
             File f = new File(path);
-            if (!f.exists()) { lbImage.setText("No Image"); lbImage.setIcon(null); return; }
+            if (!f.exists()) {
+                lbImage.setText("No Image");
+                lbImage.setIcon(null);
+                currentImagePath = null; // Cập nhật để tránh giữ path cũ không tồn tại
+                return;
+            }
             ImageIcon icon = new ImageIcon(path);
             Image scaled = icon.getImage().getScaledInstance(180, 180, Image.SCALE_SMOOTH);
-            lbImage.setIcon(new ImageIcon(scaled)); lbImage.setText(null);
-        } catch (Exception ex) { lbImage.setText("No Image"); lbImage.setIcon(null); }
+            lbImage.setIcon(new ImageIcon(scaled));
+            lbImage.setText(null);
+            currentImagePath = path; // Cập nhật đường dẫn ảnh hiện tại
+        } catch (Exception ex) {
+            lbImage.setText("No Image");
+            lbImage.setIcon(null);
+            currentImagePath = null; // Cập nhật khi có exception
+        }
     }
 
     private void addRowAndFocus(DefaultTableModel model, JTable table) {
@@ -1375,6 +1388,7 @@ public class TAB_Product {
         p.setDescription(txtDescription.getText().trim());
         p.setVat(((Number) spVat.getValue()).doubleValue());
         p.setBaseUnitOfMeasure(cbBaseUom.getSelectedItem().toString().trim());
+        p.setImage(currentImagePath);
 
         // UOM (không bắt buộc). Chỉ tạo nếu có mã ĐV (cột 0) — nếu ID trống, bỏ qua dòng đó.
         Set<UnitOfMeasure> uoms = new HashSet<>();
@@ -1404,16 +1418,15 @@ public class TAB_Product {
             LocalDateTime expiry = parseDMYToLocalDate(exp).atStartOfDay();
             LotStatus status = mapLotStatusVN(st);
 
-            // Generate UUID for new lot id, use batchNumber as is
-            String lotId = UUID.randomUUID().toString();
-            Lot lot = new Lot(lotId, bn, p, (qty == null ? 0 : qty), (price == null ? 0.0 : price), expiry, status);
-            lot.setProduct(p);
+            // Don't generate ID here - let database trigger handle it
+            Lot lot = new Lot(null, bn, p, (qty == null ? 0 : qty), (price == null ? 0.0 : price), expiry, status);
             lots.add(lot);
         }
         p.setLotList(lots);
 
         return p;
     }
+
 
     /** Build Product for update operation - fetches existing product and updates allowed fields */
     private Product buildProductFromDetailsForUpdate(String productId) {
@@ -1596,6 +1609,23 @@ public class TAB_Product {
         txtDescription.setText(safe(p.getDescription()));
         cbBaseUom.setSelectedItem(safe(p.getBaseUnitOfMeasure()));
 
+        // Display product image
+        String imagePath = p.getImage();
+        if (imagePath != null && !imagePath.trim().isEmpty()) {
+            File imageFile = new File(imagePath);
+            if (imageFile.exists()) {
+                setImage(imagePath);
+            } else {
+                lbImage.setText("No Image");
+                lbImage.setIcon(null);
+                currentImagePath = null;
+            }
+        } else {
+            lbImage.setText("No Image");
+            lbImage.setIcon(null);
+            currentImagePath = null;
+        }
+
         // Enum -> nhãn/combobox
         if (p.getCategory() != null)
             selectComboItem(cbCategoryDetail, mapCategoryCodeToVN(p.getCategory().name()));
@@ -1607,8 +1637,6 @@ public class TAB_Product {
                 default -> cbFormDetail.setSelectedIndex(0);
             }
         }
-        // Trạng thái sản phẩm: hiện tạm lấy theo cbStatusDetail nếu bạn lưu ở Product
-        // selectComboItem(cbStatusDetail, p.isActive() ? "Đang kinh doanh" : "Ngừng kinh doanh");
 
         // Bảng ĐƠN VỊ QUY ĐỔI
         uomModel.setRowCount(0);

@@ -64,6 +64,7 @@ CREATE TABLE Product (
                          strength NVARCHAR(100),
                          description NVARCHAR(MAX),
                          baseUnitOfMeasure NVARCHAR(50),
+                         image NVARCHAR(500),
                          creationDate DATETIME NOT NULL DEFAULT GETDATE(),
                          updateDate DATETIME
 );

@@ -200,7 +200,97 @@ public class DAO_Product implements IProduct {
         try {
             session = sessionFactory.openSession();
             tx = session.beginTransaction();
-            session.persist(s);
+
+            // Tách Lots và UnitOfMeasures ra khỏi Product trước khi persist
+            Set<Lot> lots = new HashSet<>(s.getLotList());
+            Set<UnitOfMeasure> uoms = new HashSet<>(s.getUnitOfMeasureList());
+
+            // Clear để tránh cascade insert
+            s.getLotList().clear();
+            s.getUnitOfMeasureList().clear();
+
+            // Đảm bảo creationDate được set (vì native SQL không kích hoạt @CreationTimestamp)
+            if (s.getCreationDate() == null) {
+                java.lang.reflect.Field creationDateField = Product.class.getDeclaredField("creationDate");
+                creationDateField.setAccessible(true);
+                creationDateField.set(s, java.time.LocalDateTime.now());
+            }
+
+            // BƯỚC 1: Insert Product trực tiếp bằng native SQL
+            String insertProductSQL = "INSERT INTO Product (barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, creationDate, updateDate, image) " +
+                    "VALUES (:barcode, :category, :form, :name, :shortName, :manufacturer, :activeIngredient, :vat, :strength, :description, :baseUnitOfMeasure, :creationDate, :updateDate, :image)";
+
+            session.createNativeQuery(insertProductSQL)
+                    .setParameter("barcode", s.getBarcode())
+                    .setParameter("category", s.getCategory().name())
+                    .setParameter("form", s.getForm().name())
+                    .setParameter("name", s.getName())
+                    .setParameter("shortName", s.getShortName())
+                    .setParameter("manufacturer", s.getManufacturer())
+                    .setParameter("activeIngredient", s.getActiveIngredient())
+                    .setParameter("vat", s.getVat())
+                    .setParameter("strength", s.getStrength())
+                    .setParameter("description", s.getDescription())
+                    .setParameter("baseUnitOfMeasure", s.getBaseUnitOfMeasure())
+                    .setParameter("creationDate", s.getCreationDate())
+                    .setParameter("updateDate", s.getUpdateDate())
+                    .setParameter("image", s.getImage())
+                    .executeUpdate();
+
+            session.flush();
+
+            // Lấy ID thực do trigger sinh ra (ID mới nhất được tạo)
+            String getLastIdSQL = "SELECT TOP 1 id FROM Product ORDER BY creationDate DESC, id DESC";
+            String realProductId = (String) session.createNativeQuery(getLastIdSQL).getSingleResult();
+
+            // Cập nhật ID thực vào object Product
+            java.lang.reflect.Field idField = Product.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(s, realProductId);
+
+            // BƯỚC 2: Insert UnitOfMeasure với Product ID thực
+            for (UnitOfMeasure uom : uoms) {
+                // Get managed MeasurementName entity from database
+                MeasurementName managedMeasurement = session.get(MeasurementName.class, uom.getMeasurement().getId());
+                if (managedMeasurement != null) {
+                    // Create new UOM with managed entities
+                    UnitOfMeasure uomToAdd = new UnitOfMeasure(s, managedMeasurement, uom.getPrice(), uom.getBaseUnitConversionRate());
+                    session.persist(uomToAdd);
+                }
+            }
+
+            session.flush();
+
+            // BƯỚC 3: Insert Lot với Product ID thực
+            for (Lot lot : lots) {
+                lot.setProduct(s);
+
+                // Insert Lot bằng native SQL để trigger tự sinh ID
+                String insertLotSQL = "INSERT INTO Lot (batchNumber, product, quantity, rawPrice, expiryDate, status) " +
+                        "VALUES (:batchNumber, :product, :quantity, :rawPrice, :expiryDate, :status)";
+
+                session.createNativeQuery(insertLotSQL)
+                        .setParameter("batchNumber", lot.getBatchNumber())
+                        .setParameter("product", realProductId)
+                        .setParameter("quantity", lot.getQuantity())
+                        .setParameter("rawPrice", lot.getRawPrice())
+                        .setParameter("expiryDate", lot.getExpiryDate())
+                        .setParameter("status", lot.getStatus().name())
+                        .executeUpdate();
+            }
+
+            session.flush();
+
+            // Lấy lại các Lot vừa insert để có ID thực
+            String getLotsSQL = "SELECT * FROM Lot WHERE product = :productId";
+            List<Lot> insertedLots = session.createNativeQuery(getLotsSQL, Lot.class)
+                    .setParameter("productId", realProductId)
+                    .getResultList();
+
+            // Gán lại vào Product object
+            s.getLotList().addAll(insertedLots);
+            s.getUnitOfMeasureList().addAll(uoms);
+
             tx.commit();
             return true;
         } catch (Exception e) {
@@ -247,6 +337,7 @@ public class DAO_Product implements IProduct {
             existing.setDescription(p.getDescription());
             existing.setVat(p.getVat());
             existing.setBaseUnitOfMeasure(p.getBaseUnitOfMeasure());
+            existing.setImage(p.getImage()); // Cập nhật image path
 
             // Handle UnitOfMeasure updates
             if (p.getUnitOfMeasureList() != null) {

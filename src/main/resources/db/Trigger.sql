@@ -106,7 +106,7 @@ BEGIN
     SET NOCOUNT ON;
     DECLARE @CurrentYear NVARCHAR(4) = CAST(YEAR(GETDATE()) AS NVARCHAR(4));
 
-    INSERT INTO Product (id, barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, creationDate, updateDate)
+    INSERT INTO Product (id, barcode, category, form, name, shortName, manufacturer, activeIngredient, vat, strength, description, baseUnitOfMeasure, image, creationDate, updateDate)
     SELECT
         'PRO' + @CurrentYear + '-' + RIGHT('0000' + CAST(NEXT VALUE FOR dbo.ProductSeg AS NVARCHAR(4)), 4),
         barcode,
@@ -120,6 +120,7 @@ BEGIN
         strength,
         description,
         baseUnitOfMeasure,
+        image,
         creationDate,
         updateDate
     FROM inserted;

@@ -5,7 +5,6 @@ import com.enums.ProductCategory;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -18,8 +17,7 @@ import java.util.Set;
 public class Product {
 
     @Id
-    @UuidGenerator
-    @Column(name = "id", insertable = false, updatable = false, nullable = false, length = 50)
+    @Column(name = "id", updatable = false, nullable = false, length = 50)
     private String id;
 
     @Column(name = "barcode", unique = true)
@@ -56,6 +54,9 @@ public class Product {
 
     @Column(name = "baseUnitOfMeasure", nullable = false)
     private String baseUnitOfMeasure;
+
+    @Column(name = "image")
+    private String image;
 
     @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Lot> lotList = new HashSet<>();
@@ -152,6 +153,9 @@ public class Product {
             throw new IllegalArgumentException("Đơn vị tính gốc không được để trống");
         this.baseUnitOfMeasure = baseUnitOfMeasure.trim();
     }
+
+    public String getImage() { return image; }
+    public void setImage(String image) { this.image = (image == null) ? null : image.trim(); }
 
     public Set<UnitOfMeasure> getUnitOfMeasureList() { return unitOfMeasureList; }
     public void setUnitOfMeasureList(Set<UnitOfMeasure> unitOfMeasureList) {
