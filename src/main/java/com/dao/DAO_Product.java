@@ -201,6 +201,19 @@ public class DAO_Product implements IProduct {
             session = sessionFactory.openSession();
             tx = session.beginTransaction();
 
+            // KIỂM TRA BARCODE TRÙNG TRƯỚC KHI INSERT
+            if (s.getBarcode() != null && !s.getBarcode().trim().isEmpty()) {
+                Long count = session.createQuery(
+                    "SELECT COUNT(p) FROM Product p WHERE p.barcode = :barcode", Long.class)
+                    .setParameter("barcode", s.getBarcode().trim())
+                    .uniqueResult();
+
+                if (count != null && count > 0) {
+                    System.err.println("❌ Barcode đã tồn tại: " + s.getBarcode());
+                    throw new IllegalArgumentException("Mã vạch '" + s.getBarcode() + "' đã tồn tại trong hệ thống. Vui lòng sử dụng mã vạch khác.");
+                }
+            }
+
             // Tách Lots và UnitOfMeasures ra khỏi Product trước khi persist
             Set<Lot> lots = new HashSet<>(s.getLotList());
             Set<UnitOfMeasure> uoms = new HashSet<>(s.getUnitOfMeasureList());
@@ -243,18 +256,20 @@ public class DAO_Product implements IProduct {
             String getLastIdSQL = "SELECT TOP 1 id FROM Product ORDER BY creationDate DESC, id DESC";
             String realProductId = (String) session.createNativeQuery(getLastIdSQL).getSingleResult();
 
-            // Cập nhật ID thực vào object Product
-            java.lang.reflect.Field idField = Product.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(s, realProductId);
+            // Load lại Product từ database để có managed entity
+            // Điều này tránh Hibernate cố gắng insert lại Product khi persist UOM
+            Product managedProduct = session.get(Product.class, realProductId);
+            if (managedProduct == null) {
+                throw new IllegalStateException("Không thể load Product vừa insert với ID: " + realProductId);
+            }
 
-            // BƯỚC 2: Insert UnitOfMeasure với Product ID thực
+            // BƯỚC 2: Insert UnitOfMeasure với Product managed entity
             for (UnitOfMeasure uom : uoms) {
                 // Get managed MeasurementName entity from database
                 MeasurementName managedMeasurement = session.get(MeasurementName.class, uom.getMeasurement().getId());
                 if (managedMeasurement != null) {
-                    // Create new UOM with managed entities
-                    UnitOfMeasure uomToAdd = new UnitOfMeasure(s, managedMeasurement, uom.getPrice(), uom.getBaseUnitConversionRate());
+                    // Create new UOM với managed entities (managedProduct thay vì s)
+                    UnitOfMeasure uomToAdd = new UnitOfMeasure(managedProduct, managedMeasurement, uom.getPrice(), uom.getBaseUnitConversionRate());
                     session.persist(uomToAdd);
                 }
             }
@@ -263,8 +278,6 @@ public class DAO_Product implements IProduct {
 
             // BƯỚC 3: Insert Lot với Product ID thực
             for (Lot lot : lots) {
-                lot.setProduct(s);
-
                 // Insert Lot bằng native SQL để trigger tự sinh ID
                 String insertLotSQL = "INSERT INTO Lot (batchNumber, product, quantity, rawPrice, expiryDate, status) " +
                         "VALUES (:batchNumber, :product, :quantity, :rawPrice, :expiryDate, :status)";
@@ -287,12 +300,21 @@ public class DAO_Product implements IProduct {
                     .setParameter("productId", realProductId)
                     .getResultList();
 
+            // Cập nhật ID thực vào object Product gốc (cho UI sử dụng)
+            java.lang.reflect.Field idField = Product.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(s, realProductId);
+
             // Gán lại vào Product object
             s.getLotList().addAll(insertedLots);
             s.getUnitOfMeasureList().addAll(uoms);
 
             tx.commit();
             return true;
+        } catch (IllegalArgumentException e) {
+            if (tx != null) tx.rollback();
+            // Ném lại exception để UI xử lý
+            throw e;
         } catch (Exception e) {
             if (tx != null) tx.rollback();
             e.printStackTrace();

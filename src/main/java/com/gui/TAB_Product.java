@@ -1390,14 +1390,14 @@ public class TAB_Product {
         p.setBaseUnitOfMeasure(cbBaseUom.getSelectedItem().toString().trim());
         p.setImage(currentImagePath);
 
-        // UOM (không bắt buộc). Chỉ tạo nếu có mã ĐV (cột 0) — nếu ID trống, bỏ qua dòng đó.
+        // UOM (không bắt buộc). Chỉ kiểm tra name và rate, BỎ QUA kiểm tra ID vì UOM dùng composite key
         Set<UnitOfMeasure> uoms = new HashSet<>();
         for (int r = 0; r < uomModel.getRowCount(); r++) {
-            String id = valStr(uomModel.getValueAt(r, UOM_COL_ID));
+            // Không cần kiểm tra cột ID nữa - UOM không có ID riêng
             MeasurementName name = (MeasurementName) uomModel.getValueAt(r, UOM_COL_NAME);
             Integer rate = parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE));
-            if (id.isEmpty() || name == null || rate == null) continue; // bỏ dòng thiếu
-            // Note: UnitOfMeasure now uses composite key (product, name) and requires price
+            if (name == null || rate == null) continue; // chỉ bỏ dòng thiếu name hoặc rate
+            // Note: UnitOfMeasure now uses composite key (product, measurementId) and requires price
             // Assuming price is calculated from lot's raw price * conversion rate
             double price = 0.0; // TODO: Calculate actual price based on business logic
             UnitOfMeasure u = new UnitOfMeasure(p, name, price, rate);
