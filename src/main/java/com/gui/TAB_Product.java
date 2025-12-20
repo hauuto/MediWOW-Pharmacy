@@ -68,7 +68,7 @@ public class TAB_Product {
 
     // ==== Toolbar ====
     private JTextField txtSearch;
-    private JComboBox<String> cbCategory, cbForm, cbStatus;
+    private JComboBox<String> cbCategory, cbForm;
     private JButton btnExportExcel;
     private JButton btnSearch;
     private final BUS_Product productBUS = new BUS_Product();
@@ -83,7 +83,7 @@ public class TAB_Product {
     private JLabel lbImage;
     private JButton btnChangeImage;
     private JTextField txtId, txtName, txtShortName, txtBarcode, txtActiveIngredient, txtManufacturer, txtStrength;
-    private JComboBox<String> cbCategoryDetail, cbFormDetail, cbStatusDetail;
+    private JComboBox<String> cbCategoryDetail, cbFormDetail;
     private JComboBox<MeasurementName> cbBaseUom; // Thay đổi từ JTextField thành JComboBox
     private JSpinner spVat;
     private JTextArea txtDescription;
@@ -201,9 +201,8 @@ public class TAB_Product {
 
         cbCategory = new JComboBox<>(new String[]{"Tất cả","Thuốc kê đơn","Thuốc không kê đơn","Sản phẩm chức năng"});
         cbForm     = new JComboBox<>(new String[]{"Tất cả","Viên nén","Viên nang","Thuốc bột","Kẹo ngậm","Si rô","Thuốc nhỏ giọt","Súc miệng"});
-        cbStatus   = new JComboBox<>(new String[]{"Tất cả","Đang kinh doanh","Ngừng kinh doanh"});
 
-        cbCategory.setSelectedIndex(0); cbForm.setSelectedIndex(0); cbStatus.setSelectedIndex(0);
+        cbCategory.setSelectedIndex(0); cbForm.setSelectedIndex(0);
 
         btnExportExcel = new JButton("Xuất Excel");
         styleButton(btnSearch, AppColors.PRIMARY, Color.WHITE);
@@ -212,7 +211,6 @@ public class TAB_Product {
         top.add(new JLabel("Tìm kiếm:"));  top.add(txtSearch);  top.add(btnSearch);
         top.add(new JLabel("Loại:"));      top.add(cbCategory);
         top.add(new JLabel("Dạng:"));      top.add(cbForm);
-        top.add(new JLabel("Trạng thái:"));top.add(cbStatus);
         top.add(btnExportExcel);
 
         btnExportExcel.addActionListener(e -> exportProductsToCSV());
@@ -240,7 +238,7 @@ public class TAB_Product {
 
         // 6 cột: Mã, Tên, Loại, Hoạt chất, Nhà sản xuất, Trạng thái
         productModel = new DefaultTableModel(
-                new String[]{"Mã","Tên","Loại","Hoạt chất","Nhà sản xuất","Trạng thái"}, 0) {
+                new String[]{"Mã","Tên","Loại","Hoạt chất","Nhà sản xuất"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         tblProducts = new JTable(productModel);
@@ -366,14 +364,12 @@ public class TAB_Product {
         txtShortName = new JTextField(); // NEW: tuỳ chọn
         txtBarcode = new JTextField();
         cbCategoryDetail = new JComboBox<>(new String[]{"Thuốc kê đơn","Thuốc không kê đơn","Sản phẩm chức năng"});
-        cbStatusDetail   = new JComboBox<>(new String[]{"Đang kinh doanh","Ngừng kinh doanh"});
 
         right.add(labeled("Mã:", txtId));
         right.add(labeled("Tên:", txtName));
         right.add(labeled("Tên viết tắt (tuỳ chọn):", txtShortName));
         right.add(labeled("Mã vạch:", txtBarcode));
         right.add(labeled("Loại:", cbCategoryDetail));
-        right.add(labeled("Trạng thái:", cbStatusDetail));
 
         row0.add(left); row0.add(right);
 
@@ -606,7 +602,6 @@ public class TAB_Product {
                             productModel.setValueAt(mapCategoryCodeToVN(p.getCategory().toString()), idx, 2);
                             productModel.setValueAt(p.getActiveIngredient(), idx, 3);
                             productModel.setValueAt(p.getManufacturer(), idx, 4);
-                            productModel.setValueAt(mapStatusToVN(cbStatusDetail.getSelectedItem().toString()), idx, 5);
                         }
 
                         JOptionPane.showMessageDialog(pProduct, "Cập nhật sản phẩm thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
@@ -671,7 +666,6 @@ public class TAB_Product {
         if (txtShortName != null) txtShortName.setEditable(editable);
         txtBarcode.setEditable(editable);
         cbCategoryDetail.setEnabled(editable);
-        cbStatusDetail.setEnabled(editable);
 
         cbFormDetail.setEnabled(editable);
         txtActiveIngredient.setEditable(editable);
@@ -723,7 +717,6 @@ public class TAB_Product {
             txtBarcode.setEditable(true);
             cbCategoryDetail.setEnabled(true);
             cbFormDetail.setEnabled(true);
-            cbStatusDetail.setEnabled(true);
             txtActiveIngredient.setEditable(true);
             txtManufacturer.setEditable(true);
             txtStrength.setEditable(true);
@@ -752,7 +745,6 @@ public class TAB_Product {
             spVat.setEnabled(false);
             cbBaseUom.setEnabled(false);
             txtDescription.setEditable(false);
-            cbStatusDetail.setEnabled(true);
 
             // 2) bảng con: chỉ được THÊM dòng mới; dòng cũ read-only,
             //    riêng bảng Lô: cột "Tình trạng" luôn cho phép đổi
@@ -865,7 +857,7 @@ public class TAB_Product {
     private void clearProductDetails() {
         txtId.setText(""); txtName.setText(""); if (txtShortName != null) txtShortName.setText("");
         txtBarcode.setText("");
-        cbCategoryDetail.setSelectedIndex(0); cbStatusDetail.setSelectedIndex(0); cbFormDetail.setSelectedIndex(0);
+        cbCategoryDetail.setSelectedIndex(0);  cbFormDetail.setSelectedIndex(0);
         txtActiveIngredient.setText(""); txtManufacturer.setText(""); txtStrength.setText("");
         cbBaseUom.removeAllItems();                 // ĐVT gốc - clear khi không có đơn vị nào
         txtDescription.setText("");
@@ -976,7 +968,7 @@ public class TAB_Product {
                         }
                     }
                     Object[] rowData = new Object[productModel.getColumnCount()];
-                    for (int c = 0; c < Math.min(6, productModel.getColumnCount()); c++) {
+                    for (int c = 0; c < Math.min(5, productModel.getColumnCount()); c++) {
                         rowData[c] = (c < cols.length) ? cols[c].trim().replaceAll("^\"|\"$", "") : "";
                     }
                     productModel.addRow(rowData);
@@ -1117,7 +1109,6 @@ public class TAB_Product {
         String cat   = valStr(productModel.getValueAt(row, 2));
         String ingr  = valStr(productModel.getValueAt(row, 3));
         String manu  = valStr(productModel.getValueAt(row, 4));
-        String stat  = valStr(productModel.getValueAt(row, 5));
 
         txtId.setText(id);
         txtName.setText(name);
@@ -1125,7 +1116,6 @@ public class TAB_Product {
         txtBarcode.setText("");
 
         selectComboItem(cbCategoryDetail, cat);
-        selectComboItem(cbStatusDetail,   stat);
 
         // Các trường còn lại điền từ hàng/DB khác – set trống/mặc định
         txtActiveIngredient.setText(ingr);
@@ -1228,7 +1218,6 @@ public class TAB_Product {
             if (txtBarcode.getText().trim().isEmpty())     { warnAndFocus("Vui lòng nhập Mã vạch.", txtBarcode); return false; }
             if (cbCategoryDetail.getSelectedItem() == null){ warnAndFocus("Vui lòng chọn Loại sản phẩm.", cbCategoryDetail); return false; }
             if (cbFormDetail.getSelectedItem() == null)    { warnAndFocus("Vui lòng chọn Dạng bào chế.", cbFormDetail); return false; }
-            if (cbStatusDetail.getSelectedItem() == null)  { warnAndFocus("Vui lòng chọn Trạng thái.", cbStatusDetail); return false; }
             if (cbBaseUom.getSelectedItem() == null)        { warnAndFocus("Vui lòng chọn ĐVT gốc.", cbBaseUom); return false; }
 
             // UOM: cho phép trống; nếu có dòng thì validate từng dòng
@@ -1268,7 +1257,6 @@ public class TAB_Product {
         productModel.setValueAt(valStr(String.valueOf(cbCategoryDetail.getSelectedItem())), row, 2);
         productModel.setValueAt(valStr(txtActiveIngredient.getText()), row, 3);
         productModel.setValueAt(valStr(txtManufacturer.getText()), row, 4);
-        productModel.setValueAt(valStr(String.valueOf(cbStatusDetail.getSelectedItem())), row, 5);
     }
 
     // ==== Editing helpers ====
@@ -1302,8 +1290,6 @@ public class TAB_Product {
             String categoryCode = mapCategoryVNToCode(catLabel); // null nếu "Tất cả"
             String formCode     = mapFormVNToCode(formLabel);     // null nếu "Tất cả"
 
-            // Trạng thái (cbStatus) tạm thời không áp dụng (isActive) theo yêu cầu
-
             var products = productBUS.searchProducts(keyword, categoryCode, formCode);
 
             bindProductsToTable(products);
@@ -1326,8 +1312,7 @@ public class TAB_Product {
                     safe(p.getName()),
                     mapCategoryCodeToVN(p.getCategory().toString()),   // hiển thị tiếng Việt
                     safe(p.getActiveIngredient()),
-                    safe(p.getManufacturer()),
-                    "—" // tạm thời không dùng isActive -> hiển thị placeholder
+                    safe(p.getManufacturer())
             });
         }
         // Sau khi bind, bỏ select & clear form chi tiết để tránh hiểu nhầm
@@ -1497,6 +1482,60 @@ public class TAB_Product {
             }
         }
         p.setUnitOfMeasureList(uoms);
+
+        // Build Lot set from table - handle new and updated Lots
+        Set<Lot> lots = new HashSet<>();
+        for (int r = 0; r < lotModel.getRowCount(); r++) {
+            String batchNumber = valStr(lotModel.getValueAt(r, LOT_COL_ID));
+            Integer qty = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY));
+            Double price = parseNonNegativeDouble(lotModel.getValueAt(r, LOT_COL_PRICE));
+            String expStr = valStr(lotModel.getValueAt(r, LOT_COL_HSD));
+            String statusStr = valStr(lotModel.getValueAt(r, LOT_COL_STAT));
+
+            if (batchNumber.isEmpty()) continue; // bỏ dòng thiếu mã lô
+
+            // Parse expiry date
+            LocalDateTime expiry = null;
+            if (!expStr.isEmpty()) {
+                try {
+                    expiry = parseDMYToLocalDate(expStr).atStartOfDay();
+                } catch (Exception e) {
+                    continue; // bỏ qua dòng có ngày không hợp lệ
+                }
+            }
+
+            LotStatus status = mapLotStatusVN(statusStr);
+
+            // Check if this Lot already exists for this product (by batchNumber)
+            Lot existingLot = null;
+            if (p.getLotList() != null) {
+                for (Lot l : p.getLotList()) {
+                    if (l.getBatchNumber() != null && l.getBatchNumber().equals(batchNumber)) {
+                        existingLot = l;
+                        break;
+                    }
+                }
+            }
+
+            if (existingLot != null) {
+                // Update existing Lot
+                existingLot.setQuantity(qty != null ? qty : 0);
+                existingLot.setRawPrice(price != null ? price : 0.0);
+                if (expiry != null) existingLot.setExpiryDate(expiry);
+                existingLot.setStatus(status);
+                lots.add(existingLot);
+            } else {
+                // Create new Lot
+                String lotId = UUID.randomUUID().toString();
+                Lot newLot = new Lot(lotId, batchNumber, p,
+                    qty != null ? qty : 0,
+                    price != null ? price : 0.0,
+                    expiry,
+                    status);
+                lots.add(newLot);
+            }
+        }
+        p.setLotList(lots);
 
         return p;
     }

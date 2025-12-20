@@ -220,11 +220,12 @@ public class DAO_Product implements IProduct {
             session = sessionFactory.openSession();
             tx = session.beginTransaction();
 
-            // Fetch the existing product with its UOMs
+            // Fetch the existing product with its UOMs and Lots
             Product existing = session.createQuery(
                     "SELECT DISTINCT p FROM Product p " +
                             "LEFT JOIN FETCH p.unitOfMeasureList u " +
                             "LEFT JOIN FETCH u.measurement " +
+                            "LEFT JOIN FETCH p.lotList l " +
                             "WHERE p.id = :id",
                     Product.class)
                     .setParameter("id", p.getId())
@@ -305,6 +306,71 @@ public class DAO_Product implements IProduct {
                 }
             }
 
+            // Handle Lot updates
+            if (p.getLotList() != null) {
+                // Find Lots that are no longer in the new list
+                Set<Lot> toRemoveLots = new HashSet<>();
+                for (Lot existingLot : existing.getLotList()) {
+                    boolean found = false;
+                    for (Lot newLot : p.getLotList()) {
+                        if (newLot.getBatchNumber() != null &&
+                            existingLot.getBatchNumber() != null &&
+                            newLot.getBatchNumber().equals(existingLot.getBatchNumber())) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        // Check if this Lot is referenced by LotAllocation
+                        boolean isReferenced = isLotReferenced(session, existingLot);
+                        if (!isReferenced) {
+                            toRemoveLots.add(existingLot);
+                        }
+                        // If referenced, we keep it in the list (don't delete)
+                    }
+                }
+
+                // Remove orphaned Lots that are not referenced
+                for (Lot lot : toRemoveLots) {
+                    existing.getLotList().remove(lot);
+                    session.remove(lot);
+                }
+
+                // Add or update Lots
+                for (Lot newLot : p.getLotList()) {
+                    if (newLot.getBatchNumber() == null || newLot.getBatchNumber().isEmpty()) continue;
+
+                    Lot existingLot = null;
+                    for (Lot l : existing.getLotList()) {
+                        if (l.getBatchNumber() != null &&
+                            l.getBatchNumber().equals(newLot.getBatchNumber())) {
+                            existingLot = l;
+                            break;
+                        }
+                    }
+
+                    if (existingLot != null) {
+                        // Update existing Lot
+                        existingLot.setQuantity(newLot.getQuantity());
+                        existingLot.setRawPrice(newLot.getRawPrice());
+                        existingLot.setExpiryDate(newLot.getExpiryDate());
+                        existingLot.setStatus(newLot.getStatus());
+                    } else {
+                        // Add new Lot
+                        Lot lotToAdd = new Lot(
+                            newLot.getId(),
+                            newLot.getBatchNumber(),
+                            existing,
+                            newLot.getQuantity(),
+                            newLot.getRawPrice(),
+                            newLot.getExpiryDate(),
+                            newLot.getStatus()
+                        );
+                        existing.getLotList().add(lotToAdd);
+                    }
+                }
+            }
+
             session.merge(existing);
             tx.commit();
             return true;
@@ -368,6 +434,25 @@ public class DAO_Product implements IProduct {
                 .getSingleResult();
 
         return invoiceLineCount > 0;
+    }
+
+    /**
+     * Check if a Lot is referenced by LotAllocation
+     */
+    private boolean isLotReferenced(Session session, Lot lot) {
+        if (lot == null || lot.getId() == null) {
+            return false;
+        }
+
+        // Check LotAllocation references
+        Long allocationCount = session.createQuery(
+                "SELECT COUNT(la) FROM LotAllocation la " +
+                "WHERE la.lot.id = :lotId",
+                Long.class)
+                .setParameter("lotId", lot.getId())
+                .getSingleResult();
+
+        return allocationCount > 0;
     }
 
     @Override
