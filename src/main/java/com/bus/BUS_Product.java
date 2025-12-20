@@ -3,6 +3,7 @@ package com.bus;
 
 import com.dao.DAO_Product;
 import com.entities.Lot;
+import com.entities.MeasurementName;
 import com.entities.Product;
 import com.entities.UnitOfMeasure;
 import com.interfaces.IProduct;
@@ -159,5 +160,19 @@ public class BUS_Product implements IProduct {
 
     public Product getProductByIdWithChildren(String id) {
         return (id == null || id.isBlank()) ? null : dao.getProductById(id);
+    }
+
+    /**
+     * Get all MeasurementName entities from database
+     */
+    public List<MeasurementName> getAllMeasurementNames() {
+        return dao.getAllMeasurementNames();
+    }
+
+    /**
+     * Get or create MeasurementName by name
+     */
+    public MeasurementName getOrCreateMeasurementName(String name) {
+        return dao.getOrCreateMeasurementName(name);
     }
 }

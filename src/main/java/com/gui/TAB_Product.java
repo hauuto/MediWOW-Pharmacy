@@ -7,15 +7,22 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.filechooser.FileSystemView;
 import javax.swing.AbstractCellEditor;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 
 import java.awt.*;
 import java.awt.event.ItemEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -75,8 +82,9 @@ public class TAB_Product {
     // ==== Chi tiết phải ====
     private JLabel lbImage;
     private JButton btnChangeImage;
-    private JTextField txtId, txtName, txtShortName, txtBarcode, txtActiveIngredient, txtManufacturer, txtStrength, txtBaseUom;
+    private JTextField txtId, txtName, txtShortName, txtBarcode, txtActiveIngredient, txtManufacturer, txtStrength;
     private JComboBox<String> cbCategoryDetail, cbFormDetail, cbStatusDetail;
+    private JComboBox<MeasurementName> cbBaseUom; // Thay đổi từ JTextField thành JComboBox
     private JSpinner spVat;
     private JTextArea txtDescription;
 
@@ -104,9 +112,71 @@ public class TAB_Product {
 
     private static final String DEFAULT_IMG_PATH = "\\src\\main\\resources\\images\\products\\etc\\etc1.jpg";
 
+    // ==== Danh sách MeasurementName từ DB ====
+    private List<MeasurementName> allMeasurementNames = new ArrayList<>();
+
     public TAB_Product() {
+        loadMeasurementNames(); // Load danh sách MeasurementName từ DB
         buildUI();
+        setupUomTableListener(); // Lắng nghe thay đổi bảng UOM để cập nhật cbBaseUom
         setEditMode(false);
+    }
+
+    // Load danh sách MeasurementName từ database
+    private void loadMeasurementNames() {
+        allMeasurementNames = productBUS.getAllMeasurementNames();
+        if (allMeasurementNames == null) {
+            allMeasurementNames = new ArrayList<>();
+        }
+    }
+
+    // Lắng nghe thay đổi bảng UOM để cập nhật cbBaseUom
+    private void setupUomTableListener() {
+        uomModel.addTableModelListener(e -> {
+            if (e.getType() == TableModelEvent.INSERT ||
+                e.getType() == TableModelEvent.DELETE ||
+                e.getType() == TableModelEvent.UPDATE) {
+                updateBaseUomComboBox();
+            }
+        });
+    }
+
+    // Cập nhật cbBaseUom dựa trên các đơn vị đã thêm trong bảng UOM
+    private void updateBaseUomComboBox() {
+        Object currentSelection = cbBaseUom.getSelectedItem();
+        cbBaseUom.removeAllItems();
+
+        // Tìm đơn vị có tỉ lệ quy đổi lớn nhất
+        MeasurementName maxRateUnit = null;
+        int maxRate = 0;
+
+        for (int r = 0; r < uomModel.getRowCount(); r++) {
+            Object nameObj = uomModel.getValueAt(r, UOM_COL_NAME);
+            Object rateObj = uomModel.getValueAt(r, UOM_COL_RATE);
+
+            if (nameObj instanceof MeasurementName mn) {
+                cbBaseUom.addItem(mn);
+
+                Integer rate = parsePositiveInt(rateObj);
+                if (rate != null && rate > maxRate) {
+                    maxRate = rate;
+                    maxRateUnit = mn;
+                }
+            }
+        }
+
+        // Chọn đơn vị có quy đổi lớn nhất làm mặc định
+        if (maxRateUnit != null) {
+            cbBaseUom.setSelectedItem(maxRateUnit);
+        } else if (currentSelection != null && cbBaseUom.getItemCount() > 0) {
+            // Giữ lựa chọn cũ nếu còn trong danh sách
+            for (int i = 0; i < cbBaseUom.getItemCount(); i++) {
+                if (cbBaseUom.getItemAt(i).equals(currentSelection)) {
+                    cbBaseUom.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
     }
 
     // ===================== UI =====================
@@ -325,14 +395,14 @@ public class TAB_Product {
         txtManufacturer = new JTextField();
         txtStrength = new JTextField();
         spVat = new JSpinner(new SpinnerNumberModel(5.0, 0.0, 100.0, 0.1));
-        txtBaseUom = new JTextField();
+        cbBaseUom = new JComboBox<>(); // Thay đổi từ JTextField thành JComboBox
 
         grid.add(labeled("Dạng:", cbFormDetail));
         grid.add(labeled("Hoạt chất:", txtActiveIngredient));
         grid.add(labeled("Nhà sản xuất:", txtManufacturer));
         grid.add(labeled("Hàm lượng:", txtStrength));
         grid.add(labeled("VAT (%):", spVat));
-        grid.add(labeled("ĐVT gốc:", txtBaseUom));
+        grid.add(labeled("ĐVT gốc:", cbBaseUom));
 
         txtDescription = new JTextArea(3, 20);
         txtDescription.setLineWrap(true);
@@ -361,6 +431,10 @@ public class TAB_Product {
         tblUom = new JTable(uomModel);
         styleTable(tblUom);
         capVisibleRows(tblUom, 5);
+
+        // ComboBox editor có tìm kiếm cho cột "Tên ĐV"
+        tblUom.getColumnModel().getColumn(UOM_COL_NAME).setCellEditor(new SearchableMeasurementNameEditor());
+        tblUom.getColumnModel().getColumn(UOM_COL_NAME).setCellRenderer(new MeasurementNameRenderer());
 
         // Spinner cho "Quy đổi về ĐV gốc"
         tblUom.getColumnModel().getColumn(UOM_COL_RATE).setCellEditor(new IntSpinnerEditor(1, Integer.MAX_VALUE, 1));
@@ -576,7 +650,7 @@ public class TAB_Product {
         txtManufacturer.setEditable(editable);
         txtStrength.setEditable(editable);
         spVat.setEnabled(editable);
-        txtBaseUom.setEditable(editable);
+        cbBaseUom.setEnabled(editable);
         txtDescription.setEditable(editable);
 
         uomModel.setEditable(editable);
@@ -626,7 +700,7 @@ public class TAB_Product {
             txtManufacturer.setEditable(true);
             txtStrength.setEditable(true);
             spVat.setEnabled(true);
-            txtBaseUom.setEditable(true);
+            cbBaseUom.setEnabled(true);
             txtDescription.setEditable(true);
 
             uomModel.setEditable(true); uomModel.lockRowsBefore(0); uomModel.setAlwaysEditableColumns();
@@ -648,7 +722,7 @@ public class TAB_Product {
             txtManufacturer.setEditable(false);
             txtStrength.setEditable(false);
             spVat.setEnabled(false);
-            txtBaseUom.setEditable(false);
+            cbBaseUom.setEnabled(false);
             txtDescription.setEditable(false);
             cbStatusDetail.setEnabled(true);
 
@@ -715,7 +789,7 @@ public class TAB_Product {
         if (model instanceof ToggleEditableTableModel tm) {
             int start = tm.getEditableRowStart();
             if (isEditMode && !isAddingNew && row < start) {
-                warn("Chỉ được xóa các dòng mới thêm trong phiên chỉnh sửa.");
+                warn("Chỉ được xóa các dòng mới thêm trong phiên sửa.");
                 return;
             }
         }
@@ -765,7 +839,7 @@ public class TAB_Product {
         txtBarcode.setText("");
         cbCategoryDetail.setSelectedIndex(0); cbStatusDetail.setSelectedIndex(0); cbFormDetail.setSelectedIndex(0);
         txtActiveIngredient.setText(""); txtManufacturer.setText(""); txtStrength.setText("");
-        txtBaseUom.setText("viên");                 // ĐVT gốc mặc định
+        cbBaseUom.removeAllItems();                 // ĐVT gốc - clear khi không có đơn vị nào
         txtDescription.setText("");
         uomModel.setRowCount(0); lotModel.setRowCount(0);
         applyDefaultVatByCategory();                // VAT theo Loại
@@ -1032,7 +1106,7 @@ public class TAB_Product {
         applyDefaultVatByCategory();
 
         txtStrength.setText("");
-        txtBaseUom.setText("");
+        cbBaseUom.setSelectedIndex(0);
         txtDescription.setText("");
 
         uomModel.setRowCount(0);
@@ -1127,7 +1201,7 @@ public class TAB_Product {
             if (cbCategoryDetail.getSelectedItem() == null){ warnAndFocus("Vui lòng chọn Loại sản phẩm.", cbCategoryDetail); return false; }
             if (cbFormDetail.getSelectedItem() == null)    { warnAndFocus("Vui lòng chọn Dạng bào chế.", cbFormDetail); return false; }
             if (cbStatusDetail.getSelectedItem() == null)  { warnAndFocus("Vui lòng chọn Trạng thái.", cbStatusDetail); return false; }
-            if (txtBaseUom.getText().trim().isEmpty())     { warnAndFocus("Vui lòng nhập ĐVT gốc.", txtBaseUom); return false; }
+            if (cbBaseUom.getSelectedItem() == null)        { warnAndFocus("Vui lòng chọn ĐVT gốc.", cbBaseUom); return false; }
 
             // UOM: cho phép trống; nếu có dòng thì validate từng dòng
             if (!validateUomRows(0)) return false;
@@ -1287,7 +1361,7 @@ public class TAB_Product {
         p.setStrength(txtStrength.getText().trim());
         p.setDescription(txtDescription.getText().trim());
         p.setVat(((Number) spVat.getValue()).doubleValue());
-        p.setBaseUnitOfMeasure(txtBaseUom.getText().trim());
+        p.setBaseUnitOfMeasure(cbBaseUom.getSelectedItem().toString().trim());
 
         // UOM (không bắt buộc). Chỉ tạo nếu có mã ĐV (cột 0) — nếu ID trống, bỏ qua dòng đó.
         Set<UnitOfMeasure> uoms = new HashSet<>();
@@ -1373,8 +1447,7 @@ public class TAB_Product {
         txtManufacturer.setText(safe(p.getManufacturer()));
         txtStrength.setText(safe(p.getStrength()));
         txtDescription.setText(safe(p.getDescription()));
-        txtBaseUom.setText(safe(p.getBaseUnitOfMeasure()));
-        spVat.setValue(p.getVat());
+        cbBaseUom.setSelectedItem(safe(p.getBaseUnitOfMeasure()));
 
         // Enum -> nhãn/combobox
         if (p.getCategory() != null)
@@ -1395,7 +1468,7 @@ public class TAB_Product {
         if (p.getUnitOfMeasureList() != null) {
             for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
                 uomModel.addRow(new Object[]{
-                        safe(u.getMeasurement().getName()), // UnitOfMeasure now uses composite key, use name as ID
+                        u.getMeasurement().getId(), // UnitOfMeasure now uses composite key, use name as ID
                         safe(u.getMeasurement().getName()),
                         u.getBaseUnitConversionRate()
                 });
@@ -1465,6 +1538,254 @@ public class TAB_Product {
             return;
         }
         bindProductFromEntity(full);
+    }
+
+    // ==== Renderer cho cột MeasurementName ====
+    private class MeasurementNameRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            String displayText = "";
+            if (value instanceof MeasurementName mn) {
+                displayText = mn.getName();
+            } else if (value != null) {
+                displayText = value.toString();
+            }
+            return super.getTableCellRendererComponent(table, displayText, isSelected, hasFocus, row, column);
+        }
+    }
+
+    // ==== Editor ComboBox tìm kiếm cho cột Tên ĐV (không popup, không cho trùng) ====
+    private class SearchableMeasurementNameEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JComboBox<MeasurementName> comboBox;
+        private final DefaultComboBoxModel<MeasurementName> comboModel;
+        private int editingRow = -1;
+        private boolean isUpdating = false; // Flag để tránh vòng lặp
+
+        public SearchableMeasurementNameEditor() {
+            comboModel = new DefaultComboBoxModel<>();
+            comboBox = new JComboBox<>(comboModel);
+            comboBox.setEditable(true);
+            comboBox.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    String text = "";
+                    if (value instanceof MeasurementName mn) {
+                        text = mn.getName();
+                    } else if (value != null) {
+                        text = value.toString();
+                    }
+                    return super.getListCellRendererComponent(list, text, index, isSelected, cellHasFocus);
+                }
+            });
+
+            JTextField editorField = (JTextField) comboBox.getEditor().getEditorComponent();
+
+            // Sử dụng KeyListener thay vì DocumentListener để tránh vòng lặp
+            editorField.addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyReleased(KeyEvent e) {
+                    if (isUpdating) return;
+
+                    int keyCode = e.getKeyCode();
+                    // Bỏ qua các phím điều hướng
+                    if (keyCode == KeyEvent.VK_ENTER || keyCode == KeyEvent.VK_ESCAPE ||
+                        keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN ||
+                        keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_RIGHT) {
+                        return;
+                    }
+
+                    String text = editorField.getText().toLowerCase().trim();
+                    filterAndUpdateComboBox(text, editorField);
+                }
+
+                @Override
+                public void keyPressed(KeyEvent e) {
+                    if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                        selectBestMatch(editorField.getText());
+                        stopCellEditing();
+                    } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                        cancelCellEditing();
+                    } else if (e.getKeyCode() == KeyEvent.VK_DOWN && comboBox.isPopupVisible()) {
+                        int idx = comboBox.getSelectedIndex();
+                        if (idx < comboModel.getSize() - 1) {
+                            comboBox.setSelectedIndex(idx + 1);
+                        }
+                        e.consume();
+                    } else if (e.getKeyCode() == KeyEvent.VK_UP && comboBox.isPopupVisible()) {
+                        int idx = comboBox.getSelectedIndex();
+                        if (idx > 0) {
+                            comboBox.setSelectedIndex(idx - 1);
+                        }
+                        e.consume();
+                    }
+                }
+            });
+        }
+
+        private void filterAndUpdateComboBox(String filterText, JTextField editorField) {
+            isUpdating = true;
+            try {
+                int caretPos = editorField.getCaretPosition();
+                Set<String> usedNames = getUsedMeasurementNames(editingRow);
+
+                comboModel.removeAllElements();
+
+                for (MeasurementName mn : allMeasurementNames) {
+                    // Loại bỏ các tên đã được sử dụng ở hàng khác (so sánh bằng tên)
+                    if (usedNames.contains(mn.getName().toLowerCase())) continue;
+
+                    if (filterText.isEmpty() || mn.getName().toLowerCase().contains(filterText)) {
+                        comboModel.addElement(mn);
+                    }
+                }
+
+                // Khôi phục text và vị trí con trỏ
+                editorField.setText(filterText);
+                editorField.setCaretPosition(Math.min(caretPos, filterText.length()));
+
+                // Hiển thị popup nếu có kết quả
+                if (comboModel.getSize() > 0 && !filterText.isEmpty()) {
+                    comboBox.showPopup();
+                } else {
+                    comboBox.hidePopup();
+                }
+            } finally {
+                isUpdating = false;
+            }
+        }
+
+        private void selectBestMatch(String text) {
+            if (text == null || text.trim().isEmpty()) return;
+            String lower = text.toLowerCase().trim();
+
+            // Tìm exact match trước
+            for (int i = 0; i < comboModel.getSize(); i++) {
+                MeasurementName mn = comboModel.getElementAt(i);
+                if (mn.getName().equalsIgnoreCase(lower)) {
+                    comboBox.setSelectedIndex(i);
+                    return;
+                }
+            }
+
+            // Tìm starts with
+            for (int i = 0; i < comboModel.getSize(); i++) {
+                MeasurementName mn = comboModel.getElementAt(i);
+                if (mn.getName().toLowerCase().startsWith(lower)) {
+                    comboBox.setSelectedIndex(i);
+                    return;
+                }
+            }
+
+            // Tìm contains
+            for (int i = 0; i < comboModel.getSize(); i++) {
+                MeasurementName mn = comboModel.getElementAt(i);
+                if (mn.getName().toLowerCase().contains(lower)) {
+                    comboBox.setSelectedIndex(i);
+                    return;
+                }
+            }
+        }
+
+        // Lấy danh sách TÊN các MeasurementName đã được sử dụng ở các hàng khác
+        private Set<String> getUsedMeasurementNames(int excludeRow) {
+            Set<String> usedNames = new HashSet<>();
+            for (int r = 0; r < uomModel.getRowCount(); r++) {
+                if (r == excludeRow) continue;
+                Object val = uomModel.getValueAt(r, UOM_COL_NAME);
+                if (val instanceof MeasurementName mn) {
+                    usedNames.add(mn.getName().toLowerCase());
+                } else if (val != null && !val.toString().trim().isEmpty()) {
+                    // Trường hợp giá trị là String (khi load từ DB)
+                    usedNames.add(val.toString().toLowerCase());
+                }
+            }
+            return usedNames;
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+            editingRow = row;
+            isUpdating = true;
+
+            try {
+                Set<String> usedNames = getUsedMeasurementNames(row);
+
+                comboModel.removeAllElements();
+                for (MeasurementName mn : allMeasurementNames) {
+                    // Loại bỏ các tên đã được sử dụng ở hàng khác
+                    if (!usedNames.contains(mn.getName().toLowerCase())) {
+                        comboModel.addElement(mn);
+                    }
+                }
+
+                JTextField editorField = (JTextField) comboBox.getEditor().getEditorComponent();
+                if (value instanceof MeasurementName mn) {
+                    comboBox.setSelectedItem(mn);
+                    editorField.setText(mn.getName());
+                } else if (value != null && !value.toString().trim().isEmpty()) {
+                    // Nếu là String, tìm MeasurementName tương ứng
+                    String valStr = value.toString();
+                    editorField.setText(valStr);
+                    for (int i = 0; i < comboModel.getSize(); i++) {
+                        if (comboModel.getElementAt(i).getName().equalsIgnoreCase(valStr)) {
+                            comboBox.setSelectedIndex(i);
+                            break;
+                        }
+                    }
+                } else {
+                    comboBox.setSelectedIndex(-1);
+                    editorField.setText("");
+                }
+
+                comboBox.hidePopup();
+            } finally {
+                isUpdating = false;
+            }
+
+            return comboBox;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            Object selected = comboBox.getSelectedItem();
+            if (selected instanceof MeasurementName) {
+                return selected;
+            }
+
+            // Nếu người dùng gõ text, tìm MeasurementName khớp
+            String text = ((JTextField) comboBox.getEditor().getEditorComponent()).getText().trim();
+
+            // Kiểm tra xem tên này đã được sử dụng chưa
+            Set<String> usedNames = getUsedMeasurementNames(editingRow);
+
+            for (int i = 0; i < comboModel.getSize(); i++) {
+                MeasurementName mn = comboModel.getElementAt(i);
+                if (mn.getName().equalsIgnoreCase(text)) {
+                    // Nếu tên này đã được sử dụng ở hàng khác, không cho phép
+                    if (usedNames.contains(mn.getName().toLowerCase())) {
+                        return null;
+                    }
+                    return mn;
+                }
+            }
+
+            // Tìm starts with
+            for (int i = 0; i < comboModel.getSize(); i++) {
+                MeasurementName mn = comboModel.getElementAt(i);
+                if (mn.getName().toLowerCase().startsWith(text.toLowerCase())) {
+                    if (usedNames.contains(mn.getName().toLowerCase())) {
+                        continue;
+                    }
+                    return mn;
+                }
+            }
+
+            // Không tìm thấy, trả về item đầu tiên nếu có
+            if (comboModel.getSize() > 0) {
+                return comboModel.getElementAt(0);
+            }
+            return null;
+        }
     }
 
 }

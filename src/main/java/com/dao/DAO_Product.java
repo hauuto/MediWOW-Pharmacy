@@ -1,6 +1,7 @@
 package com.dao;
 
 import com.entities.Lot;
+import com.entities.MeasurementName;
 import com.entities.Product;
 import com.entities.UnitOfMeasure;
 import com.interfaces.IProduct;
@@ -306,6 +307,53 @@ public class DAO_Product implements IProduct {
         } catch (Exception e) {
             e.printStackTrace();
             return false;
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+
+    /**
+     * Get all MeasurementName entities from database
+     */
+    public List<MeasurementName> getAllMeasurementNames() {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            return session.createQuery("FROM MeasurementName m ORDER BY m.name", MeasurementName.class).list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new java.util.ArrayList<>();
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+
+    /**
+     * Get or create MeasurementName by name
+     */
+    public MeasurementName getOrCreateMeasurementName(String name) {
+        if (name == null || name.trim().isEmpty()) return null;
+        Session session = null;
+        Transaction tx = null;
+        try {
+            session = sessionFactory.openSession();
+            // Try to find existing
+            MeasurementName existing = session.createQuery(
+                    "FROM MeasurementName m WHERE lower(m.name) = :n", MeasurementName.class)
+                    .setParameter("n", name.trim().toLowerCase())
+                    .uniqueResult();
+            if (existing != null) return existing;
+
+            // Create new
+            tx = session.beginTransaction();
+            MeasurementName newName = new MeasurementName(name.trim());
+            session.persist(newName);
+            tx.commit();
+            return newName;
+        } catch (Exception e) {
+            if (tx != null) tx.rollback();
+            e.printStackTrace();
+            return null;
         } finally {
             if (session != null) session.close();
         }
