@@ -10,7 +10,9 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 public class DAO_Shift implements IShift {
@@ -219,6 +221,33 @@ public class DAO_Shift implements IShift {
             if (session != null && session.isOpen()) {
                 session.close();
             }
+        }
+    }
+
+    /**
+     * List shifts opened within a specific day (00:00..23:59:59.999).
+     * Fetches staff and closedBy to avoid lazy-loading issues in UI.
+     */
+    public List<Shift> listShiftsOpenedOn(LocalDate day) {
+        if (day == null) return List.of();
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            LocalDateTime from = day.atStartOfDay();
+            LocalDateTime to = day.atTime(LocalTime.MAX);
+
+            return session.createQuery(
+                    "SELECT DISTINCT s FROM Shift s " +
+                        "LEFT JOIN FETCH s.staff " +
+                        "LEFT JOIN FETCH s.closedBy " +
+                        "WHERE s.startTime >= :from AND s.startTime <= :to " +
+                        "ORDER BY s.startTime DESC",
+                    Shift.class)
+                .setParameter("from", from)
+                .setParameter("to", to)
+                .list();
+        } finally {
+            if (session != null && session.isOpen()) session.close();
         }
     }
 
