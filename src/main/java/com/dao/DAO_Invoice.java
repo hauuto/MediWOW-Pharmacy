@@ -7,6 +7,7 @@ import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -459,4 +460,30 @@ public class DAO_Invoice implements IInvoice {
             }
         }
     }
+
+    /**
+     * Search top 5 invoices by id or invoice number (contains).
+     */
+    public List<Invoice> searchTop5ById(String keyword) {
+        if (keyword == null) return java.util.Collections.emptyList();
+        String kw = keyword.trim();
+        if (kw.isEmpty()) return java.util.Collections.emptyList();
+
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            String jpql = "FROM Invoice i WHERE lower(i.id) LIKE :kw OR lower(i.id) LIKE :shortId ORDER BY i.creationDate DESC";
+            Query<Invoice> q = session.createQuery(jpql, Invoice.class);
+            q.setParameter("kw", "%" + kw.toLowerCase() + "%");
+            q.setParameter("shortId", "%" + kw.toLowerCase() + "%");
+            q.setMaxResults(5);
+            return q.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
+    }
+
 }
