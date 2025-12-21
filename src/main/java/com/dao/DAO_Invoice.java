@@ -26,6 +26,7 @@ public class DAO_Invoice implements IInvoice {
         Transaction transaction = null;
         Session session = null;
         String generatedInvoiceId = null;
+
         try {
             session = sessionFactory.openSession();
             transaction = session.beginTransaction();
@@ -41,27 +42,32 @@ public class DAO_Invoice implements IInvoice {
             // Store invoice lines temporarily
             List<InvoiceLine> invoiceLines = new ArrayList<>(invoice.getInvoiceLineList());
 
-            // Use native SQL to insert Invoice (trigger will generate ID)
+            // Insert Invoice - trigger generates ID
             session.createNativeQuery(
-                "INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift) " +
-                "VALUES (:id, :type, GETDATE(), :creator, :prescribedCustomer, :prescriptionCode, :referencedInvoice, :promotion, :paymentMethod, :notes, :shift)")
-                .setParameter("id", "TEMP") // Trigger will replace this
-                .setParameter("type", invoice.getType().name())
-                .setParameter("creator", invoice.getCreator().getId())
-                .setParameter("prescribedCustomer", invoice.getPrescribedCustomer() != null ? invoice.getPrescribedCustomer().getId() : null)
-                .setParameter("prescriptionCode", invoice.getPrescriptionCode())
-                .setParameter("referencedInvoice", invoice.getReferencedInvoice() != null ? invoice.getReferencedInvoice().getId() : null)
-                .setParameter("promotion", invoice.getPromotion() != null ? invoice.getPromotion().getId() : null)
-                .setParameter("paymentMethod", invoice.getPaymentMethod().name())
-                .setParameter("notes", invoice.getNotes())
-                .setParameter("shift", invoice.getShift() != null ? invoice.getShift().getId() : null)
-                .executeUpdate();
+                            "INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift) " +
+                                    "VALUES (:id, :type, GETDATE(), :creator, :prescribedCustomer, :prescriptionCode, :referencedInvoice, :promotion, :paymentMethod, :notes, :shift)")
+                    .setParameter("id", null)
+                    .setParameter("type", invoice.getType().name())
+                    .setParameter("creator", invoice.getCreator().getId())
+                    .setParameter("prescribedCustomer",
+                            invoice.getPrescribedCustomer() != null ? invoice.getPrescribedCustomer().getId() : null)
+                    .setParameter("prescriptionCode", invoice.getPrescriptionCode())
+                    .setParameter("referencedInvoice",
+                            invoice.getReferencedInvoice() != null ? invoice.getReferencedInvoice().getId() : null)
+                    .setParameter("promotion",
+                            invoice.getPromotion() != null ? invoice.getPromotion().getId() : null)
+                    .setParameter("paymentMethod", invoice.getPaymentMethod().name())
+                    .setParameter("notes", invoice.getNotes())
+                    .setParameter("shift",
+                            invoice.getShift() != null ? invoice.getShift().getId() : null)
+                    .executeUpdate();
 
-            // Retrieve the generated Invoice ID from database
+            // Retrieve generated Invoice ID
             generatedInvoiceId = session.createNativeQuery(
-                "SELECT TOP 1 id FROM Invoice WHERE creator = :creatorId ORDER BY creationDate DESC", String.class)
-                .setParameter("creatorId", invoice.getCreator().getId())
-                .uniqueResult();
+                            "SELECT TOP 1 id FROM Invoice WHERE creator = :creatorId ORDER BY creationDate DESC",
+                            String.class)
+                    .setParameter("creatorId", invoice.getCreator().getId())
+                    .uniqueResult();
 
             System.out.println("Generated Invoice ID from trigger: " + generatedInvoiceId);
 
@@ -69,41 +75,43 @@ public class DAO_Invoice implements IInvoice {
                 throw new RuntimeException("Could not retrieve generated Invoice ID");
             }
 
-            // Now save invoice lines using native SQL
+            // Insert InvoiceLines
             for (InvoiceLine line : invoiceLines) {
                 session.createNativeQuery(
-                    "INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType) " +
-                    "VALUES (:id, :invoice, :product, :unitOfMeasure, :quantity, :unitPrice, :lineType)")
-                    .setParameter("id", "TEMP") // Trigger will replace this
-                    .setParameter("invoice", generatedInvoiceId)
-                    .setParameter("product", line.getProduct().getId())
-                    .setParameter("unitOfMeasure", line.getUnitOfMeasure())
-                    .setParameter("quantity", line.getQuantity())
-                    .setParameter("unitPrice", line.getUnitPrice())
-                    .setParameter("lineType", line.getLineType().name())
-                    .executeUpdate();
+                                "INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType) " +
+                                        "VALUES (:id, :invoice, :product, :unitOfMeasure, :quantity, :unitPrice, :lineType)")
+                        .setParameter("id", null)
+                        .setParameter("invoice", generatedInvoiceId)
+                        .setParameter("product", line.getProduct().getId())
+                        .setParameter("unitOfMeasure", line.getUnitOfMeasure().getId())
+                        .setParameter("quantity", line.getQuantity())
+                        .setParameter("unitPrice", line.getUnitPrice())
+                        .setParameter("lineType", line.getLineType().name())
+                        .executeUpdate();
 
-                // Retrieve the generated InvoiceLine ID
+                // Retrieve generated InvoiceLine ID
                 String generatedInvoiceLineId = session.createNativeQuery(
-                    "SELECT TOP 1 id FROM InvoiceLine WHERE invoice = :invoiceId AND product = :productId AND unitOfMeasure = :uom ORDER BY id DESC", String.class)
-                    .setParameter("invoiceId", generatedInvoiceId)
-                    .setParameter("productId", line.getProduct().getId())
-                    .setParameter("uom", line.getUnitOfMeasure())
-                    .uniqueResult();
+                                "SELECT TOP 1 id FROM InvoiceLine WHERE invoice = :invoiceId AND product = :productId AND unitOfMeasure = :uom ORDER BY id DESC",
+                                String.class)
+                        .setParameter("invoiceId", generatedInvoiceId)
+                        .setParameter("productId", line.getProduct().getId())
+                        .setParameter("uom", line.getUnitOfMeasure().getId())
+                        .uniqueResult();
 
-                // Save LotAllocations for this invoice line
+                // Save Lot Allocations
                 if (generatedInvoiceLineId != null && line.getLotAllocations() != null) {
                     for (com.entities.LotAllocation allocation : line.getLotAllocations()) {
                         session.createNativeQuery(
-                            "INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) " +
-                            "VALUES (:id, :invoiceLine, :lot, :quantity)")
-                            .setParameter("id", allocation.getId())
-                            .setParameter("invoiceLine", generatedInvoiceLineId)
-                            .setParameter("lot", allocation.getLot().getId())
-                            .setParameter("quantity", allocation.getQuantity())
-                            .executeUpdate();
+                                        "INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) " +
+                                                "VALUES (:id, :invoiceLine, :lot, :quantity)")
+                                .setParameter("id", allocation.getId())
+                                .setParameter("invoiceLine", generatedInvoiceLineId)
+                                .setParameter("lot", allocation.getLot().getId())
+                                .setParameter("quantity", allocation.getQuantity())
+                                .executeUpdate();
                     }
-                    System.out.println("Saved " + line.getLotAllocations().size() + " LotAllocations for InvoiceLine: " + generatedInvoiceLineId);
+                    System.out.println("Saved " + line.getLotAllocations().size() +
+                            " LotAllocations for InvoiceLine: " + generatedInvoiceLineId);
                 }
             }
 
@@ -131,6 +139,7 @@ public class DAO_Invoice implements IInvoice {
             }
         }
     }
+
 
     @Override
     public Invoice getInvoice(String id) {
@@ -200,7 +209,7 @@ public class DAO_Invoice implements IInvoice {
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
                     "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotList " +
+                    "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice.id = :id",
                     InvoiceLine.class
                 ).setParameter("id", id).list();
@@ -299,7 +308,7 @@ public class DAO_Invoice implements IInvoice {
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
                     "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotList " +
+                    "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice IN :invoices",
                     InvoiceLine.class
                 ).setParameter("invoices", invoices).list();
@@ -342,7 +351,7 @@ public class DAO_Invoice implements IInvoice {
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
                     "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotList " +
+                    "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice.id = :invoiceId",
                     InvoiceLine.class
                 ).setParameter("invoiceId", invoiceId).list();
@@ -392,7 +401,7 @@ public class DAO_Invoice implements IInvoice {
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
                     "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotList " +
+                    "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il IN :invoiceLines",
                     InvoiceLine.class
                 ).setParameter("invoiceLines", invoiceLines).list();

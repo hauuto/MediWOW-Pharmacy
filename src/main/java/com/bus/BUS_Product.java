@@ -3,10 +3,12 @@ package com.bus;
 
 import com.dao.DAO_Product;
 import com.entities.Lot;
+import com.entities.MeasurementName;
 import com.entities.Product;
 import com.entities.UnitOfMeasure;
 import com.interfaces.IProduct;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.text.Normalizer;
 import java.util.Comparator;
@@ -23,6 +25,11 @@ public class BUS_Product implements IProduct {
     @Override public Product getProductById(String id) { return (id == null || id.isBlank()) ? null : dao.getProductById(id); }
     @Override public Product getProductByBarcode(String barcode) { return dao.getProductByBarcode(barcode); }
     @Override public Lot getLotByBatchNumber(String batchNumber) { return (batchNumber == null || batchNumber.isBlank()) ? null : dao.getLotByBatchNumber(batchNumber); }
+
+    @Override
+    public UnitOfMeasure getUnitOfMeasureById(String productId, Integer measurementId) {
+        return null;
+    }
 
     @Override
     public Lot getLotById(String id) {
@@ -44,12 +51,39 @@ public class BUS_Product implements IProduct {
         checkDuplicates(p);
 
         // Gán quan hệ 2 chiều (phòng trường hợp caller chưa set)
-        if (p.getUnitOfMeasureList() != null)
-            for (UnitOfMeasure u : p.getUnitOfMeasureList()) if (u != null) u.setProduct(p);
-        if (p.getLotList() != null)
-            for (Lot l : p.getLotList()) if (l != null) l.setProduct(p);
+        if (p.getUnitOfMeasureSet() != null)
+            for (UnitOfMeasure u : p.getUnitOfMeasureSet()) if (u != null) u.setProduct(p);
+        if (p.getLotSet() != null)
+            for (Lot l : p.getLotSet()) if (l != null) l.setProduct(p);
 
         return dao.addProduct(p);
+    }
+
+    @Override
+    public boolean updateProduct(Product p) {
+        if (p == null || p.getId() == null || p.getId().trim().isEmpty()) {
+            throw new IllegalArgumentException("Không tìm thấy thông tin sản phẩm cần cập nhật");
+        }
+
+        // Kiểm tra sản phẩm có tồn tại không
+        Product existingProduct = dao.getProductById(p.getId());
+        if (existingProduct == null) {
+            throw new IllegalArgumentException("Sản phẩm không tồn tại trong hệ thống");
+        }
+
+        // Validate thông tin
+        validateProductForUpdate(p);
+
+        // Kiểm tra trùng lặp (loại trừ chính sản phẩm đang cập nhật)
+        checkDuplicatesForUpdate(p);
+
+        // Gán quan hệ 2 chiều
+        if (p.getUnitOfMeasureSet() != null)
+            for (UnitOfMeasure u : p.getUnitOfMeasureSet()) if (u != null) u.setProduct(p);
+        if (p.getLotSet() != null)
+            for (Lot l : p.getLotSet()) if (l != null) l.setProduct(p);
+
+        return dao.updateProduct(p);
     }
 
     @Override public List<Product> getAllProducts() { return dao.getAllProducts(); }
@@ -106,9 +140,9 @@ public class BUS_Product implements IProduct {
             throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
 
         // Lot: khi thêm mới, yêu cầu >= 1 dòng (theo UI validate)
-        if (p.getLotList() == null || p.getLotList().isEmpty())
+        if (p.getLotSet() == null || p.getLotSet().isEmpty())
             throw new IllegalArgumentException("Sản phẩm mới cần có ít nhất 1 lô hàng");
-        for (Lot lot : p.getLotList()) {
+        for (Lot lot : p.getLotSet()) {
             if (lot == null) continue;
             if (lot.getBatchNumber() == null || lot.getBatchNumber().trim().isEmpty())
                 throw new IllegalArgumentException("Mã lô không được để trống");
@@ -132,14 +166,74 @@ public class BUS_Product implements IProduct {
             if (existsByNameAndManufacturer(p.getName(), p.getManufacturer()))
                 throw new IllegalArgumentException("Sản phẩm '" + p.getName() + "' của hãng '" + p.getManufacturer() + "' đã tồn tại");
         }
-        if (p.getLotList() != null) {
-            for (Lot lot : p.getLotList()) {
+        if (p.getLotSet() != null) {
+            for (Lot lot : p.getLotSet()) {
                 if (lot != null && lot.getBatchNumber() != null && !lot.getBatchNumber().trim().isEmpty()) {
                     if (existsLotByBatchNumber(lot.getBatchNumber()))
                         throw new IllegalArgumentException("Mã lô '" + lot.getBatchNumber() + "' đã tồn tại");
                 }
             }
         }
+    }
+
+    /**
+     * Validate product information for update (less strict than add)
+     */
+    private void validateProductForUpdate(Product p) {
+        if (p == null) throw new IllegalArgumentException("Không có thông tin sản phẩm để cập nhật");
+
+        if (p.getName() == null || p.getName().trim().isEmpty())
+            throw new IllegalArgumentException("Tên sản phẩm không được để trống");
+
+        if (p.getCategory() == null)
+            throw new IllegalArgumentException("Vui lòng chọn Loại sản phẩm");
+
+        if (p.getForm() == null)
+            throw new IllegalArgumentException("Vui lòng chọn Dạng bào chế");
+
+        if (p.getBaseUnitOfMeasure() == null || p.getBaseUnitOfMeasure().trim().isEmpty())
+            throw new IllegalArgumentException("Đơn vị tính gốc không được để trống");
+
+        BigDecimal vat = p.getVat();
+        if (vat.compareTo(BigDecimal.ZERO) < 0 || vat.compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
+        }
+
+    }
+
+    private void checkDuplicatesForUpdate(Product p) {
+        if (p.getBarcode() != null && !p.getBarcode().trim().isEmpty()) {
+            if (existsByBarcodeExcludingId(p.getBarcode(), p.getId()))
+                throw new IllegalArgumentException("Mã vạch '" + p.getBarcode() + "' đã tồn tại trong hệ thống");
+        }
+        if (p.getName() != null && p.getManufacturer() != null
+                && !p.getName().trim().isEmpty() && !p.getManufacturer().trim().isEmpty()) {
+            if (existsByNameAndManufacturerExcludingId(p.getName(), p.getManufacturer(), p.getId()))
+                throw new IllegalArgumentException("Sản phẩm '" + p.getName() + "' của hãng '" + p.getManufacturer() + "' đã tồn tại");
+        }
+    }
+
+    /**
+     * Check if barcode exists excluding a specific product id
+     */
+    public boolean existsByBarcodeExcludingId(String barcode, String excludeId) {
+        if (barcode == null || barcode.trim().isEmpty()) return false;
+        Product existing = dao.getProductByBarcode(barcode);
+        return existing != null && !existing.getId().equals(excludeId);
+    }
+
+    /**
+     * Check if product name and manufacturer combination exists excluding a specific product id
+     */
+    public boolean existsByNameAndManufacturerExcludingId(String name, String manufacturer, String excludeId) {
+        if (name == null || name.trim().isEmpty() || manufacturer == null || manufacturer.trim().isEmpty()) return false;
+        List<Product> all = dao.getAllProducts();
+        if (all == null) return false;
+        return all.stream().anyMatch(p ->
+                !p.getId().equals(excludeId) &&
+                        p.getName().trim().equalsIgnoreCase(name.trim()) &&
+                        p.getManufacturer() != null && p.getManufacturer().trim().equalsIgnoreCase(manufacturer.trim())
+        );
     }
 
     // ===== helpers =====
@@ -191,5 +285,18 @@ public class BUS_Product implements IProduct {
             throw new IllegalArgumentException("Quantity cannot be negative");
         }
         return dao.updateLotQuantity(lotId, newQuantity);
+    }
+
+    /* Get all MeasurementName entities from database
+     */
+    public List<MeasurementName> getAllMeasurementNames() {
+        return dao.getAllMeasurementNames();
+    }
+
+    /**
+     * Get or create MeasurementName by name
+     */
+    public MeasurementName getOrCreateMeasurementName(String name) {
+        return dao.getOrCreateMeasurementName(name);
     }
 }

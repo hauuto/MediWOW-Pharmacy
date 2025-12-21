@@ -635,8 +635,8 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
 
         for (Product product : allProducts) {
             int totalStock = 0;
-            if (product.getLotList() != null) {
-                for (Lot lot : product.getLotList()) {
+            if (product.getLotSet() != null) {
+                for (Lot lot : product.getLotSet()) {
                     if (lot.getStatus() == LotStatus.AVAILABLE) {
                         totalStock += lot.getQuantity();
                     }
@@ -650,17 +650,17 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
 
         // Sort by stock quantity (lowest first)
         lowStockProducts.sort((p1, p2) -> {
-            int stock1 = p1.getLotList().stream()
+            int stock1 = p1.getLotSet().stream()
                 .filter(l -> l.getStatus() == LotStatus.AVAILABLE)
                 .mapToInt(Lot::getQuantity).sum();
-            int stock2 = p2.getLotList().stream()
+            int stock2 = p2.getLotSet().stream()
                 .filter(l -> l.getStatus() == LotStatus.AVAILABLE)
                 .mapToInt(Lot::getQuantity).sum();
             return Integer.compare(stock1, stock2);
         });
 
         for (Product product : lowStockProducts) {
-            int totalStock = product.getLotList().stream()
+            int totalStock = product.getLotSet().stream()
                 .filter(l -> l.getStatus() == LotStatus.AVAILABLE)
                 .mapToInt(Lot::getQuantity).sum();
 
@@ -905,7 +905,7 @@ public class TAB_Dashboard_Pharmacist extends JPanel implements DataChangeListen
                 int quantity = line.getQuantity();
                 if (quantity <= 0) continue;
 
-                String uom = line.getUnitOfMeasure();
+                String uom = line.getUnitOfMeasure().getName();
                 if (uom == null || uom.trim().isEmpty()) {
                     uom = product.getBaseUnitOfMeasure();
                 }

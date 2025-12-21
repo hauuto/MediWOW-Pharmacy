@@ -10,8 +10,13 @@ import java.util.Objects;
 @Entity
 @Table(name = "MeasurementName")
 public class MeasurementName {
+
     @Id
-    @Column(name = "name", length = 100)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Integer id; // Use Integer for nullable before insert
+
+    @Column(name = "name", length = 100, unique = true, nullable = false)
     private String name;
 
     protected MeasurementName() {}
@@ -28,28 +33,30 @@ public class MeasurementName {
         this.name = name;
     }
 
+    public Integer getId() {return id;}
+    public void setId(Integer id) {this.id = id;}
+
     @Override
     public int hashCode() {
         return Objects.hash(name);
     }
 
+
+
     @Override
     public boolean equals(Object o) {
-        if (this == o)
-            return true;
+        if (this == o) return true;
+        if (!(o instanceof MeasurementName other)) return false;
 
-        if (o == null || getClass() != o.getClass())
+        if (this.id == null || other.id == null) {
             return false;
-
-        MeasurementName other = (MeasurementName) o;
-        return Objects.equals(name, other.name);
+        }
+        return Objects.equals(this.id, other.id);
     }
 
     @Override
     public String toString() {
-        return "MeasurementName{" +
-                "name='" + name + '\'' +
-                '}';
+        return name;
     }
 }
 

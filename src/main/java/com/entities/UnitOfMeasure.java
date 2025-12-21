@@ -20,8 +20,9 @@ public class UnitOfMeasure {
     private Product product;
 
     @Id
-    @Column(name = "name", length = 100)
-    private String name;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "measurementId", nullable = false)
+    private MeasurementName measurement;
 
     @Column(name = "price", nullable = false, precision = 18, scale = 2)
     private BigDecimal price;
@@ -34,9 +35,12 @@ public class UnitOfMeasure {
 
     protected UnitOfMeasure() {}
 
-    public UnitOfMeasure(Product product, String name, BigDecimal price, BigDecimal baseUnitConversionRate) {
+    public UnitOfMeasure(Product product,
+                         MeasurementName measurement,
+                         BigDecimal price,
+                         BigDecimal baseUnitConversionRate) {
         this.product = product;
-        this.name = name;
+        this.measurement = measurement;
         this.price = price;
         this.baseUnitConversionRate = baseUnitConversionRate;
         calculateDerivedFields();
@@ -53,24 +57,38 @@ public class UnitOfMeasure {
     }
 
     public UnitOfMeasureId getId() {
-        return new UnitOfMeasureId(product.getId(), name);
+        return new UnitOfMeasureId(
+                product != null ? product.getId() : null,
+                measurement != null ? measurement.getId() : null
+        );
     }
 
     public Product getProduct() {
         return product;
     }
 
+    public MeasurementName getMeasurement() {
+        return measurement;
+    }
+
+    public void setMeasurement(MeasurementName measurement) {
+        this.measurement = measurement;
+    }
+
     public void setProduct(Product product) {
         this.product = product;
     }
 
+    @Transient
     public String getName() {
-        return name;
+        return measurement.getName();
     }
 
+    @Transient
     public void setName(String name) {
-        this.name = name;
+        this.measurement.setName(name);
     }
+
 
     public BigDecimal getPrice() {
         return price;
@@ -95,25 +113,36 @@ public class UnitOfMeasure {
 
     @Override
     public int hashCode() {
-        return Objects.hash(product.getId(), name);
+        return Objects.hash(
+                product != null ? product.getId() : null,
+                measurement != null ? measurement.getId() : null
+        );
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-
-        if (obj == null || getClass() != obj.getClass())
-            return false;
+        if (this == obj) return true;
+        if (!(obj instanceof UnitOfMeasure)) return false;
 
         UnitOfMeasure other = (UnitOfMeasure) obj;
-        return Objects.equals(product.getId(), other.product.getId()) &&
-               Objects.equals(name, other.name);
+
+        return Objects.equals(
+                product != null ? product.getId() : null,
+                other.product != null ? other.product.getId() : null
+        ) && Objects.equals(
+                measurement != null ? measurement.getId() : null,
+                other.measurement != null ? other.measurement.getId() : null
+        );
     }
 
     @Override
     public String toString() {
-        return super.toString();
+        return "UnitOfMeasure{" +
+                "product=" + (product != null ? product.getId() : null) +
+                ", measurement=" + (measurement != null ? measurement.getName() : null) +
+                ", price=" + price +
+                ", baseUnitConversionRate=" + baseUnitConversionRate +
+                '}';
     }
 
     /**
@@ -121,27 +150,27 @@ public class UnitOfMeasure {
      */
     public static class UnitOfMeasureId implements Serializable {
         private String product;
-        private String name;
+        private Integer measurement;
 
         public UnitOfMeasureId() {}
 
-        public UnitOfMeasureId(String product, String name) {
+        public UnitOfMeasureId(String product, Integer measurement) {
             this.product = product;
-            this.name = name;
+            this.measurement = measurement;
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (!(o instanceof UnitOfMeasureId)) return false;
             UnitOfMeasureId that = (UnitOfMeasureId) o;
             return Objects.equals(product, that.product) &&
-                   Objects.equals(name, that.name);
+                    Objects.equals(measurement, that.measurement);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(product, name);
+            return Objects.hash(product, measurement);
         }
     }
 }

@@ -12,6 +12,9 @@ public interface IProduct {
     Product getProductByBarcode(String barcode);
 
     Lot getLotByBatchNumber(String batchNumber);
+
+    UnitOfMeasure getUnitOfMeasureById(String productId, Integer measurementId);
+
     Lot getLotById(String id);
     List<Lot> getAllLots();
 
@@ -19,6 +22,7 @@ public interface IProduct {
     List<UnitOfMeasure> getAllUnitOfMeasures();
 
     boolean addProduct(Product p);
+    boolean updateProduct(Product p);
     List<Product> getAllProducts();
 
     // ==== Duplicate checks for Create/Update ====
