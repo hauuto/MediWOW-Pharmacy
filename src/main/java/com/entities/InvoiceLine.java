@@ -263,7 +263,8 @@ public class InvoiceLine {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        // Use id if available, otherwise use identity-based hash
+        return id != null ? Objects.hash(id) : System.identityHashCode(this);
     }
 
     @Override
@@ -275,7 +276,21 @@ public class InvoiceLine {
             return false;
 
         InvoiceLine other = (InvoiceLine) obj;
-        return Objects.equals(id, other.id);
+
+        // If both have IDs, compare by ID
+        if (id != null && other.id != null) {
+            return Objects.equals(id, other.id);
+        }
+
+        // If either has no ID, compare by product + UOM (business key)
+        if (unitOfMeasure != null && other.unitOfMeasure != null) {
+            return Objects.equals(getProduct() != null ? getProduct().getId() : null,
+                                  other.getProduct() != null ? other.getProduct().getId() : null) &&
+                   Objects.equals(unitOfMeasure.getName(), other.unitOfMeasure.getName());
+        }
+
+        // If we can't compare properly, use identity
+        return false;
     }
 
     @Override
