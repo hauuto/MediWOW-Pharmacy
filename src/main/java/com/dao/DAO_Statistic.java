@@ -147,12 +147,12 @@ public class DAO_Statistic {
             session = sessionFactory.openSession();
 
             List<Object[]> results = session.createQuery(
-                "SELECT il.product.id, il.product.name, il.product.category, " +
+                "SELECT il.unitOfMeasure.product.id, il.unitOfMeasure.product.name, il.unitOfMeasure.product.category, " +
                 "SUM(il.quantity), SUM(il.unitPrice * il.quantity) " +
                 "FROM InvoiceLine il " +
                 "JOIN il.invoice i " +
                 "WHERE i.type = :saleType AND i.creationDate >= :startDate AND i.creationDate < :endDate " +
-                "GROUP BY il.product.id, il.product.name, il.product.category " +
+                "GROUP BY il.unitOfMeasure.product.id, il.unitOfMeasure.product.name, il.unitOfMeasure.product.category " +
                 "ORDER BY SUM(il.unitPrice * il.quantity) DESC",
                 Object[].class
             )
@@ -208,14 +208,14 @@ public class DAO_Statistic {
             String hql = """
                 SELECT p.id, p.name, p.category,
                        (SELECT COALESCE(SUM(l.quantity), 0) FROM Lot l WHERE l.product = p AND l.status = :activeStatus),
-                       (SELECT MAX(i.creationDate) FROM Invoice i 
-                        JOIN InvoiceLine il ON il.invoice = i 
-                        WHERE il.product = p AND i.type = :saleType)
+                       (SELECT MAX(i.creationDate) FROM Invoice i
+                        JOIN InvoiceLine il ON il.invoice = i
+                        WHERE il.unitOfMeasure.product = p AND i.type = :saleType)
                 FROM Product p
                 WHERE NOT EXISTS (
-                    SELECT 1 FROM InvoiceLine il2 
-                    JOIN il2.invoice i2 
-                    WHERE il2.product = p AND i2.type = :saleType 
+                    SELECT 1 FROM InvoiceLine il2
+                    JOIN il2.invoice i2
+                    WHERE il2.unitOfMeasure.product = p AND i2.type = :saleType
                     AND i2.creationDate >= :cutoffDateTime
                 )
                 """;
@@ -280,13 +280,13 @@ public class DAO_Statistic {
             // Get today's sales by product
             Map<String, Object[]> todaySales = new HashMap<>();
             List<Object[]> todayResults = session.createQuery(
-                "SELECT il.product.id, il.product.name, il.product.category, " +
+                "SELECT il.unitOfMeasure.product.id, il.unitOfMeasure.product.name, il.unitOfMeasure.product.category, " +
                 "SUM(il.quantity), SUM(il.unitPrice * il.quantity) " +
                 "FROM InvoiceLine il " +
                 "JOIN il.invoice i " +
                 "WHERE i.type = :saleType " +
                 "AND i.creationDate >= :startDate AND i.creationDate < :endDate " +
-                "GROUP BY il.product.id, il.product.name, il.product.category",
+                "GROUP BY il.unitOfMeasure.product.id, il.unitOfMeasure.product.name, il.unitOfMeasure.product.category",
                 Object[].class
             )
             .setParameter("saleType", InvoiceType.SALES)
@@ -301,12 +301,12 @@ public class DAO_Statistic {
             // Get 7-day average by product
             Map<String, BigDecimal> avgRevenue7Days = new HashMap<>();
             List<Object[]> avg7Results = session.createQuery(
-                "SELECT il.product.id, SUM(il.unitPrice * il.quantity) / 7.0 " +
+                "SELECT il.unitOfMeasure.product.id, SUM(il.unitPrice * il.quantity) / 7.0 " +
                 "FROM InvoiceLine il " +
                 "JOIN il.invoice i " +
                 "WHERE i.type = :saleType " +
                 "AND i.creationDate >= :startDate AND i.creationDate < :endDate " +
-                "GROUP BY il.product.id",
+                "GROUP BY il.unitOfMeasure.product.id",
                 Object[].class
             )
             .setParameter("saleType", InvoiceType.SALES)
@@ -629,9 +629,10 @@ public class DAO_Statistic {
                 "FROM LotAllocation la " +
                 "JOIN la.invoiceLine il " +
                 "JOIN il.invoice i " +
-                "WHERE il.product.id = :productId " +
+                "WHERE il.unitOfMeasure.product.id = :productId " +
                 "AND i.type = :saleType " +
-                "AND i.creationDate >= :startDate AND i.creationDate < :endDate"
+                "AND i.creationDate >= :startDate AND i.creationDate < :endDate",
+                BigDecimal.class
             )
             .setParameter("productId", productId)
             .setParameter("saleType", InvoiceType.SALES)

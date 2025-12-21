@@ -27,12 +27,11 @@ public class InvoiceLine {
     private Invoice invoice;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product", nullable = false)
-    private Product product;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "unitOfMeasure", nullable = false)
-    private MeasurementName unitOfMeasure;
+    @JoinColumns({
+            @JoinColumn(name = "product", referencedColumnName = "product", nullable = false),
+            @JoinColumn(name = "unitOfMeasure", referencedColumnName = "measurementId", nullable = false)
+    })
+    private UnitOfMeasure unitOfMeasure;
 
     @Column(name = "quantity", nullable = false)
     private int quantity;
@@ -47,44 +46,29 @@ public class InvoiceLine {
     @OneToMany(mappedBy = "invoiceLine", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<LotAllocation> lotAllocations = new ArrayList<>();
 
-    protected InvoiceLine() {}
-
-    /**
-     * Constructor without ID - Hibernate will auto-generate UUID
-     */
-    public InvoiceLine(Product product, Invoice invoice, MeasurementName unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
-        this.product = product;
+    public InvoiceLine(Invoice invoice, UnitOfMeasure unitOfMeasure, int quantity, BigDecimal unitPrice, LineType lineType, List<LotAllocation> lotAllocations) {
         this.invoice = invoice;
         this.unitOfMeasure = unitOfMeasure;
-        this.lineType = lineType;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
+        this.lineType = lineType;
+        this.lotAllocations = lotAllocations;
     }
 
-    public InvoiceLine(String id, Product product, Invoice invoice, MeasurementName unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
+    public InvoiceLine(String id, Invoice invoice, UnitOfMeasure unitOfMeasure, int quantity, BigDecimal unitPrice, LineType lineType, List<LotAllocation> lotAllocations) {
         this.id = id;
-        this.product = product;
         this.invoice = invoice;
         this.unitOfMeasure = unitOfMeasure;
-        this.lineType = lineType;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
+        this.lineType = lineType;
+        this.lotAllocations = lotAllocations;
     }
+
+    protected InvoiceLine() { }
 
     public String getId() {
         return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public Product getProduct() {
-        return product;
-    }
-
-    public void setProduct(Product product) {
-        this.product = product;
     }
 
     public Invoice getInvoice() {
@@ -95,6 +79,22 @@ public class InvoiceLine {
         this.invoice = invoice;
     }
 
+    public UnitOfMeasure getUnitOfMeasure() {
+        return unitOfMeasure;
+    }
+
+    public void setUnitOfMeasure(UnitOfMeasure unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
+    }
+
+    /**
+     * Convenience method to get the Product from the UnitOfMeasure.
+     * @return the Product associated with this invoice line's UnitOfMeasure
+     */
+    public Product getProduct() {
+        return unitOfMeasure != null ? unitOfMeasure.getProduct() : null;
+    }
+
     public int getQuantity() {
         return quantity;
     }
@@ -103,12 +103,12 @@ public class InvoiceLine {
         this.quantity = quantity;
     }
 
-    public MeasurementName getUnitOfMeasure() {
-        return unitOfMeasure;
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
     }
 
-    public void setUnitOfMeasure(MeasurementName unitOfMeasure) {
-        this.unitOfMeasure = unitOfMeasure;
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
     }
 
     public LineType getLineType() {
@@ -117,14 +117,6 @@ public class InvoiceLine {
 
     public void setLineType(LineType lineType) {
         this.lineType = lineType;
-    }
-
-    public BigDecimal getUnitPrice() {
-        return unitPrice;
-    }
-
-    public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = unitPrice;
     }
 
     public List<LotAllocation> getLotAllocations() {
@@ -147,6 +139,7 @@ public class InvoiceLine {
 
     /** Calculate the VAT amount for this invoice line. */
     public BigDecimal calculateVatAmount() {
+        Product product = unitOfMeasure.getProduct();
         if (product == null) return BigDecimal.ZERO;
         BigDecimal vatPercent = product.getVat() != null ? product.getVat() : BigDecimal.ZERO;
         BigDecimal vatRate = vatPercent.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
@@ -167,6 +160,8 @@ public class InvoiceLine {
      * @return true if sufficient inventory exists and lots were allocated successfully, false otherwise
      */
     public boolean allocateLots() {
+        Product product = unitOfMeasure.getProduct();
+
         // Clear existing allocations
         lotAllocations.clear();
 
@@ -218,25 +213,32 @@ public class InvoiceLine {
      * @return The quantity in base UOM units
      */
     public int convertToBaseQuantity() {
-        if (unitOfMeasure == null || unitOfMeasure.equals(product.getBaseUnitOfMeasure())) {
+        if (unitOfMeasure == null) {
             return quantity;
         }
 
-        // Find the UOM conversion rate
-        UnitOfMeasure uom = product.getUnitOfMeasureSet().stream()
-                .filter(u -> u.getName().equals(unitOfMeasure))
-                .findFirst()
-                .orElse(null);
+        Product product = unitOfMeasure.getProduct();
+        if (product == null) {
+            return quantity;
+        }
 
-        if (uom == null || uom.getBaseUnitConversionRate() == null || uom.getBaseUnitConversionRate().compareTo(java.math.BigDecimal.ZERO) == 0) {
-            return quantity; // Fallback to original quantity if UOM not found
+        // Check if current UOM is already the base unit (name matches baseUnitOfMeasure)
+        String currentUomName = unitOfMeasure.getName();
+        if (currentUomName != null && currentUomName.equals(product.getBaseUnitOfMeasure())) {
+            return quantity;
+        }
+
+        // Use the conversion rate from the current unitOfMeasure
+        BigDecimal conversionRate = unitOfMeasure.getBaseUnitConversionRate();
+        if (conversionRate == null || conversionRate.compareTo(BigDecimal.ZERO) == 0) {
+            return quantity; // Fallback to original quantity if no valid conversion rate
         }
 
         // Convert: baseQuantity = ceil(currentQuantity / baseUnitConversionRate)
         // e.g., if baseUnitConversionRate = 0.1 (1 box = 10 tablets), then 2 boxes = ceil(2 / 0.1) = 20 tablets
-        java.math.BigDecimal q = java.math.BigDecimal.valueOf(quantity);
-        java.math.BigDecimal base = q.divide(uom.getBaseUnitConversionRate(), 10, java.math.RoundingMode.CEILING);
-        return base.setScale(0, java.math.RoundingMode.CEILING).intValue();
+        BigDecimal q = BigDecimal.valueOf(quantity);
+        BigDecimal base = q.divide(conversionRate, 10, RoundingMode.CEILING);
+        return base.setScale(0, RoundingMode.CEILING).intValue();
     }
 
     /**
