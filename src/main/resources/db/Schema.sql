@@ -41,7 +41,7 @@ CREATE TABLE Shift (
 );
 
 -- 3. Customer Table
-CREATE TABLE PrescribedCustomer (
+CREATE TABLE Customer (
                                     id NVARCHAR(50) PRIMARY KEY,
                                     name NVARCHAR(255) NOT NULL,
                                     phoneNumber NVARCHAR(20),
@@ -63,7 +63,6 @@ CREATE TABLE Product (
                          strength NVARCHAR(100),
                          description NVARCHAR(MAX),
                          baseUnitOfMeasure NVARCHAR(50),
-                         image NVARCHAR(500),
                          creationDate DATETIME NOT NULL DEFAULT GETDATE(),
                          updateDate DATETIME
 );
@@ -149,7 +148,7 @@ CREATE TABLE Invoice (
                          type NVARCHAR(50) NOT NULL CHECK (type IN ('SALES', 'RETURN', 'EXCHANGE')),
                          creationDate DATETIME NOT NULL DEFAULT GETDATE(),
                          creator NVARCHAR(50) NOT NULL,
-                         prescribedCustomer NVARCHAR(50),
+                         customer NVARCHAR(50),
                          prescriptionCode NVARCHAR(100),
                          referencedInvoice NVARCHAR(50),
                          promotion NVARCHAR(50),
@@ -158,7 +157,7 @@ CREATE TABLE Invoice (
                          shift NVARCHAR(50),
 
                          FOREIGN KEY (creator) REFERENCES Staff(id),
-                         FOREIGN KEY (prescribedCustomer) REFERENCES PrescribedCustomer(id),
+                         FOREIGN KEY (customer) REFERENCES Customer(id),
                          FOREIGN KEY (referencedInvoice) REFERENCES Invoice(id),
                          FOREIGN KEY (promotion) REFERENCES Promotion(id),
                          FOREIGN KEY (shift) REFERENCES Shift(id)
@@ -170,7 +169,7 @@ CREATE TABLE InvoiceLine (
                              id NVARCHAR(50) PRIMARY KEY, -- ID riêng cho dòng này
                              invoice NVARCHAR(50) NOT NULL,
                              product NVARCHAR(50) NOT NULL,
-                             unitOfMeasure INT NOT NULL IDENTITY(1,1), -- Chỉ lưu tên (phần 'name' của UOM)
+                             unitOfMeasure INT NOT NULL,
                              quantity INT NOT NULL,
                              unitPrice DECIMAL(18,2) NOT NULL, -- Giá snapshot tại thời điểm bán
                              lineType NVARCHAR(50) NOT NULL CHECK (lineType IN ('SALE', 'RETURN', 'EXCHANGE_OUT', 'EXCHANGE_IN')),

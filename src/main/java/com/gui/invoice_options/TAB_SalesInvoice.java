@@ -1119,9 +1119,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             String customerName = getCustomerNameValue();
             if (customerName != null && !customerName.isEmpty()) {
                 try {
-                    PrescribedCustomer customer = new PrescribedCustomer(customerName);
+                    Customer customer = new Customer(customerName);
                     busCustomer.addCustomer(customer);
-                    invoice.setPrescribedCustomer(customer);
+                    invoice.setCustomer(customer);
                 } catch (Exception e) {
                     System.err.println("Warning: Could not save customer: " + e.getMessage());
                     // Continue with invoice without customer reference
@@ -1225,7 +1225,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         // Reset customer name
         txtCustomerName.setText("Điền tên khách hàng (nếu có)...");
         txtCustomerName.setForeground(AppColors.PLACEHOLDER_TEXT);
-        invoice.setPrescribedCustomer(null);
+        invoice.setCustomer(null);
 
         // Reset promotion
         txtPromotionSearch.setText("Điền mã hoặc tên khuyến mãi...");

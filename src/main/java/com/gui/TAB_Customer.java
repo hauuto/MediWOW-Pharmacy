@@ -1,7 +1,7 @@
 package com.gui;
 
 import com.bus.BUS_Customer;
-import com.entities.PrescribedCustomer;
+import com.entities.Customer;
 import com.utils.AppColors;
 import com.utils.ExcelExporter;
 
@@ -43,7 +43,7 @@ public class TAB_Customer extends JFrame implements ActionListener {
     private static final int MAX_ADDRESS_LENGTH = 255;
 
     private final BUS_Customer busCustomer = new BUS_Customer();
-    private List<PrescribedCustomer> customerCache = new ArrayList<>();
+    private List<Customer> customerCache = new ArrayList<>();
 
     public TAB_Customer() {
         initComponents();
@@ -85,9 +85,9 @@ public class TAB_Customer extends JFrame implements ActionListener {
 
     private void performSearch() {
         String searchText = txtSearch.getText().trim().toLowerCase();
-        List<PrescribedCustomer> filteredList = new ArrayList<>();
+        List<Customer> filteredList = new ArrayList<>();
 
-        for (PrescribedCustomer customer : customerCache) {
+        for (Customer customer : customerCache) {
             boolean matchesSearch = searchText.isEmpty() ||
                     customer.getId().toLowerCase().contains(searchText) ||
                     customer.getName().toLowerCase().contains(searchText) ||
@@ -404,7 +404,7 @@ public class TAB_Customer extends JFrame implements ActionListener {
 
     private void loadCustomerTable() {
         try {
-            List<PrescribedCustomer> customers = busCustomer.getAllCustomers();
+            List<Customer> customers = busCustomer.getAllCustomers();
             if (customers != null) {
                 customerCache = customers;
                 populateTable(customers);
@@ -418,10 +418,10 @@ public class TAB_Customer extends JFrame implements ActionListener {
         }
     }
 
-    private void populateTable(List<PrescribedCustomer> customers) {
+    private void populateTable(List<Customer> customers) {
         tableModel.setRowCount(0);
         if (customers != null) {
-            for (PrescribedCustomer customer : customers) {
+            for (Customer customer : customers) {
                 Object[] row = {
                         customer.getId(),
                         customer.getName(),
@@ -512,7 +512,7 @@ public class TAB_Customer extends JFrame implements ActionListener {
                 return;
             }
 
-            PrescribedCustomer customer = new PrescribedCustomer(
+            Customer customer = new Customer(
                     null,
                     name,
                     phone.isEmpty() ? null : phone,
@@ -611,7 +611,7 @@ public class TAB_Customer extends JFrame implements ActionListener {
                     JOptionPane.YES_NO_OPTION);
 
             if (confirm == JOptionPane.YES_OPTION) {
-                PrescribedCustomer customer = busCustomer.getCustomerById(id);
+                Customer customer = busCustomer.getCustomerById(id);
                 customer.setName(name);
                 customer.setPhoneNumber(phone.isEmpty() ? null : phone);
                 customer.setAddress(address.isEmpty() ? null : address);
