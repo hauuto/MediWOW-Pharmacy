@@ -56,9 +56,7 @@ public class MeasurementName {
 
     @Override
     public String toString() {
-        return "MeasurementName{" +
-                "name='" + name + '\'' +
-                '}';
+        return name;
     }
 }
 
