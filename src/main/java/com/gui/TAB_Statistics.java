@@ -140,12 +140,12 @@ public class TAB_Statistics extends JPanel {
 
         // Add tabs based on role
         if (currentRole == Role.MANAGER) {
-            tabbedPane.addTab("📊 Doanh thu & Lợi nhuận", createRevenueTab());
+            tabbedPane.addTab("Doanh thu & Lợi nhuận", createRevenueTab());
         }
-        tabbedPane.addTab("📦 Hàng hóa", createProductTab());
-        tabbedPane.addTab("👥 Kiểm soát & Nhân viên", createAuditTab());
+        tabbedPane.addTab("Hàng hóa", createProductTab());
+        tabbedPane.addTab("Kiểm soát & Nhân viên", createAuditTab());
         if (currentRole == Role.MANAGER) {
-            tabbedPane.addTab("🎁 Hiệu quả Khuyến mãi", createPromotionTab());
+            tabbedPane.addTab("Hiệu quả Khuyến mãi", createPromotionTab());
         }
 
         add(tabbedPane, BorderLayout.CENTER);
@@ -224,7 +224,7 @@ public class TAB_Statistics extends JPanel {
         btnViewReport.setPreferredSize(new Dimension(130, 35));
 
         // Export Excel button
-        btnExportExcel = new JButton("📥 Xuất Excel");
+        btnExportExcel = new JButton("Xuất Excel");
         btnExportExcel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnExportExcel.setBackground(AppColors.SUCCESS);
         btnExportExcel.setForeground(Color.WHITE);
@@ -336,7 +336,7 @@ public class TAB_Statistics extends JPanel {
         // Hint panel
         JPanel hintPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         hintPanel.setOpaque(false);
-        JLabel lblHint = new JLabel("💡 Chọn loại báo cáo và nhấn 'Xem Thống Kê' để hiển thị dữ liệu.");
+        JLabel lblHint = new JLabel("Chọn loại báo cáo và nhấn 'Xem Thống Kê' để hiển thị dữ liệu.");
         lblHint.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         lblHint.setForeground(AppColors.DARK);
         hintPanel.add(lblHint);
@@ -381,7 +381,7 @@ public class TAB_Statistics extends JPanel {
         // Custom renderer for mismatch column (highlight red if negative)
         tblCashAudit.getColumnModel().getColumn(8).setCellRenderer(new MismatchCellRenderer());
 
-        JLabel hintCash = new JLabel("⚠️ Màu đỏ: Tiền thực tế thấp hơn hệ thống (nguy cơ thất thoát)");
+        JLabel hintCash = new JLabel("Màu đỏ: Tiền thực tế thấp hơn hệ thống (nguy cơ thất thoát)");
         hintCash.setFont(new Font("Segoe UI", Font.ITALIC, 11));
         hintCash.setForeground(AppColors.DANGER);
         hintCash.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -457,7 +457,7 @@ public class TAB_Statistics extends JPanel {
         summaryPanel.setBackground(new Color(240, 248, 255));
         summaryPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        JLabel lblSummary = new JLabel("📊 Các chỉ số quan trọng: Số lượt sử dụng mã, Tổng tiền đã giảm, Doanh thu từ đơn khuyến mãi");
+        JLabel lblSummary = new JLabel("Các chỉ số quan trọng: Số lượt sử dụng mã, Tổng tiền đã giảm, Doanh thu từ đơn khuyến mãi");
         lblSummary.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         summaryPanel.add(lblSummary);
 
