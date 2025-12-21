@@ -215,7 +215,7 @@ public class Invoice {
         InvoiceLine oldLine = null;
         for (InvoiceLine line : invoiceLineList) {
             if (line.getProduct().getId().equals(oldProductId) &&
-                    line.getUnitOfMeasure().equals(oldUomName)) {
+                    line.getUnitOfMeasure().getName().equals(oldUomName)) {
                 oldLine = line;
                 break;
             }
@@ -226,7 +226,7 @@ public class Invoice {
             boolean exists = false;
             for (InvoiceLine existingLine : invoiceLineList) {
                 if (existingLine.getProduct().getId().equals(newInvoiceLine.getProduct().getId()) &&
-                        existingLine.getUnitOfMeasure().equals(newInvoiceLine.getUnitOfMeasure())) {
+                        existingLine.getUnitOfMeasure().getName().equals(newInvoiceLine.getUnitOfMeasure().getName())) {
                     existingLine.setQuantity(existingLine.getQuantity() + newInvoiceLine.getQuantity());
                     exists = true;
                     break;
@@ -246,7 +246,7 @@ public class Invoice {
     public boolean removeInvoiceLine(String productId, String unitOfMeasureName) {
         return invoiceLineList.removeIf(line ->
                 line.getProduct().getId().equals(productId) &&
-                        line.getUnitOfMeasure().equals(unitOfMeasureName)
+                        line.getUnitOfMeasure().getName().equals(unitOfMeasureName)
         );
     }
 
