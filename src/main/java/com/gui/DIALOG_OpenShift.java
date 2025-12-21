@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class DIALOG_OpenShift extends JDialog {
-    private JTextField txtStartCash;
+    JTextField txtStartCash;
     private JTextArea txtNotes;
     private JButton btnConfirm;
     private JButton btnCancel;
@@ -95,7 +95,7 @@ public class DIALOG_OpenShift extends JDialog {
         }
     }
 
-    private void initComponents() {
+    void initComponents() {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 

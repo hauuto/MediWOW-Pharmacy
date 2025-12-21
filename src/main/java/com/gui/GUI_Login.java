@@ -1,6 +1,8 @@
 package com.gui;
 
 import com.bus.BUS_Staff;
+import com.bus.BUS_Shift;
+import com.entities.Shift;
 import com.entities.Staff;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -11,6 +13,7 @@ import javax.swing.text.StyleContext;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.math.BigDecimal;
 import java.util.Locale;
 
 public class GUI_Login implements ActionListener {
@@ -151,15 +154,10 @@ public class GUI_Login implements ActionListener {
         JFrame loginFrame = (JFrame) SwingUtilities.getWindowAncestor(pnlLogin);
 
         // Check if staff is using temporary password (first login)
-        // This checks the password pattern without needing a database column
         if (BUSStaff.isFirstLogin(currentStaff)) {
-            // Show mandatory password change dialog
             DIALOG_ChangePassword changePasswordDialog = new DIALOG_ChangePassword(loginFrame, currentStaff, true);
             changePasswordDialog.setVisible(true);
-
-            // Check if password was actually changed using the dialog's flag
             if (!changePasswordDialog.isPasswordChanged()) {
-                // User closed dialog without changing password
                 JOptionPane.showMessageDialog(
                         pnlLogin,
                         "Bạn phải đổi mật khẩu lần đầu để sử dụng hệ thống!",
@@ -168,17 +166,12 @@ public class GUI_Login implements ActionListener {
                 );
                 return;
             } else {
-                // Update must change password flag in database
                 BUSStaff.updateChangePasswordFlag(currentStaff, false);
             }
         } else if (BUSStaff.isMustChangePassword(currentStaff)) {
-            // Show mandatory password change dialog
             DIALOG_ChangePassword changePasswordDialog = new DIALOG_ChangePassword(loginFrame, currentStaff, false);
             changePasswordDialog.setVisible(true);
-
-            // Check if password was actually changed using the dialog's flag
             if (!changePasswordDialog.isPasswordChanged()) {
-                // User closed dialog without changing password
                 JOptionPane.showMessageDialog(
                         pnlLogin,
                         "Bạn phải đổi mật khẩu để tiếp tục sử dụng hệ thống!",
@@ -187,10 +180,106 @@ public class GUI_Login implements ActionListener {
                 );
                 return;
             } else {
-                // Update must change password flag in database
                 BUSStaff.updateChangePasswordFlag(currentStaff, false);
             }
         }
+
+        BUS_Shift busShift = new BUS_Shift();
+        String workstation = busShift.getCurrentWorkstation();
+        Shift openShift = busShift.getOpenShiftOnWorkstation(workstation);
+
+        if (openShift == null) {
+            // Không có ca nào đang mở, hỏi có muốn mở ca không
+            int choice = JOptionPane.showConfirmDialog(
+                    pnlLogin,
+                    "Hiện chưa có ca làm việc nào đang mở. Bạn có muốn mở ca mới không?",
+                    "Mở ca làm việc",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+            if (choice == JOptionPane.YES_OPTION) {
+                DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(loginFrame, currentStaff);
+                openShiftDialog.setVisible(true);
+                // Nếu user hủy thì vẫn vào main menu bình thường
+            }
+            // Nếu chọn No thì vào main menu luôn
+        } else if (openShift.getStaff() != null && openShift.getStaff().getId().equals(currentStaff.getId())) {
+            // Có ca đang mở của chính user
+            Object[] options = {"Tiếp tục ca cũ", "Kết thúc ca cũ", "Bỏ qua"};
+            int choice = JOptionPane.showOptionDialog(
+                    pnlLogin,
+                    "Bạn đang có ca chưa đóng. Bạn muốn tiếp tục ca cũ, kết thúc ca cũ hay vào mà không ca?",
+                    "Ca làm việc chưa đóng",
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]
+            );
+            if (choice == 0) {
+                // Tiếp tục ca cũ: vào main menu giữ session
+            } else if (choice == 1) {
+                // Kết thúc ca cũ
+                DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(loginFrame, openShift, currentStaff);
+                closeShiftDialog.setVisible(true);
+                // Sau khi đóng ca, hỏi có muốn mở ca mới không
+                if (closeShiftDialog.isConfirmed()) {
+                    int openNew = JOptionPane.showConfirmDialog(
+                            pnlLogin,
+                            "Bạn có muốn mở ca mới không?",
+                            "Mở ca mới",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.QUESTION_MESSAGE
+                    );
+                    if (openNew == JOptionPane.YES_OPTION) {
+                        DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(loginFrame, currentStaff);
+                        openShiftDialog.setVisible(true);
+                    }
+                }
+                // Nếu user hủy thì vẫn vào main menu
+            } else {
+                // Bỏ qua: vào main menu không ca
+            }
+        } else {
+            // Có ca đang mở của người khác
+            int choice = JOptionPane.showConfirmDialog(
+                    pnlLogin,
+                    "Máy này đang có ca mở bởi nhân viên khác. Bạn có muốn đóng ca này không?",
+                    "Ca làm việc đang mở",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
+            if (choice == JOptionPane.YES_OPTION) {
+                // Force close by current user
+                DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(loginFrame, openShift, currentStaff);
+                closeShiftDialog.setVisible(true);
+                if (closeShiftDialog.isConfirmed()) {
+                    int openNew = JOptionPane.showConfirmDialog(
+                            pnlLogin,
+                            "Bạn có muốn mở ca mới không?",
+                            "Mở ca mới",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.QUESTION_MESSAGE
+                    );
+                    if (openNew == JOptionPane.YES_OPTION) {
+                        BigDecimal endCash = openShift.getEndCash();
+                        DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(loginFrame, currentStaff) {
+                            @Override
+                            protected void initComponents() {
+                                super.initComponents();
+                                if (txtStartCash != null && endCash != null) {
+                                    txtStartCash.setText(endCash.toPlainString());
+                                }
+                            }
+                        };
+                        openShiftDialog.setVisible(true);
+                    }
+                }
+            }
+            // Nếu chọn No thì vào main menu luôn
+        }
+
+        // ===== END SHIFT MANAGEMENT LOGIC =====
 
         // Close login frame
         loginFrame.dispose();
