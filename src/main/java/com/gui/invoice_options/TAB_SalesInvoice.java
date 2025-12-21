@@ -1,7 +1,6 @@
 package com.gui.invoice_options;
 
 import com.bus.*;
-import com.dao.DAO_MeasurementName;
 import com.entities.*;
 import com.enums.*;
 import com.gui.DIALOG_MomoQRCode;
@@ -30,7 +29,6 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private final BUS_Promotion busPromotion = new BUS_Promotion();
     private final BUS_Shift busShift = new BUS_Shift();
     private final BUS_Customer busCustomer = new BUS_Customer();
-    private final DAO_MeasurementName msDao = new DAO_MeasurementName();
     private final Staff currentStaff;
     private final Invoice invoice;
     private final List<String> previousPrescriptionCodes;
@@ -237,8 +235,6 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             JOptionPane.showMessageDialog(parentWindow, "Sản phẩm '" + product.getName() + "' là thuốc ETC.\nVui lòng nhập mã đơn thuốc hợp lệ.", "Yêu cầu mã đơn thuốc", JOptionPane.WARNING_MESSAGE);
             txtPrescriptionCode.requestFocusInWindow(); return;
         }
-        MeasurementName msName = msDao.findMeasurementNameByName(product.getBaseUnitOfMeasure());
-
 
         isUpdatingInvoiceLine = true;
         try {
@@ -254,7 +250,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                             ? baseUOM.getBasePriceConversionRate()
                             : BigDecimal.ONE;
                     BigDecimal unitPrice = rawPrice.multiply(basePriceConversion);
-                    InvoiceLine tempLine = new InvoiceLine(product, invoice, msName, LineType.SALE, qty, unitPrice);
+                    InvoiceLine tempLine = new InvoiceLine(invoice, baseUOM, qty, unitPrice, LineType.SALE, new ArrayList<>());
                     if (!tempLine.allocateLots()) {
                         int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
                         JOptionPane.showMessageDialog(parentWindow,
@@ -269,7 +265,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                     mdlInvoiceLine.setValueAt(price.multiply(BigDecimal.valueOf(qty)), i, 5);
 
                     // Update invoice line with lot allocations
-                    InvoiceLine updatedLine = new InvoiceLine(product, invoice, msName, LineType.SALE, qty, unitPrice);
+                    InvoiceLine updatedLine = new InvoiceLine(invoice, baseUOM, qty, unitPrice, LineType.SALE, new ArrayList<>());
                     updatedLine.allocateLots();
                     invoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(), updatedLine);
                     previousQuantityMap.put(i, qty);
@@ -280,7 +276,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             BigDecimal price = lot != null ? lot.getRawPrice() : BigDecimal.ZERO;
 
             // Create new invoice line and allocate lots
-            InvoiceLine newLine = new InvoiceLine(product, invoice, msName, LineType.SALE, 1, price);
+            InvoiceLine newLine = new InvoiceLine(invoice, baseUOM, 1, price, LineType.SALE, new ArrayList<>());
             if (!newLine.allocateLots()) {
                 int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
                 JOptionPane.showMessageDialog(parentWindow,
@@ -374,8 +370,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
             // Create invoice line and check lot allocation
             String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
-            MeasurementName msName = msDao.findMeasurementNameByName(uomName);
-            InvoiceLine newLine = new InvoiceLine(product, invoice, msName, LineType.SALE, quantity, price);
+            InvoiceLine newLine = new InvoiceLine(invoice, uom, quantity, price, LineType.SALE, new ArrayList<>());
             if (!newLine.allocateLots()) {
                 // Insufficient inventory - revert changes
                 int remaining = getRemainingInventoryInUOM(product, uomName);

@@ -536,15 +536,14 @@ public class DAO_Product implements IProduct {
             return true;
         }
 
-        // Check InvoiceLine references - InvoiceLine stores measurementId as unitOfMeasure column
-        // The FK is (product, unitOfMeasure) -> UnitOfMeasure(product, measurementId)
+        // Check InvoiceLine references - InvoiceLine has unitOfMeasure which contains product and measurementId
         Long invoiceLineCount = session.createQuery(
                         "SELECT COUNT(il) FROM InvoiceLine il " +
-                                "WHERE il.product.id = :productId " +
-                                "AND il.unitOfMeasure = :measurementId",
+                                "WHERE il.unitOfMeasure.product.id = :productId " +
+                                "AND il.unitOfMeasure.measurement.id = :measurementId",
                         Long.class)
                 .setParameter("productId", productId)
-                .setParameter("measurementId", String.valueOf(measurementId))
+                .setParameter("measurementId", measurementId)
                 .getSingleResult();
 
         return invoiceLineCount > 0;

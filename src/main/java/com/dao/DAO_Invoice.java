@@ -83,8 +83,8 @@ public class DAO_Invoice implements IInvoice {
                                         "VALUES (:id, :invoice, :product, :unitOfMeasure, :quantity, :unitPrice, :lineType)")
                         .setParameter("id", null)
                         .setParameter("invoice", generatedInvoiceId)
-                        .setParameter("product", line.getProduct().getId())
-                        .setParameter("unitOfMeasure", line.getUnitOfMeasure().getId())
+                        .setParameter("product", line.getUnitOfMeasure().getProduct().getId())
+                        .setParameter("unitOfMeasure", line.getUnitOfMeasure().getMeasurement().getId())
                         .setParameter("quantity", line.getQuantity())
                         .setParameter("unitPrice", line.getUnitPrice())
                         .setParameter("lineType", line.getLineType().name())
@@ -95,8 +95,8 @@ public class DAO_Invoice implements IInvoice {
                                 "SELECT TOP 1 id FROM InvoiceLine WHERE invoice = :invoiceId AND product = :productId AND unitOfMeasure = :uom ORDER BY id DESC",
                                 String.class)
                         .setParameter("invoiceId", generatedInvoiceId)
-                        .setParameter("productId", line.getProduct().getId())
-                        .setParameter("uom", line.getUnitOfMeasure().getId())
+                        .setParameter("productId", line.getUnitOfMeasure().getProduct().getId())
+                        .setParameter("uom", line.getUnitOfMeasure().getMeasurement().getId())
                         .uniqueResult();
 
                 // Save Lot Allocations
@@ -201,7 +201,8 @@ public class DAO_Invoice implements IInvoice {
                 // Fetch products in invoice lines
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product " +
+                    "LEFT JOIN FETCH il.unitOfMeasure u " +
+                    "LEFT JOIN FETCH u.product " +
                     "WHERE il.invoice.id = :id",
                     InvoiceLine.class
                 ).setParameter("id", id).list();
@@ -209,7 +210,8 @@ public class DAO_Invoice implements IInvoice {
                 // Fetch lots for products in invoice lines
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product p " +
+                    "LEFT JOIN FETCH il.unitOfMeasure u " +
+                    "LEFT JOIN FETCH u.product p " +
                     "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice.id = :id",
                     InvoiceLine.class
@@ -300,7 +302,8 @@ public class DAO_Invoice implements IInvoice {
                 // Fetch products in invoice lines
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product " +
+                    "LEFT JOIN FETCH il.unitOfMeasure u " +
+                    "LEFT JOIN FETCH u.product " +
                     "WHERE il.invoice IN :invoices",
                     InvoiceLine.class
                 ).setParameter("invoices", invoices).list();
@@ -308,7 +311,8 @@ public class DAO_Invoice implements IInvoice {
                 // Fetch lots for products in invoice lines
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product p " +
+                    "LEFT JOIN FETCH il.unitOfMeasure u " +
+                    "LEFT JOIN FETCH u.product p " +
                     "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice IN :invoices",
                     InvoiceLine.class
@@ -342,7 +346,8 @@ public class DAO_Invoice implements IInvoice {
             // Fetch invoice lines with product first
             List<InvoiceLine> invoiceLines = session.createQuery(
                 "SELECT DISTINCT il FROM InvoiceLine il " +
-                "LEFT JOIN FETCH il.product " +
+                "LEFT JOIN FETCH il.unitOfMeasure u " +
+                "LEFT JOIN FETCH u.product " +
                 "WHERE il.invoice.id = :invoiceId",
                 InvoiceLine.class
             ).setParameter("invoiceId", invoiceId).list();
@@ -351,7 +356,8 @@ public class DAO_Invoice implements IInvoice {
                 // Fetch product's lots
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product p " +
+                    "LEFT JOIN FETCH il.unitOfMeasure u " +
+                    "LEFT JOIN FETCH u.product p " +
                     "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice.id = :invoiceId",
                     InvoiceLine.class
@@ -393,7 +399,8 @@ public class DAO_Invoice implements IInvoice {
             // Fetch invoice lines with product first
             List<InvoiceLine> invoiceLines = session.createQuery(
                 "SELECT DISTINCT il FROM InvoiceLine il " +
-                "LEFT JOIN FETCH il.product",
+                "LEFT JOIN FETCH il.unitOfMeasure u " +
+                "LEFT JOIN FETCH u.product",
                 InvoiceLine.class
             ).list();
 
@@ -401,7 +408,8 @@ public class DAO_Invoice implements IInvoice {
                 // Fetch product's lots
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product p " +
+                    "LEFT JOIN FETCH il.unitOfMeasure u " +
+                    "LEFT JOIN FETCH u.product p " +
                     "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il IN :invoiceLines",
                     InvoiceLine.class
