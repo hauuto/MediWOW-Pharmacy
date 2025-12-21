@@ -9,11 +9,11 @@ import java.util.Objects;
 
 /**
  * @author Migration to new schema
- * Entity for PrescribedCustomer table
+ * Entity for Customer table
  */
 @Entity
-@Table(name = "PrescribedCustomer")
-public class PrescribedCustomer {
+@Table(name = "Customer")
+public class Customer {
     @Id
     @UuidGenerator
     @Column(name = "id", insertable = false, updatable = false, nullable = false, length = 50)
@@ -32,13 +32,13 @@ public class PrescribedCustomer {
     @Column(name = "creationDate", updatable = false, nullable = false)
     private LocalDateTime creationDate;
 
-    protected PrescribedCustomer() {}
+    protected Customer() {}
 
     /**
      * Quick constructor for creating customer with just a name
      * @param name Customer name (required)
      */
-    public PrescribedCustomer(String name) {
+    public Customer(String name) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Tên khách hàng không được để trống");
         }
@@ -47,7 +47,7 @@ public class PrescribedCustomer {
         this.address = null;
     }
 
-    public PrescribedCustomer(String id, String name, String phoneNumber, String address) {
+    public Customer(String id, String name, String phoneNumber, String address) {
         this.id = id;
         this.name = name;
         this.phoneNumber = phoneNumber;
@@ -106,13 +106,13 @@ public class PrescribedCustomer {
         if (o == null || getClass() != o.getClass())
             return false;
 
-        PrescribedCustomer other = (PrescribedCustomer) o;
+        Customer other = (Customer) o;
         return Objects.equals(id, other.id);
     }
 
     @Override
     public String toString() {
-        return "PrescribedCustomer{" +
+        return "Customer{" +
                 "id='" + id + '\'' +
                 ", name='" + name + '\'' +
                 ", phoneNumber='" + phoneNumber + '\'' +

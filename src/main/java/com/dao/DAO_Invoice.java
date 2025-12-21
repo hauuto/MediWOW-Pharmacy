@@ -45,13 +45,13 @@ public class DAO_Invoice implements IInvoice {
 
             // Insert Invoice - trigger generates ID
             session.createNativeQuery(
-                            "INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift) " +
-                                    "VALUES (:id, :type, GETDATE(), :creator, :prescribedCustomer, :prescriptionCode, :referencedInvoice, :promotion, :paymentMethod, :notes, :shift)")
+                            "INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift) " +
+                                    "VALUES (:id, :type, GETDATE(), :creator, :customer, :prescriptionCode, :referencedInvoice, :promotion, :paymentMethod, :notes, :shift)")
                     .setParameter("id", null)
                     .setParameter("type", invoice.getType().name())
                     .setParameter("creator", invoice.getCreator().getId())
-                    .setParameter("prescribedCustomer",
-                            invoice.getPrescribedCustomer() != null ? invoice.getPrescribedCustomer().getId() : null)
+                    .setParameter("customer",
+                            invoice.getCustomer() != null ? invoice.getCustomer().getId() : null)
                     .setParameter("prescriptionCode", invoice.getPrescriptionCode())
                     .setParameter("referencedInvoice",
                             invoice.getReferencedInvoice() != null ? invoice.getReferencedInvoice().getId() : null)

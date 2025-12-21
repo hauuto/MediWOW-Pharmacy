@@ -30,22 +30,22 @@ VALUES ( 'MANAGER', 'admin',
 --         (N'PHA2025-0002', N'nhanvien250002', N'$2a$12$Rvqmwr26PRsqdRPoQpC4fOH6rR8ygi.KAIx4Lj6gFSSpJsU2TyPye', N'Tô Tô', N'02495/CCHN-D-SYT-HNO', N'0234567890', N'hauuto.job@gmail.com', N'2025-12-18', 1, N'PHARMACIST', 0, 0);
 
 -- =====================================================
--- 2. PRESCRIBED CUSTOMER DATA
+-- 2. CUSTOMER DATA
 -- =====================================================
 
-INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+INSERT INTO Customer (id, name, phoneNumber, address, creationDate)
 VALUES ('CUS2025-0001', N'Nguyễn Văn An', '0901234567', N'123 Lê Lợi, Quận 1, TP.HCM', '2025-01-10');
 
-INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+INSERT INTO Customer (id, name, phoneNumber, address, creationDate)
 VALUES ('CUS2025-0002', N'Trần Thị Bình', '0912345678', N'456 Nguyễn Huệ, Quận 3, TP.HCM', '2025-01-12');
 
-INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+INSERT INTO Customer (id, name, phoneNumber, address, creationDate)
 VALUES ('CUS2025-0003', N'Lê Minh Châu', '0923456789', N'789 Trần Hưng Đạo, Quận 5, TP.HCM', '2025-01-15');
 
-INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+INSERT INTO Customer (id, name, phoneNumber, address, creationDate)
 VALUES ('CUS2025-0004', N'Phạm Đức Dũng', '0934567890', N'321 Võ Văn Tần, Quận 10, TP.HCM', '2025-02-01');
 
-INSERT INTO PrescribedCustomer (id, name, phoneNumber, address, creationDate)
+INSERT INTO Customer (id, name, phoneNumber, address, creationDate)
 VALUES ('CUS2025-0005', N'Hoàng Thị Em', '0945678901', NULL, '2025-02-15');
 
 -- =====================================================
@@ -84,31 +84,31 @@ VALUES (N'Viên'),(N'Vỉ'),(N'Hộp'),(N'ml'),(N'Chai'),(N'Lọ'),(N'Gói'),(N'
 -- =====================================================
 
 -- UOMs for Paracetamol (PRO2025-0001) - base unit: Viên
-INSERT INTO UnitOfMeasure (product,price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0001', 200.00, 1.0000),   -- Viên
-                                                                                      ('PRO2025-0001', 2000.00, 0.1000),  -- Vỉ
-                                                                                      ('PRO2025-0001', 20000.00, 0.0100); -- Hộp
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0001', 1, 200.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0001', 2, 2000.00, 0.1000),  -- Vỉ
+                                                                                      ('PRO2025-0001', 3, 20000.00, 0.0100); -- Hộp
 
 -- UOMs for Vitamin C (PRO2025-0002) - base unit: ml
-INSERT INTO UnitOfMeasure (product,price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0002',  100.00, 1.0000),  -- ml
-                                                                                      ('PRO2025-0002', 10000.00, 0.0100);-- Chai
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0002', 4, 100.00, 1.0000),  -- ml
+                                                                                      ('PRO2025-0002', 5, 10000.00, 0.0100);-- Chai
 
 -- UOMs for Amoxicillin (PRO2025-0003) - base unit: Viên
-INSERT INTO UnitOfMeasure (product, price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0003', 500.00, 1.0000),   -- Viên
-                                                                                      ('PRO2025-0003', 5000.00, 0.1000),  -- Vỉ
-                                                                                      ('PRO2025-0003', 50000.00, 0.0100); -- Hộp
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0003', 1, 500.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0003', 2, 5000.00, 0.1000),  -- Vỉ
+                                                                                      ('PRO2025-0003', 3, 50000.00, 0.0100); -- Hộp
 
 -- UOMs for Omeprazole (PRO2025-0004) - base unit: ml
-INSERT INTO UnitOfMeasure (product, price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0004', 200.00, 1.0000),   -- ml
-                                                                                      ('PRO2025-0004', 24000.00, 0.0083); -- Chai
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0004', 4, 200.00, 1.0000),   -- ml
+                                                                                      ('PRO2025-0004', 5, 24000.00, 0.0083); -- Chai
 
 -- UOMs for Omega 3 (PRO2025-0005) - base unit: Viên
-INSERT INTO UnitOfMeasure (product, price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0005', 1500.00, 1.0000),   -- Viên
-                                                                                      ('PRO2025-0005', 90000.00, 0.0167);  -- Lọ
+INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0005', 1, 1500.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0005', 6, 90000.00, 0.0167);  -- Lọ
 
 -- =====================================================
 -- 6. LOT DATA (Each product has at least 2 lots, at least 2 lots are unavailable)
@@ -163,30 +163,38 @@ INSERT INTO Promotion (id, name, description, creationDate, effectiveDate, endDa
 VALUES ('PMO2025-0003', N'Khuyến mãi Amoxicillin - Tặng Omega 3', N'Mua từ 5 hộp Amoxicillin, tặng 1 lọ Omega 3', '2025-01-22', '2025-01-22', '2025-12-31', 1);
 
 -- Insert all PromotionConditions
-INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product)
-VALUES ('PCO2025-0001', 'PMO2025-0001', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 2, 'PRO2025-0001');
+-- PCO2025-0001: Buy Paracetamol (PRO2025-0001) with Hộp unit (measurementId=3) >= 2
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product, unitOfMeasure)
+VALUES ('PCO2025-0001', 'PMO2025-0001', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 2, 'PRO2025-0001', 3);
 
-INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product)
-VALUES ('PCO2025-0002', 'PMO2025-0002', 'ORDER_SUBTOTAL', 'GREATER_EQUAL', 'ORDER_SUBTOTAL', 200000, NULL);
+-- PCO2025-0002: Order subtotal >= 200000 (no product/UOM needed)
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product, unitOfMeasure)
+VALUES ('PCO2025-0002', 'PMO2025-0002', 'ORDER_SUBTOTAL', 'GREATER_EQUAL', 'ORDER_SUBTOTAL', 200000, NULL, NULL);
 
-INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product)
-VALUES ('PCO2025-0003', 'PMO2025-0003', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 5, 'PRO2025-0003');
+-- PCO2025-0003: Buy Amoxicillin (PRO2025-0003) with Hộp unit (measurementId=3) >= 5
+INSERT INTO PromotionCondition (id, promotion, type, comparator, target, value, product, unitOfMeasure)
+VALUES ('PCO2025-0003', 'PMO2025-0003', 'PRODUCT_QTY', 'GREATER_EQUAL', 'PRODUCT', 5, 'PRO2025-0003', 3);
 
 -- Insert all PromotionActions
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
-VALUES ('PAC2025-0001', 'PMO2025-0001', 1, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 10, NULL);
+-- PAC2025-0001: 10% discount on order subtotal (no product/UOM needed)
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product, unitOfMeasure)
+VALUES ('PAC2025-0001', 'PMO2025-0001', 1, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 10, NULL, NULL);
 
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
-VALUES ('PAC2025-0002', 'PMO2025-0001', 2, 'FIXED_DISCOUNT', 'ORDER_SUBTOTAL', 20000, NULL);
+-- PAC2025-0002: Fixed 20000 discount on order subtotal (no product/UOM needed)
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product, unitOfMeasure)
+VALUES ('PAC2025-0002', 'PMO2025-0001', 2, 'FIXED_DISCOUNT', 'ORDER_SUBTOTAL', 20000, NULL, NULL);
 
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
-VALUES ('PAC2025-0003', 'PMO2025-0002', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, 'PRO2025-0002');
+-- PAC2025-0003: Gift 1 Vitamin C Chai (PRO2025-0002, measurementId=5)
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product, unitOfMeasure)
+VALUES ('PAC2025-0003', 'PMO2025-0002', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, 'PRO2025-0002', 5);
 
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
-VALUES ('PAC2025-0004', 'PMO2025-0002', 2, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 5, NULL);
+-- PAC2025-0004: 5% discount on order subtotal (no product/UOM needed)
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product, unitOfMeasure)
+VALUES ('PAC2025-0004', 'PMO2025-0002', 2, 'PERCENT_DISCOUNT', 'ORDER_SUBTOTAL', 5, NULL, NULL);
 
-INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product)
-VALUES ('PAC2025-0005', 'PMO2025-0003', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, 'PRO2025-0005');
+-- PAC2025-0005: Gift 1 Omega 3 Lọ (PRO2025-0005, measurementId=6)
+INSERT INTO PromotionAction (id, promotion, actionOrder, type, target, value, product, unitOfMeasure)
+VALUES ('PAC2025-0005', 'PMO2025-0003', 1, 'PRODUCT_GIFT', 'PRODUCT', 1, 'PRO2025-0005', 6);
 
 -- =====================================================
 -- 8. SHIFT DATA
@@ -213,7 +221,7 @@ VALUES ('SHI2025-0004', 'MAN2025-0001', '2025-01-26 08:00:00', NULL, 1500000.00,
 -- =====================================================
 
 -- Invoice 1: SALES with Promotion 1 and Prescription Code (ETC product)
-INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
 VALUES ('INV2025-0001', 'SALES', '2025-01-22 09:30:00', 'MAN2025-0001', 'CUS2025-0001', 'MW001a3b5c7d-C', NULL, 'PMO2025-0001', 'CASH', N'Bán thuốc theo đơn, áp dụng khuyến mãi', 'SHI2025-0001');
 
 -- Invoice Lines for Invoice 1
@@ -224,11 +232,13 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0002', 'INV2025-0001', 'PRO2025-0003', 1, 20, 500.00, 'SALE');
 
 -- LotAllocation for Invoice 1 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0001', 'ILN2025-0001', 'LOT2025-0001', 3);
+-- ILN2025-0001: 3 Hộp Paracetamol = 3 / 0.01 = 300 Viên (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0001', 'ILN2025-0001', 'LOT2025-0001', 300);
+-- ILN2025-0002: 20 Viên Amoxicillin = 20 Viên (base UOM)
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0002', 'ILN2025-0002', 'LOT2025-0006', 20);
 
 -- Invoice 2: SALES with Bank Transfer
-INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
 VALUES ('INV2025-0002', 'SALES', '2025-01-22 10:15:00', 'MAN2025-0001', NULL, NULL, NULL, NULL, 'BANK_TRANSFER', N'Khách hàng thanh toán chuyển khoản', 'SHI2025-0001');
 
 -- Invoice Lines for Invoice 2
@@ -239,11 +249,13 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0004', 'INV2025-0002', 'PRO2025-0005', 1, 30, 1500.00, 'SALE');
 
 -- LotAllocation for Invoice 2 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0003', 'ILN2025-0003', 'LOT2025-0004', 2);
+-- ILN2025-0003: 2 Chai Vitamin C = 2 / 0.01 = 200 ml (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0003', 'ILN2025-0003', 'LOT2025-0004', 200);
+-- ILN2025-0004: 30 Viên Omega 3 = 30 Viên (base UOM)
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0004', 'ILN2025-0004', 'LOT2025-0011', 30);
 
 -- Invoice 3: SALES with Prescription Code (ETC) - Different customer
-INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
 VALUES ('INV2025-0003', 'SALES', '2025-01-22 14:20:00', 'MAN2025-0001', 'CUS2025-0002', 'MW0019k2m4p6-H', NULL, NULL, 'CASH', N'Đơn thuốc hướng thần', 'SHI2025-0002');
 
 -- Invoice Lines for Invoice 3
@@ -254,11 +266,13 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0006', 'INV2025-0003', 'PRO2025-0001', 2, 5, 2000.00, 'SALE');
 
 -- LotAllocation for Invoice 3 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0005', 'ILN2025-0005', 'LOT2025-0009', 2);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0006', 'ILN2025-0006', 'LOT2025-0001', 5);
+-- ILN2025-0005: 2 Chai Omeprazole = 2 / 0.0083 ≈ 241 ml (base UOM, rounded)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0005', 'ILN2025-0005', 'LOT2025-0009', 241);
+-- ILN2025-0006: 5 Vỉ Paracetamol = 5 / 0.1 = 50 Viên (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0006', 'ILN2025-0006', 'LOT2025-0001', 50);
 
 -- Invoice 4: SALES - Large order
-INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
 VALUES ('INV2025-0004', 'SALES', '2025-01-23 11:45:00', 'MAN2025-0001', 'CUS2025-0003', NULL, NULL, NULL, 'CASH', N'Đơn hàng lớn', 'SHI2025-0003');
 
 -- Invoice Lines for Invoice 4
@@ -272,13 +286,17 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0009', 'INV2025-0004', 'PRO2025-0005', 6, 3, 90000.00, 'SALE');
 
 -- LotAllocation for Invoice 4 Lines
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0007', 'ILN2025-0007', 'LOT2025-0001', 8);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0008', 'ILN2025-0007', 'LOT2025-0003', 2);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0009', 'ILN2025-0008', 'LOT2025-0004', 5);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0010', 'ILN2025-0009', 'LOT2025-0011', 3);
+-- ILN2025-0007: 10 Hộp Paracetamol = 10 / 0.01 = 1000 Viên (base UOM)
+-- Split between LOT2025-0001 (800) and LOT2025-0003 (200) to demo FIFO
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0007', 'ILN2025-0007', 'LOT2025-0001', 800);
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0008', 'ILN2025-0007', 'LOT2025-0003', 200);
+-- ILN2025-0008: 5 Chai Vitamin C = 5 / 0.01 = 500 ml (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0009', 'ILN2025-0008', 'LOT2025-0004', 500);
+-- ILN2025-0009: 3 Lọ Omega 3 = 3 / 0.0167 ≈ 180 Viên (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0010', 'ILN2025-0009', 'LOT2025-0011', 180);
 
 -- Invoice 5: SALES - Simple cash transaction
-INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
 VALUES ('INV2025-0005', 'SALES', '2025-01-26 16:00:00', 'MAN2025-0001', NULL, NULL, NULL, NULL, 'CASH', N'Khách hàng mua lẻ', 'SHI2025-0004');
 
 -- Invoice Lines for Invoice 5
@@ -286,10 +304,11 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0010', 'INV2025-0005', 'PRO2025-0001', 1, 20, 200.00, 'SALE');
 
 -- LotAllocation for Invoice 5 Lines
+-- ILN2025-0010: 20 Viên Paracetamol = 20 Viên (base UOM)
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0011', 'ILN2025-0010', 'LOT2025-0001', 20);
 
 -- Invoice 6: RETURN - Return from Invoice 2
-INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
 VALUES ('INV2025-0006', 'RETURN', '2025-01-23 15:30:00', 'MAN2025-0001', NULL, NULL, 'INV2025-0002', NULL, 'CASH', N'Khách hàng đổi trả do sản phẩm hư', 'SHI2025-0003');
 
 -- Invoice Lines for Invoice 6 (Return)
@@ -297,10 +316,11 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0011', 'INV2025-0006', 'PRO2025-0005', 1, 10, 1500.00, 'RETURN');
 
 -- LotAllocation for Invoice 6 (Return - returning to lot)
+-- ILN2025-0011: 10 Viên Omega 3 = 10 Viên (base UOM)
 INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0012', 'ILN2025-0011', 'LOT2025-0011', 10);
 
 -- Invoice 7: EXCHANGE - Exchange from Invoice 4
-INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
 VALUES ('INV2025-0007', 'EXCHANGE', '2025-01-24 10:00:00', 'MAN2025-0001', 'CUS2025-0003', NULL, 'INV2025-0004', NULL, 'CASH', N'Đổi sản phẩm khác loại', 'SHI2025-0003');
 
 -- Invoice Lines for Invoice 7 (Exchange)
@@ -311,11 +331,13 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0013', 'INV2025-0007', 'PRO2025-0003', 3, 1, 50000.00, 'EXCHANGE_IN');
 
 -- LotAllocation for Invoice 7 (Exchange)
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0013', 'ILN2025-0012', 'LOT2025-0001', 2);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0014', 'ILN2025-0013', 'LOT2025-0006', 1);
+-- ILN2025-0012: 2 Hộp Paracetamol (EXCHANGE_OUT) = 2 / 0.01 = 200 Viên (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0013', 'ILN2025-0012', 'LOT2025-0001', 200);
+-- ILN2025-0013: 1 Hộp Amoxicillin (EXCHANGE_IN) = 1 / 0.01 = 100 Viên (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0014', 'ILN2025-0013', 'LOT2025-0006', 100);
 
 -- Invoice 8: SALES with Promotion 2 applied
-INSERT INTO Invoice (id, type, creationDate, creator, prescribedCustomer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
+INSERT INTO Invoice (id, type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
 VALUES ('INV2025-0008', 'SALES', '2025-01-26 17:30:00', 'MAN2025-0001', 'CUS2025-0004', NULL, NULL, 'PMO2025-0002', 'BANK_TRANSFER', N'Áp dụng khuyến mãi tặng quà', 'SHI2025-0004');
 
 -- Invoice Lines for Invoice 8
@@ -326,8 +348,10 @@ INSERT INTO InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPric
 VALUES ('ILN2025-0015', 'INV2025-0008', 'PRO2025-0002', 5, 1, 0.00, 'SALE');
 
 -- LotAllocation for Invoice 8
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0015', 'ILN2025-0014', 'LOT2025-0012', 3);
-INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0016', 'ILN2025-0015', 'LOT2025-0004', 1);
+-- ILN2025-0014: 3 Lọ Omega 3 = 3 / 0.0167 ≈ 180 Viên (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0015', 'ILN2025-0014', 'LOT2025-0012', 180);
+-- ILN2025-0015: 1 Chai Vitamin C (gift) = 1 / 0.01 = 100 ml (base UOM)
+INSERT INTO LotAllocation (id, invoiceLine, lot, quantity) VALUES ('LAL2025-0016', 'ILN2025-0015', 'LOT2025-0004', 100);
 
 GO
 
@@ -336,14 +360,14 @@ GO
 -- =====================================================
 PRINT 'Data generation completed successfully!';
 PRINT '- 1 Staff (admin) created';
-PRINT '- 5 PrescribedCustomers created';
+PRINT '- 5 Customers created';
 PRINT '- 5 Products created (2 OTC [1 LIQUID], 2 ETC [1 LIQUID], 1 Supplement)';
 PRINT '- 9 MeasurementNames created';
 PRINT '- 12 UnitOfMeasures created (with price and baseUnitConversionRate)';
 PRINT '- 12 Lots created (2 unavailable: 1 EXPIRED, 1 FAULTY)';
-PRINT '- 3 Promotions created (1 condition each, various actions)';
+PRINT '- 3 Promotions created (1 condition each, various actions with unitOfMeasure)';
 PRINT '- 4 Shifts created (3 CLOSED, 1 OPEN)';
 PRINT '- 8 Invoices created (5 SALES, 1 RETURN, 1 EXCHANGE with different test cases)';
 PRINT '- 15 InvoiceLines created';
-PRINT '- 16 LotAllocations created';
+PRINT '- 16 LotAllocations created (quantities in base UOM)';
 GO

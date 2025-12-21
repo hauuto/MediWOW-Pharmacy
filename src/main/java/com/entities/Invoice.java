@@ -41,8 +41,8 @@ public class Invoice {
     private Staff creator;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "prescribedCustomer")
-    private PrescribedCustomer prescribedCustomer;
+    @JoinColumn(name = "customer")
+    private Customer customer;
 
     @Column(name = "prescriptionCode", length = 100)
     private String prescriptionCode;
@@ -85,14 +85,14 @@ public class Invoice {
 
     // Full constructor updated
     public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator,
-                   PrescribedCustomer prescribedCustomer, String notes, String prescriptionCode,
+                   Customer customer, String notes, String prescriptionCode,
                    List<InvoiceLine> invoiceLineList, Promotion promotion,
                    PaymentMethod paymentMethod, Invoice referencedInvoice, Shift shift) {
         this.id = id;
         this.type = type;
         this.creationDate = creationDate;
         this.creator = creator;
-        this.prescribedCustomer = prescribedCustomer;
+        this.customer = customer;
         this.notes = notes;
         this.prescriptionCode = prescriptionCode;
         this.invoiceLineList = invoiceLineList != null ? invoiceLineList : new ArrayList<>();
@@ -140,12 +140,12 @@ public class Invoice {
         this.creator = creator;
     }
 
-    public PrescribedCustomer getPrescribedCustomer() {
-        return prescribedCustomer;
+    public Customer getCustomer() {
+        return customer;
     }
 
-    public void setPrescribedCustomer(PrescribedCustomer prescribedCustomer) {
-        this.prescribedCustomer = prescribedCustomer;
+    public void setCustomer(Customer customer) {
+        this.customer = customer;
     }
 
     public String getPrescriptionCode() {

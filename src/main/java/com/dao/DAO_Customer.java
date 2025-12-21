@@ -1,6 +1,6 @@
 package com.dao;
 
-import com.entities.PrescribedCustomer;
+import com.entities.Customer;
 import com.interfaces.ICustomer;
 import com.utils.HibernateUtil;
 import org.hibernate.Session;
@@ -21,7 +21,7 @@ public class DAO_Customer implements ICustomer {
     }
 
     @Override
-    public boolean addCustomer(PrescribedCustomer customer) {
+    public boolean addCustomer(Customer customer) {
         Transaction transaction = null;
         Session session = null;
         try {
@@ -44,7 +44,7 @@ public class DAO_Customer implements ICustomer {
     }
 
     @Override
-    public boolean updateCustomer(PrescribedCustomer customer) {
+    public boolean updateCustomer(Customer customer) {
         Transaction transaction = null;
         Session session = null;
         try {
@@ -73,7 +73,7 @@ public class DAO_Customer implements ICustomer {
         try {
             session = sessionFactory.openSession();
             transaction = session.beginTransaction();
-            PrescribedCustomer customer = session.get(PrescribedCustomer.class, id);
+            Customer customer = session.get(Customer.class, id);
             if (customer != null) {
                 session.remove(customer);
                 transaction.commit();
@@ -94,13 +94,13 @@ public class DAO_Customer implements ICustomer {
     }
 
     @Override
-    public List<PrescribedCustomer> getAllCustomers() {
+    public List<Customer> getAllCustomers() {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            Query<PrescribedCustomer> query = session.createQuery(
-                "FROM PrescribedCustomer ORDER BY creationDate DESC",
-                PrescribedCustomer.class
+            Query<Customer> query = session.createQuery(
+                "FROM Customer ORDER BY creationDate DESC",
+                Customer.class
             );
             return query.list();
         } catch (Exception e) {
@@ -114,11 +114,11 @@ public class DAO_Customer implements ICustomer {
     }
 
     @Override
-    public PrescribedCustomer getCustomerById(String id) {
+    public Customer getCustomerById(String id) {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            return session.get(PrescribedCustomer.class, id);
+            return session.get(Customer.class, id);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -130,13 +130,13 @@ public class DAO_Customer implements ICustomer {
     }
 
     @Override
-    public PrescribedCustomer getCustomerByPhoneNumber(String phoneNumber) {
+    public Customer getCustomerByPhoneNumber(String phoneNumber) {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            Query<PrescribedCustomer> query = session.createQuery(
-                "FROM PrescribedCustomer WHERE phoneNumber = :phoneNumber",
-                PrescribedCustomer.class
+            Query<Customer> query = session.createQuery(
+                "FROM Customer WHERE phoneNumber = :phoneNumber",
+                Customer.class
             );
             query.setParameter("phoneNumber", phoneNumber);
             return query.uniqueResult();
@@ -151,13 +151,13 @@ public class DAO_Customer implements ICustomer {
     }
 
     @Override
-    public List<PrescribedCustomer> searchCustomersByName(String name) {
+    public List<Customer> searchCustomersByName(String name) {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            Query<PrescribedCustomer> query = session.createQuery(
-                "FROM PrescribedCustomer WHERE LOWER(name) LIKE :name ORDER BY name",
-                PrescribedCustomer.class
+            Query<Customer> query = session.createQuery(
+                "FROM Customer WHERE LOWER(name) LIKE :name ORDER BY name",
+                Customer.class
             );
             query.setParameter("name", "%" + name.toLowerCase() + "%");
             return query.list();
@@ -177,7 +177,7 @@ public class DAO_Customer implements ICustomer {
         try {
             session = sessionFactory.openSession();
             Query<Long> query = session.createQuery(
-                "SELECT COUNT(*) FROM PrescribedCustomer WHERE phoneNumber = :phoneNumber",
+                "SELECT COUNT(*) FROM Customer WHERE phoneNumber = :phoneNumber",
                 Long.class
             );
             query.setParameter("phoneNumber", phoneNumber);
@@ -199,7 +199,7 @@ public class DAO_Customer implements ICustomer {
         try {
             session = sessionFactory.openSession();
             Query<Long> query = session.createQuery(
-                "SELECT COUNT(*) FROM PrescribedCustomer WHERE phoneNumber = :phoneNumber AND id != :excludeId",
+                "SELECT COUNT(*) FROM Customer WHERE phoneNumber = :phoneNumber AND id != :excludeId",
                 Long.class
             );
             query.setParameter("phoneNumber", phoneNumber);
