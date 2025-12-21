@@ -8,6 +8,16 @@ import com.entities.Staff;
 import com.entities.Shift;
 import com.bus.BUS_Shift;
 import com.interfaces.ShiftChangeListener;
+import com.bus.BUS_Product;
+import com.bus.BUS_Customer;
+import com.bus.BUS_Invoice;
+import com.entities.Product;
+import com.entities.Customer;
+import com.entities.Invoice;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -41,7 +51,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     private JPanel pnlSearch;
     private JTextField txtSearch;
     private JLabel lblSearch;
-    private JComboBox comboBox1;
     private JButton btnShift;
     private CardLayout cardLayout;
     private Staff currentStaff;
@@ -50,6 +59,15 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     private GUI_InvoiceMenu invoiceMenu;
     private ShiftChangeListener shiftChangeListener;
     private TAB_Dashboard dashboard;
+    // Buses for omni-search
+    private final BUS_Product productBUS = new BUS_Product();
+    private final BUS_Customer customerBUS = new BUS_Customer();
+    private final BUS_Invoice invoiceBUS = new BUS_Invoice();
+
+    private JPopupMenu searchPopup = new JPopupMenu();
+    private volatile long lastSearchAt = 0L;
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^\\d{10,11}$");
+    private static final Pattern INVOICE_PREFIX = Pattern.compile("^(HD|INV).*", Pattern.CASE_INSENSITIVE);
 
 
     /**
@@ -59,6 +77,40 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     public GUI_MainMenu(Staff staff) {
         this.currentStaff = staff;
         this.busShift = new BUS_Shift();
+
+        // Attach simple document listener for search field with debounce
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            private void schedule() {
+                lastSearchAt = System.currentTimeMillis();
+                // small debounce
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(250);
+                    } catch (InterruptedException ignored) {
+                    }
+                    long now = System.currentTimeMillis();
+                    if (now - lastSearchAt >= 240) {
+                        String text = txtSearch.getText();
+                        SwingUtilities.invokeLater(() -> performGlobalSearch(text));
+                    }
+                }).start();
+            }
+
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                schedule();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                schedule();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                schedule();
+            }
+        });
 
         pnlSearch.setBackground(AppColors.LIGHT);
         pnlLeftHeader.setBackground(AppColors.LIGHT);
@@ -339,6 +391,187 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         }
 
         // Don't show message here - DIALOG_CloseShift already shows success message
+    }
+
+    private void performGlobalSearch(String text) {
+        // Trim and check if the search text is empty
+        String searchText = text != null ? text.trim() : "";
+        if (searchText.isEmpty()) {
+            // If search text is empty, dispose the popup and return
+            searchPopup.setVisible(false);
+            return;
+        }
+
+        // For debugging: print the search text
+        System.out.println("Searching for: " + searchText);
+
+        // Determine if the search text is a phone number or an invoice code
+        boolean isPhoneNumber = PHONE_PATTERN.matcher(searchText).matches();
+        boolean isInvoiceCode = INVOICE_PREFIX.matcher(searchText).matches();
+
+        // For debugging: print the detection results
+        System.out.println("Is phone number: " + isPhoneNumber);
+        System.out.println("Is invoice code: " + isInvoiceCode);
+
+        // Clear previous items in the popup
+        searchPopup.removeAll();
+
+        // Helper to load icons (fall back to null)
+        Icon productIcon = null;
+        Icon customerIcon = null;
+        Icon invoiceIcon = null;
+        try {
+            productIcon = new ImageIcon(getClass().getResource("/icons/btn_product.png"));
+            customerIcon = new ImageIcon(getClass().getResource("/icons/btn_customer.png"));
+            invoiceIcon = new ImageIcon(getClass().getResource("/icons/btn_selling.png"));
+        } catch (Exception ex) {
+            // ignore missing icons
+        }
+
+        int totalAdded = 0;
+
+        // If input looks like phone number -> query customers
+        if (isPhoneNumber) {
+            List<Customer> customers = customerBUS.searchTop5ByNameOrPhone(searchText);
+            if (customers != null && !customers.isEmpty()) {
+                for (Customer c : customers) {
+                    String label = String.format("%s - %s", c.getName(), c.getPhoneNumber() == null ? "" : c.getPhoneNumber());
+                    JMenuItem item = new JMenuItem(label, customerIcon);
+                    item.addActionListener(e -> {
+                        // Fallback: open customer tab and show basic info
+                        SwingUtilities.invokeLater(() -> {
+                            try {
+                                setActiveButton(btnCustomer);
+                                cardLayout.show(pnlMain, "customer");
+                            } catch (Exception ex) { /* ignore if UI not ready */ }
+                            String info = c.getName() + (c.getPhoneNumber() != null && !c.getPhoneNumber().isEmpty() ? "\nSĐT: " + c.getPhoneNumber() : "");
+                            JOptionPane.showMessageDialog(pnlMainMenu, info, "Khách hàng", JOptionPane.INFORMATION_MESSAGE);
+                        });
+                    });
+                    searchPopup.add(item);
+                    totalAdded++;
+                }
+            }
+            // Also search invoices by id that may contain phone (rare) and products as fallback
+            List<Invoice> invoices = invoiceBUS.searchTop5ById(searchText);
+            if (invoices != null && !invoices.isEmpty()) {
+                for (Invoice inv : invoices) {
+                    String who = inv.getCustomer() != null ? inv.getCustomer().getName() : (inv.getCreator() != null ? inv.getCreator().getFullName() : "");
+                    JMenuItem item = new JMenuItem("Hóa đơn: " + inv.getId() + " - " + who, invoiceIcon);
+                    final String whoDisplay = who;
+                    item.addActionListener(e -> {
+                        // Fallback: switch to invoice menu and show basic info
+                        SwingUtilities.invokeLater(() -> {
+                            try {
+                                setActiveButton(btnSales);
+                                cardLayout.show(pnlMain, "invoiceMenu");
+                            } catch (Exception ex) { /* ignore */ }
+                            String info = "Hóa đơn: " + inv.getId() + (whoDisplay != null && !whoDisplay.isEmpty() ? "\nKhách: " + whoDisplay : "");
+                            JOptionPane.showMessageDialog(pnlMainMenu, info, "Hóa đơn", JOptionPane.INFORMATION_MESSAGE);
+                        });
+                    });
+                    searchPopup.add(item);
+                    totalAdded++;
+                }
+            }
+
+            List<Product> products = productBUS.searchTop5ByNameOrBarcode(searchText);
+            if (products != null && !products.isEmpty()) {
+                for (Product p : products) {
+                    String label = String.format("%s - %s", p.getName(), p.getBarcode() == null ? "" : p.getBarcode());
+                    JMenuItem item = new JMenuItem(label, productIcon);
+                    item.addActionListener(e -> {
+                        // Fallback: open product tab and show basic info
+                        SwingUtilities.invokeLater(() -> {
+                            try {
+                                setActiveButton(btnProduct);
+                                cardLayout.show(pnlMain, "product");
+                            } catch (Exception ex) { /* ignore */ }
+                            String info = p.getName() + (p.getBarcode() != null && !p.getBarcode().isEmpty() ? "\nMã vạch: " + p.getBarcode() : "");
+                            JOptionPane.showMessageDialog(pnlMainMenu, info, "Sản phẩm", JOptionPane.INFORMATION_MESSAGE);
+                        });
+                    });
+                    searchPopup.add(item);
+                    totalAdded++;
+                }
+            }
+
+        } else if (isInvoiceCode) {
+            // Only query invoices
+            List<Invoice> invoices = invoiceBUS.searchTop5ById(searchText);
+            if (invoices != null && !invoices.isEmpty()) {
+                for (Invoice inv : invoices) {
+                    String who = inv.getCustomer() != null ? inv.getCustomer().getName() : (inv.getCreator() != null ? inv.getCreator().getFullName() : "");
+                    JMenuItem item = new JMenuItem("Hóa đơn: " + inv.getId() + " - " + who, invoiceIcon);
+                    final String whoDisplay = who;
+                    item.addActionListener(e -> {
+                        // Fallback: switch to invoice menu and show basic info
+                        SwingUtilities.invokeLater(() -> {
+                            try {
+                                setActiveButton(btnSales);
+                                cardLayout.show(pnlMain, "invoiceMenu");
+                            } catch (Exception ex) { /* ignore */ }
+                            String info = "Hóa đơn: " + inv.getId() + (whoDisplay != null && !whoDisplay.isEmpty() ? "\nKhách: " + whoDisplay : "");
+                            JOptionPane.showMessageDialog(pnlMainMenu, info, "Hóa đơn", JOptionPane.INFORMATION_MESSAGE);
+                        });
+                    });
+                    searchPopup.add(item);
+                    totalAdded++;
+                }
+            }
+        } else {
+            // Default: search products and customers in parallel (sequentially here)
+            List<Product> products = productBUS.searchTop5ByNameOrBarcode(searchText);
+            if (products != null && !products.isEmpty()) {
+                for (Product p : products) {
+                    String label = String.format("%s - %s", p.getName(), p.getBarcode() == null ? "" : p.getBarcode());
+                    JMenuItem item = new JMenuItem(label, productIcon);
+                    item.addActionListener(e -> {
+                        // Fallback: open product tab and show basic info
+                        SwingUtilities.invokeLater(() -> {
+                            try {
+                                setActiveButton(btnProduct);
+                                cardLayout.show(pnlMain, "product");
+                            } catch (Exception ex) { /* ignore */ }
+                            String info = p.getName() + (p.getBarcode() != null && !p.getBarcode().isEmpty() ? "\nMã vạch: " + p.getBarcode() : "");
+                            JOptionPane.showMessageDialog(pnlMainMenu, info, "Sản phẩm", JOptionPane.INFORMATION_MESSAGE);
+                        });
+                    });
+                    searchPopup.add(item);
+                    totalAdded++;
+                }
+            }
+
+            List<Customer> customers = customerBUS.searchTop5ByNameOrPhone(searchText);
+            if (customers != null && !customers.isEmpty()) {
+                for (Customer c : customers) {
+                    String label = String.format("%s - %s", c.getName(), c.getPhoneNumber() == null ? "" : c.getPhoneNumber());
+                    JMenuItem item = new JMenuItem(label, customerIcon);
+                    item.addActionListener(e -> {
+                        // Fallback: open customer tab and show basic info
+                        SwingUtilities.invokeLater(() -> {
+                            try {
+                                setActiveButton(btnCustomer);
+                                cardLayout.show(pnlMain, "customer");
+                            } catch (Exception ex) { /* ignore if UI not ready */ }
+                            String info = c.getName() + (c.getPhoneNumber() != null && !c.getPhoneNumber().isEmpty() ? "\nSĐT: " + c.getPhoneNumber() : "");
+                            JOptionPane.showMessageDialog(pnlMainMenu, info, "Khách hàng", JOptionPane.INFORMATION_MESSAGE);
+                        });
+                    });
+                    searchPopup.add(item);
+                    totalAdded++;
+                }
+            }
+        }
+
+        if (totalAdded == 0) {
+            JMenuItem none = new JMenuItem("Không có kết quả");
+            none.setEnabled(false);
+            searchPopup.add(none);
+        }
+
+        // Show the popup below the search field
+        searchPopup.show(txtSearch, 0, txtSearch.getHeight());
     }
 
 
@@ -723,7 +956,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         lblTime.setText("");
         pnlRightHeader.add(lblTime, BorderLayout.CENTER);
         pnlSearch = new JPanel();
-        pnlSearch.setLayout(new GridLayoutManager(1, 3, new Insets(0, 100, 0, 0), -1, -1));
+        pnlSearch.setLayout(new GridLayoutManager(1, 2, new Insets(0, 100, 0, 0), -1, -1));
         pnlSearch.setAlignmentX(0.0f);
         pnlSearch.setBackground(new Color(-16724789));
         pnlRightHeader.add(pnlSearch, BorderLayout.WEST);
@@ -742,19 +975,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         lblSearch.setName("");
         lblSearch.setText("Tra cứu");
         pnlSearch.add(lblSearch, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        comboBox1 = new JComboBox();
-        comboBox1.setAlignmentX(0.0f);
-        Font comboBox1Font = this.$$$getFont$$$(null, -1, 18, comboBox1.getFont());
-        if (comboBox1Font != null) comboBox1.setFont(comboBox1Font);
-        comboBox1.setForeground(new Color(-16012317));
-        final DefaultComboBoxModel defaultComboBoxModel2 = new DefaultComboBoxModel();
-        defaultComboBoxModel2.addElement("Hóa đơn");
-        defaultComboBoxModel2.addElement("Sản phẩm");
-        defaultComboBoxModel2.addElement("Khuyến mại");
-        defaultComboBoxModel2.addElement("Nhân viên");
-        defaultComboBoxModel2.addElement("Khách hàng");
-        comboBox1.setModel(defaultComboBoxModel2);
-        pnlSearch.add(comboBox1, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(-1, 10), null, 0, false));
         lblSearch.setLabelFor(txtSearch);
     }
 

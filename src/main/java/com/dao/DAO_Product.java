@@ -10,6 +10,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.Hibernate;
+import org.hibernate.query.Query;
 
 import java.util.HashSet;
 import java.util.List;
@@ -604,7 +605,31 @@ public class DAO_Product implements IProduct {
         }
     }
 
+    /**
+     * Search top 5 products by name (contains, case-insensitive) or barcode (contains).
+     * Used by global/omni-search in the GUI.
+     */
+    public List<Product> searchTop5ByNameOrBarcode(String keyword) {
+        if (keyword == null) return java.util.Collections.emptyList();
+        String kw = keyword.trim();
+        if (kw.isEmpty()) return java.util.Collections.emptyList();
 
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            String jpql = "FROM Product p WHERE lower(p.name) LIKE :kw OR p.barcode LIKE :bar ORDER BY p.name";
+            Query<Product> q = session.createQuery(jpql, Product.class);
+            q.setParameter("kw", "%" + kw.toLowerCase() + "%");
+            q.setParameter("bar", "%" + kw + "%");
+            q.setMaxResults(5);
+            return q.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
+    }
 
     @Override
     public boolean existsByBarcode(String barcode) {

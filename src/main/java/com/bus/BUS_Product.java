@@ -256,6 +256,18 @@ public class BUS_Product implements IProduct {
     }
 
     /**
+     * Search top 5 products by name or barcode for omni-search.
+     */
+    public List<Product> searchTop5ByNameOrBarcode(String keyword) {
+        try {
+            return dao.searchTop5ByNameOrBarcode(keyword);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /**
      * Deduct a specific quantity from a lot
      * @param lotId The ID of the lot
      * @param quantityToDeduct The quantity to deduct

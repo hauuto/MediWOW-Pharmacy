@@ -43,4 +43,17 @@ public class BUS_Invoice  implements IInvoice {
     public List<String> getAllPrescriptionCodes() {
         return daoInvoice.getAllPrescriptionCodes();
     }
+
+    /**
+     * Search top 5 invoices by id pattern for omni-search.
+     */
+    public List<Invoice> searchTop5ById(String keyword) {
+        try {
+            return daoInvoice.searchTop5ById(keyword);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
+    }
+
 }

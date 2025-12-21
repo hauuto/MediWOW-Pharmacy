@@ -78,6 +78,18 @@ public class BUS_Customer implements ICustomer {
         return daoCustomer.searchCustomersByName(name);
     }
 
+    /**
+     * Search top 5 customers by name or phone for omni-search.
+     */
+    public List<Customer> searchTop5ByNameOrPhone(String keyword) {
+        try {
+            return daoCustomer.searchTop5ByNameOrPhone(keyword);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
+    }
+
     @Override
     public boolean existsByPhoneNumber(String phoneNumber) {
         return daoCustomer.existsByPhoneNumber(phoneNumber);

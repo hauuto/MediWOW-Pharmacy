@@ -215,5 +215,30 @@ public class DAO_Customer implements ICustomer {
             }
         }
     }
-}
 
+    /**
+     * Search top 5 customers by name (contains, case-insensitive) or phone (contains).
+     */
+    public List<Customer> searchTop5ByNameOrPhone(String keyword) {
+        if (keyword == null) return java.util.Collections.emptyList();
+        String kw = keyword.trim();
+        if (kw.isEmpty()) return java.util.Collections.emptyList();
+
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            String jpql = "FROM Customer c WHERE lower(c.name) LIKE :kw OR c.phoneNumber LIKE :phone ORDER BY c.name";
+            Query<Customer> q = session.createQuery(jpql, Customer.class);
+            q.setParameter("kw", "%" + kw.toLowerCase() + "%");
+            q.setParameter("phone", "%" + kw + "%");
+            q.setMaxResults(5);
+            return q.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
+    }
+
+}
