@@ -219,7 +219,7 @@ public class DAO_Customer implements ICustomer {
     /**
      * Search top 5 customers by name (contains, case-insensitive) or phone (contains).
      */
-    public List<PrescribedCustomer> searchTop5ByNameOrPhone(String keyword) {
+    public List<Customer> searchTop5ByNameOrPhone(String keyword) {
         if (keyword == null) return java.util.Collections.emptyList();
         String kw = keyword.trim();
         if (kw.isEmpty()) return java.util.Collections.emptyList();
@@ -227,8 +227,8 @@ public class DAO_Customer implements ICustomer {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            String jpql = "FROM PrescribedCustomer c WHERE lower(c.name) LIKE :kw OR c.phoneNumber LIKE :phone ORDER BY c.name";
-            Query<PrescribedCustomer> q = session.createQuery(jpql, PrescribedCustomer.class);
+            String jpql = "FROM Customer c WHERE lower(c.name) LIKE :kw OR c.phoneNumber LIKE :phone ORDER BY c.name";
+            Query<Customer> q = session.createQuery(jpql, Customer.class);
             q.setParameter("kw", "%" + kw.toLowerCase() + "%");
             q.setParameter("phone", "%" + kw + "%");
             q.setMaxResults(5);

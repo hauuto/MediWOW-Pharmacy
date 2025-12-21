@@ -81,7 +81,7 @@ public class BUS_Customer implements ICustomer {
     /**
      * Search top 5 customers by name or phone for omni-search.
      */
-    public List<PrescribedCustomer> searchTop5ByNameOrPhone(String keyword) {
+    public List<Customer> searchTop5ByNameOrPhone(String keyword) {
         try {
             return daoCustomer.searchTop5ByNameOrPhone(keyword);
         } catch (Exception e) {

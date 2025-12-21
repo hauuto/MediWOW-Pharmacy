@@ -12,7 +12,7 @@ import com.bus.BUS_Product;
 import com.bus.BUS_Customer;
 import com.bus.BUS_Invoice;
 import com.entities.Product;
-import com.entities.PrescribedCustomer;
+import com.entities.Customer;
 import com.entities.Invoice;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -432,9 +432,9 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
         // If input looks like phone number -> query customers
         if (isPhoneNumber) {
-            List<PrescribedCustomer> customers = customerBUS.searchTop5ByNameOrPhone(searchText);
+            List<Customer> customers = customerBUS.searchTop5ByNameOrPhone(searchText);
             if (customers != null && !customers.isEmpty()) {
-                for (PrescribedCustomer c : customers) {
+                for (Customer c : customers) {
                     String label = String.format("%s - %s", c.getName(), c.getPhoneNumber() == null ? "" : c.getPhoneNumber());
                     JMenuItem item = new JMenuItem(label, customerIcon);
                     item.addActionListener(e -> {
@@ -456,7 +456,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
             List<Invoice> invoices = invoiceBUS.searchTop5ById(searchText);
             if (invoices != null && !invoices.isEmpty()) {
                 for (Invoice inv : invoices) {
-                    String who = inv.getPrescribedCustomer() != null ? inv.getPrescribedCustomer().getName() : (inv.getCreator() != null ? inv.getCreator().getFullName() : "");
+                    String who = inv.getCustomer() != null ? inv.getCustomer().getName() : (inv.getCreator() != null ? inv.getCreator().getFullName() : "");
                     JMenuItem item = new JMenuItem("Hóa đơn: " + inv.getId() + " - " + who, invoiceIcon);
                     final String whoDisplay = who;
                     item.addActionListener(e -> {
@@ -501,7 +501,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
             List<Invoice> invoices = invoiceBUS.searchTop5ById(searchText);
             if (invoices != null && !invoices.isEmpty()) {
                 for (Invoice inv : invoices) {
-                    String who = inv.getPrescribedCustomer() != null ? inv.getPrescribedCustomer().getName() : (inv.getCreator() != null ? inv.getCreator().getFullName() : "");
+                    String who = inv.getCustomer() != null ? inv.getCustomer().getName() : (inv.getCreator() != null ? inv.getCreator().getFullName() : "");
                     JMenuItem item = new JMenuItem("Hóa đơn: " + inv.getId() + " - " + who, invoiceIcon);
                     final String whoDisplay = who;
                     item.addActionListener(e -> {
@@ -542,9 +542,9 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 }
             }
 
-            List<PrescribedCustomer> customers = customerBUS.searchTop5ByNameOrPhone(searchText);
+            List<Customer> customers = customerBUS.searchTop5ByNameOrPhone(searchText);
             if (customers != null && !customers.isEmpty()) {
-                for (PrescribedCustomer c : customers) {
+                for (Customer c : customers) {
                     String label = String.format("%s - %s", c.getName(), c.getPhoneNumber() == null ? "" : c.getPhoneNumber());
                     JMenuItem item = new JMenuItem(label, customerIcon);
                     item.addActionListener(e -> {
