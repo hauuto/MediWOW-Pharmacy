@@ -495,4 +495,30 @@ public class DAO_Invoice implements IInvoice {
         }
     }
 
+    /**
+     * Check if an invoice is referenced by any other invoice (EXCHANGE or RETURN).
+     * @param invoiceId The ID of the invoice to check
+     * @return true if the invoice is referenced, false otherwise
+     */
+    public boolean isInvoiceReferenced(String invoiceId) {
+        if (invoiceId == null || invoiceId.trim().isEmpty()) return false;
+
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            String hql = "SELECT COUNT(i) FROM Invoice i WHERE i.referencedInvoice.id = :invoiceId";
+            Long count = session.createQuery(hql, Long.class)
+                .setParameter("invoiceId", invoiceId)
+                .uniqueResult();
+            return count != null && count > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
+        }
+    }
+
 }

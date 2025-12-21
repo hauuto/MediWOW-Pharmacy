@@ -1,6 +1,8 @@
 package com.gui.invoice_options;
 
+import com.dao.DAO_Invoice;
 import com.entities.*;
+import com.enums.InvoiceType;
 import com.utils.*;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -9,35 +11,28 @@ import javax.swing.table.*;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.math.BigDecimal;
 import java.text.*;
 import java.util.*;
 import java.util.List;
 
 public class TAB_ExchangeInvoice extends JFrame implements ActionListener, MouseListener, FocusListener, KeyListener, DocumentListener {
-    public JPanel pnlExchangeInvoice;
+    public JPanel pnlExchangeInvoice, pnlCashOptions;
     private static final int LEFT_MIN = 750, RIGHT_MIN = 530, TOP_MIN = 200, BOTTOM_MIN = 316;
-    private JTextField txtInvoiceSearch;
-    private JWindow invoiceSearchWindow;
-    private JList<String> invoiceSearchResultsList;
-    private DefaultListModel<String> invoiceSearchResultsModel;
-    private List<Invoice> currentInvoiceSearchResults = new ArrayList<>();
-    private DefaultTableModel mdlOriginalInvoiceLine;
-    private JTable tblOriginalInvoiceLine;
-    private JScrollPane scrOriginalInvoiceLine;
-    private DefaultTableModel mdlExchangeInvoiceLine;
-    private JTable tblExchangeInvoiceLine;
-    private JScrollPane scrExchangeInvoiceLine;
-    private JTextField txtProductSearch;
-    private JButton btnBarcodeScan;
+    private static final String INVOICE_ID_PATTERN = "^INV\\d{4}-\\d{4}$";
+    private final DAO_Invoice daoInvoice = new DAO_Invoice();
+    private Invoice selectedOriginalInvoice;
+    private DefaultTableModel mdlOriginalInvoiceLine, mdlExchangeInvoiceLine;
+    private JTable tblOriginalInvoiceLine, tblExchangeInvoiceLine;
+    private JScrollPane scrOriginalInvoiceLine, scrExchangeInvoiceLine;
+    private JButton btnBarcodeScan, btnProcessPayment;
     private JWindow productSearchWindow;
     private JList<String> productSearchResultsList;
     private DefaultListModel<String> productSearchResultsModel;
     private List<Product> currentProductSearchResults = new ArrayList<>();
     private boolean barcodeScanningEnabled = false;
-    private JTextField txtPrescriptionCode, txtVat, txtTotal;
+    private JTextField txtPrescriptionCode, txtVat, txtTotal, txtShiftId, txtCustomerName, txtInvoiceSearch, txtProductSearch;
     private JFormattedTextField txtCustomerPayment;
-    private JPanel pnlCashOptions;
-    private JButton btnProcessPayment;
     private Window parentWindow;
 
     public TAB_ExchangeInvoice(Staff creator) {
@@ -58,59 +53,86 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         txtInvoiceSearch = new JTextField();
         h.add(generateLabelAndTextField(new JLabel("Tìm hóa đơn gốc:"), txtInvoiceSearch, "Nhập mã hóa đơn cần đổi...", "Nhập mã hóa đơn cần đổi", 0));
         h.add(Box.createHorizontalStrut(5));
-        setupInvoiceSearchAutocomplete();
+        txtInvoiceSearch.addKeyListener(this);
+        txtInvoiceSearch.addFocusListener(this);
         return v;
     }
 
-    private void setupInvoiceSearchAutocomplete() {
-        invoiceSearchResultsModel = new DefaultListModel<>();
-        invoiceSearchResultsList = new JList<>(invoiceSearchResultsModel);
-        invoiceSearchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
-        invoiceSearchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        invoiceSearchResultsList.setName("invoiceSearchResultsList");
-        invoiceSearchWindow = new JWindow(parentWindow);
-        invoiceSearchWindow.add(new JScrollPane(invoiceSearchResultsList));
-        invoiceSearchWindow.setFocusableWindowState(false);
-        txtInvoiceSearch.getDocument().addDocumentListener(this);
-        txtInvoiceSearch.addKeyListener(this); txtInvoiceSearch.addFocusListener(this);
-        invoiceSearchResultsList.addMouseListener(this);
-    }
-
-    private void performInvoiceSearch() {
-        String search = txtInvoiceSearch.getText().trim().toLowerCase();
-        if (search.isEmpty() || search.equals("nhập mã hóa đơn cần đổi...") || txtInvoiceSearch.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
-            invoiceSearchWindow.setVisible(false); return;
+    private void searchAndLoadInvoice() {
+        String inputId = txtInvoiceSearch.getText().trim();
+        if (inputId.isEmpty() || inputId.equals("Nhập mã hóa đơn cần đổi...") ||
+            txtInvoiceSearch.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
+            return;
         }
-        invoiceSearchResultsModel.clear(); currentInvoiceSearchResults.clear();
-        // TODO: Replace with actual invoice search from BUS_Invoice
-        if (!currentInvoiceSearchResults.isEmpty()) {
-            Point loc = txtInvoiceSearch.getLocationOnScreen();
-            int h = Math.min(currentInvoiceSearchResults.size(), 5) * 25 + 4;
-            invoiceSearchWindow.setLocation(loc.x, loc.y + txtInvoiceSearch.getHeight());
-            invoiceSearchWindow.setSize(txtInvoiceSearch.getWidth(), h);
-            invoiceSearchWindow.setVisible(true);
-            if (invoiceSearchResultsModel.getSize() > 0) invoiceSearchResultsList.setSelectedIndex(0);
-        } else invoiceSearchWindow.setVisible(false);
-    }
-
-    private void selectInvoice(int idx) {
-        if (idx < 0 || idx >= currentInvoiceSearchResults.size()) return;
-        Invoice invoice = currentInvoiceSearchResults.get(idx);
+        if (!inputId.toUpperCase().matches(INVOICE_ID_PATTERN)) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Định dạng mã hóa đơn không hợp lệ!\n\nĐịnh dạng đúng: INVXXXX-XXXX\n(X là các chữ số)",
+                "Lỗi định dạng", JOptionPane.ERROR_MESSAGE);
+            txtInvoiceSearch.selectAll();
+            txtInvoiceSearch.requestFocusInWindow();
+            return;
+        }
+        String normalizedId = inputId.toUpperCase();
+        Invoice invoice = daoInvoice.getInvoice(normalizedId);
+        if (invoice == null) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Không tìm thấy hóa đơn với mã: " + normalizedId,
+                "Không tìm thấy", JOptionPane.WARNING_MESSAGE);
+            txtInvoiceSearch.selectAll();
+            txtInvoiceSearch.requestFocusInWindow();
+            return;
+        }
+        if (invoice.getType() == InvoiceType.EXCHANGE) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Mã hóa đơn này là hóa đơn đổi hàng!\nKhông thể sử dụng hóa đơn đổi hàng để đổi hàng.",
+                "Loại hóa đơn không hợp lệ", JOptionPane.WARNING_MESSAGE);
+            txtInvoiceSearch.selectAll();
+            txtInvoiceSearch.requestFocusInWindow();
+            return;
+        }
+        if (invoice.getType() == InvoiceType.RETURN) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Mã hóa đơn này là hóa đơn trả hàng!\nKhông thể sử dụng hóa đơn trả hàng để đổi hàng.",
+                "Loại hóa đơn không hợp lệ", JOptionPane.WARNING_MESSAGE);
+            txtInvoiceSearch.selectAll();
+            txtInvoiceSearch.requestFocusInWindow();
+            return;
+        }
+        if (daoInvoice.isInvoiceReferenced(normalizedId)) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Hóa đơn này đã được sử dụng cho đổi/trả hàng trước đó!\nMỗi hóa đơn chỉ có thể đổi/trả hàng một lần.",
+                "Hóa đơn đã được tham chiếu", JOptionPane.WARNING_MESSAGE);
+            txtInvoiceSearch.selectAll();
+            txtInvoiceSearch.requestFocusInWindow();
+            return;
+        }
+        selectedOriginalInvoice = invoice;
         loadOriginalInvoiceLines(invoice);
-        txtInvoiceSearch.setText(invoice.getId());
+        txtInvoiceSearch.setText("");
         txtInvoiceSearch.setForeground(AppColors.TEXT);
-        invoiceSearchWindow.setVisible(false);
+        setPlaceholderAndTooltip(txtInvoiceSearch, "Nhập mã hóa đơn cần đổi...", "Nhập mã hóa đơn cần đổi");
+        txtInvoiceSearch.requestFocusInWindow();
     }
-
     private void loadOriginalInvoiceLines(Invoice invoice) {
         mdlOriginalInvoiceLine.setRowCount(0);
-        // TODO: Load invoice lines from the selected invoice
+        if (invoice == null || invoice.getInvoiceLineList() == null) return;
+        for (InvoiceLine line : invoice.getInvoiceLineList()) {
+            Product product = line.getProduct();
+            UnitOfMeasure uom = line.getUnitOfMeasure();
+            if (product == null || uom == null) continue;
+            String productId = product.getId();
+            String productName = product.getName();
+            String uomName = uom.getName();
+            int quantity = line.getQuantity();
+            BigDecimal unitPrice = line.getUnitPrice();
+            BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(quantity));
+            mdlOriginalInvoiceLine.addRow(new Object[]{productId, productName, uomName, quantity, unitPrice, total});
+        }
     }
 
     private JSplitPane createSplitPane() {
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createLeftPanel(), createRightPanel());
-        splitPane.setBackground(AppColors.WHITE);
-        splitPane.setDividerLocation(LEFT_MIN);
+        splitPane.setBackground(AppColors.WHITE); splitPane.setDividerLocation(LEFT_MIN);
         return splitPane;
     }
 
@@ -309,6 +331,25 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         Box th = Box.createHorizontalBox(); th.add(Box.createHorizontalGlue()); th.add(title); th.add(Box.createHorizontalGlue());
         v.add(Box.createVerticalStrut(20)); v.add(th); v.add(Box.createVerticalStrut(20));
 
+        Box presc = Box.createHorizontalBox();
+        TitledBorder pb = BorderFactory.createTitledBorder("Thông tin chung");
+        pb.setTitleFont(new Font("Arial", Font.BOLD, 16)); pb.setTitleColor(AppColors.PRIMARY);
+        presc.setBorder(pb);
+        v.add(presc); v.add(Box.createVerticalStrut(40));
+        Box pv = Box.createVerticalBox(); presc.add(pv);
+
+        txtShiftId = new JTextField(); txtShiftId.setEditable(false); txtShiftId.setFocusable(false);
+        pv.add(generateLabelAndTextField(new JLabel("Mã ca:"), txtShiftId, "", "Mã ca làm việc", 112));
+        pv.add(Box.createVerticalStrut(10));
+
+        txtPrescriptionCode = new JTextField(); txtPrescriptionCode.setName("txtPrescriptionCode"); txtPrescriptionCode.addFocusListener(this);
+        pv.add(generateLabelAndTextField(new JLabel("Mã đơn kê thuốc:"), txtPrescriptionCode, "Điền mã đơn kê thuốc (nếu có)...", "Điền mã đơn kê thuốc", 39));
+        pv.add(Box.createVerticalStrut(10));
+
+        txtCustomerName = new JTextField(); txtCustomerName.setName("txtCustomerName");
+        pv.add(generateLabelAndTextField(new JLabel("Tên khách hàng:"), txtCustomerName, "Điền tên khách hàng (nếu có)...", "Điền tên khách hàng", 46));
+        pv.add(Box.createVerticalStrut(10));
+
         Box pay = Box.createHorizontalBox();
         TitledBorder payb = BorderFactory.createTitledBorder("Thông tin thanh toán");
         payb.setTitleFont(new Font("Arial", Font.BOLD, 16)); payb.setTitleColor(AppColors.PRIMARY);
@@ -429,7 +470,10 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             } else if (v instanceof Number) {
                 v = fmt.format(((Number) v).doubleValue());
             }
-            return super.getTableCellRendererComponent(t, v, s, f, r, c);
+            Component comp = super.getTableCellRendererComponent(t, v, s, f, r, c);
+            comp.setBackground(r % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
+            if (s) comp.setBackground(t.getSelectionBackground());
+            return comp;
         }
     }
 
@@ -472,8 +516,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     }
 
     @Override public void mouseClicked(MouseEvent e) {
-        if (e.getSource() == invoiceSearchResultsList && invoiceSearchResultsList.getSelectedIndex() != -1) selectInvoice(invoiceSearchResultsList.getSelectedIndex());
-        else if (e.getSource() == productSearchResultsList && productSearchResultsList.getSelectedIndex() != -1) selectProduct(productSearchResultsList.getSelectedIndex());
+        if (e.getSource() == productSearchResultsList && productSearchResultsList.getSelectedIndex() != -1) selectProduct(productSearchResultsList.getSelectedIndex());
     }
 
     @Override public void mousePressed(MouseEvent e) {}
@@ -495,8 +538,6 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         if (src == txtProductSearch && !e.isTemporary() && barcodeScanningEnabled) {
             Component o = e.getOppositeComponent();
             if (o instanceof JTextField || o instanceof JFormattedTextField) { barcodeScanningEnabled = false; updateBarcodeScanButtonAppearance(); }
-        } else if (src == txtInvoiceSearch) {
-            new javax.swing.Timer(150, evt -> invoiceSearchWindow.setVisible(false)) {{ setRepeats(false); start(); }};
         } else if (src == txtProductSearch) {
             new javax.swing.Timer(150, evt -> productSearchWindow.setVisible(false)) {{ setRepeats(false); start(); }};
         } else if (src instanceof JTextField) {
@@ -506,21 +547,21 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     }
 
     @Override public void keyPressed(KeyEvent e) {
-        if (e.getSource() == txtInvoiceSearch && invoiceSearchWindow.isVisible()) {
-            handleSearchNavigation(e, invoiceSearchResultsList, invoiceSearchResultsModel, true);
+        if (e.getSource() == txtInvoiceSearch && e.getKeyCode() == KeyEvent.VK_ENTER) {
+            e.consume(); searchAndLoadInvoice();
         } else if (e.getSource() == txtProductSearch) {
             if (e.getKeyCode() == KeyEvent.VK_ENTER && barcodeScanningEnabled) { processBarcodeInput(); e.consume(); }
-            else if (productSearchWindow.isVisible()) handleSearchNavigation(e, productSearchResultsList, productSearchResultsModel, false);
+            else if (productSearchWindow.isVisible()) handleSearchNavigation(e, productSearchResultsList, productSearchResultsModel);
         }
     }
 
-    private void handleSearchNavigation(KeyEvent e, JList<String> list, DefaultListModel<String> model, boolean isInvoice) {
+    private void handleSearchNavigation(KeyEvent e, JList<String> list, DefaultListModel<String> model) {
         int i = list.getSelectedIndex();
         switch (e.getKeyCode()) {
             case KeyEvent.VK_DOWN: list.setSelectedIndex((i + 1) % model.getSize()); list.ensureIndexIsVisible(list.getSelectedIndex()); e.consume(); break;
             case KeyEvent.VK_UP: list.setSelectedIndex((i + model.getSize() - 1) % model.getSize()); list.ensureIndexIsVisible(list.getSelectedIndex()); e.consume(); break;
-            case KeyEvent.VK_ENTER: if (i != -1) { if (isInvoice) selectInvoice(i); else selectProduct(i); } e.consume(); break;
-            case KeyEvent.VK_ESCAPE: (isInvoice ? invoiceSearchWindow : productSearchWindow).setVisible(false); e.consume(); break;
+            case KeyEvent.VK_ENTER: if (i != -1) { selectProduct(i); } e.consume(); break;
+            case KeyEvent.VK_ESCAPE: productSearchWindow.setVisible(false); e.consume(); break;
         }
     }
 
@@ -540,8 +581,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     @Override public void changedUpdate(DocumentEvent e) { handleDocumentChange(e); }
 
     private void handleDocumentChange(DocumentEvent e) {
-        if (txtInvoiceSearch != null && e.getDocument() == txtInvoiceSearch.getDocument()) SwingUtilities.invokeLater(this::performInvoiceSearch);
-        else if (txtProductSearch != null && e.getDocument() == txtProductSearch.getDocument()) SwingUtilities.invokeLater(this::performProductSearch);
+        if (txtProductSearch != null && e.getDocument() == txtProductSearch.getDocument()) SwingUtilities.invokeLater(this::performProductSearch);
     }
 }
 
