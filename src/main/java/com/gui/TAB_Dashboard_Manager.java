@@ -2,10 +2,12 @@ package com.gui;
 
 import com.bus.BUS_Invoice;
 import com.bus.BUS_Product;
+import com.bus.BUS_Shift;
 import com.dao.DAO_Shift;
 import com.entities.*;
 import com.enums.InvoiceType;
 import com.enums.ProductCategory;
+import com.interfaces.DataChangeListener;
 import com.interfaces.ShiftChangeListener;
 import com.utils.AppColors;
 import org.knowm.xchart.CategoryChart;
@@ -32,7 +34,7 @@ import java.util.Locale;
  *
  * @author Tô Thanh Hậu
  */
-public class TAB_Dashboard_Manager extends JPanel {
+public class TAB_Dashboard_Manager extends JPanel implements DataChangeListener {
 
     private final Staff currentStaff;
     private ShiftChangeListener shiftChangeListener;
@@ -40,30 +42,38 @@ public class TAB_Dashboard_Manager extends JPanel {
     // Chỉ dùng BUS/DAO của entities
     private final BUS_Invoice busInvoice;
     private final BUS_Product busProduct;
+    private final BUS_Shift busShift;
     private final DAO_Shift daoShift;
+
+    // Current shift
+    private Shift currentShift;
 
     // Header controls
     private JLabel lblTitle;
     private JLabel lblDate;
-    private JComboBox<String> cbSoSanh;
-    private JComboBox<String> cbBieuDo;
-    private JButton btnLamMoi;
+    private JComboBox<String> cbComparison;
+    private JComboBox<String> cbChart;
+
+    // Shift management labels
+    private JLabel lblShiftId;
+    private JLabel lblCurrentCash;
+    private JButton btnShift;
 
     // KPI cards
-    private KpiCard cardDoanhThuThuan;
-    private KpiCard cardLoiNhuan;
-    private KpiCard cardTraHang;
-    private KpiCard cardChenhLechTienMat;
+    private KpiCard cardNetRevenue;
+    private KpiCard cardProfit;
+    private KpiCard cardReturns;
+    private KpiCard cardCashMismatch;
 
     // Chart
     private JPanel chartWrap;
 
     // Tables
-    private JTable tblDotBien;
-    private DefaultTableModel mdlDotBien;
+    private JTable tblTrending;
+    private DefaultTableModel mdlTrending;
 
-    private JTable tblDoiSoat;
-    private DefaultTableModel mdlDoiSoat;
+    private JTable tblReconciliation;
+    private DefaultTableModel mdlReconciliation;
 
     private final NumberFormat currency = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
     private final DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -76,8 +86,10 @@ public class TAB_Dashboard_Manager extends JPanel {
         this.currentStaff = staff;
         this.busInvoice = new BUS_Invoice();
         this.busProduct = new BUS_Product();
+        this.busShift = new BUS_Shift();
         this.daoShift = new DAO_Shift();
         initComponents();
+        loadShiftData();
         refresh();
     }
 
@@ -86,22 +98,25 @@ public class TAB_Dashboard_Manager extends JPanel {
     }
 
     public void refresh() {
+        // Cập nhật thông tin ca làm việc
+        loadShiftData();
+
         // tránh block EDT lâu: do dữ liệu có thể truy vấn DB
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             private ManagerKpis kpis;
             private List<TimePoint> series;
-            private List<TrendingProductRow> dotBien;
-            private List<ShiftReconciliationRow> doiSoat;
+            private List<TrendingProductRow> trending;
+            private List<ShiftReconciliationRow> reconciliation;
 
             @Override
             protected Void doInBackground() {
                 ComparisonPeriod cp = getComparisonPeriodLocal();
                 TimeGranularity tg = getTimeGranularityLocal();
 
-                kpis = buildKpisHomNay(cp);
-                series = buildDoanhThuLoiNhuanSeries(tg);
-                dotBien = buildSanPhamDotBienTop(5);
-                doiSoat = buildDoiSoatCaHomNay();
+                kpis = buildKpisToday(cp);
+                series = buildRevenueProfitSeries(tg);
+                trending = buildTrendingProductsTop(5);
+                reconciliation = buildTodayShiftReconciliation();
                 return null;
             }
 
@@ -109,8 +124,8 @@ public class TAB_Dashboard_Manager extends JPanel {
             protected void done() {
                 applyKpis(kpis);
                 renderChart(series);
-                loadDotBien(dotBien);
-                loadDoiSoat(doiSoat);
+                loadTrending(trending);
+                loadReconciliation(reconciliation);
             }
         };
         worker.execute();
@@ -156,50 +171,250 @@ public class TAB_Dashboard_Manager extends JPanel {
         left.add(Box.createVerticalStrut(4));
         left.add(lblDate);
 
-        // Right: filters
+        // Right section: Filters + Shift Widget + Shift Button
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         right.setOpaque(false);
 
-        cbSoSanh = new JComboBox<>(new String[]{"So với hôm qua", "So với 7 ngày trước"});
-        cbSoSanh.setPreferredSize(new Dimension(170, 32));
+        // Filters (before shift widget)
+        cbComparison = new JComboBox<>(new String[]{"So với hôm qua", "So với 7 ngày trước"});
+        cbComparison.setPreferredSize(new Dimension(170, 32));
 
-        cbBieuDo = new JComboBox<>(new String[]{"Biểu đồ 7 ngày gần nhất", "Biểu đồ theo giờ hôm nay"});
-        cbBieuDo.setPreferredSize(new Dimension(190, 32));
+        cbChart = new JComboBox<>(new String[]{"Biểu đồ 7 ngày gần nhất", "Biểu đồ theo giờ hôm nay"});
+        cbChart.setPreferredSize(new Dimension(190, 32));
 
-        btnLamMoi = new JButton("Làm mới");
-        btnLamMoi.setPreferredSize(new Dimension(110, 32));
-        btnLamMoi.setBackground(AppColors.PRIMARY);
-        btnLamMoi.setForeground(Color.WHITE);
-        btnLamMoi.setFocusPainted(false);
-        btnLamMoi.setBorderPainted(false);
-        btnLamMoi.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnLamMoi.addActionListener(e -> refresh());
+        cbComparison.addActionListener(e -> refresh());
+        cbChart.addActionListener(e -> refresh());
 
-        cbSoSanh.addActionListener(e -> refresh());
-        cbBieuDo.addActionListener(e -> refresh());
+        right.add(cbComparison);
+        right.add(cbChart);
 
-        right.add(cbSoSanh);
-        right.add(cbBieuDo);
-        right.add(btnLamMoi);
+        // Separator
+        right.add(Box.createHorizontalStrut(15));
+
+        // Shift Info Widget
+        JPanel shiftWidget = createShiftWidget();
+        right.add(shiftWidget);
+
+        // Shift Button (Open/Close)
+        btnShift = new JButton("Mở ca");
+        btnShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnShift.setBackground(AppColors.SUCCESS);
+        btnShift.setForeground(Color.WHITE);
+        btnShift.setFocusPainted(false);
+        btnShift.setBorderPainted(false);
+        btnShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnShift.setPreferredSize(new Dimension(100, 40));
+        btnShift.addActionListener(e -> handleShiftButtonClick());
+        right.add(btnShift);
 
         header.add(left, BorderLayout.WEST);
         header.add(right, BorderLayout.EAST);
         return header;
     }
 
+    private JPanel createShiftWidget() {
+        JPanel widget = new JPanel();
+        widget.setLayout(new BoxLayout(widget, BoxLayout.Y_AXIS));
+        widget.setBackground(AppColors.WHITE);
+        widget.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppColors.SECONDARY, 1),
+            new EmptyBorder(8, 12, 8, 12)
+        ));
+
+        // Shift ID
+        JPanel shiftIdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        shiftIdPanel.setBackground(AppColors.WHITE);
+        JLabel lblShiftIdLabel = new JLabel("Mã Ca:");
+        lblShiftIdLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblShiftIdLabel.setForeground(AppColors.DARK);
+        lblShiftId = new JLabel("---");
+        lblShiftId.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblShiftId.setForeground(AppColors.PRIMARY);
+        shiftIdPanel.add(lblShiftIdLabel);
+        shiftIdPanel.add(lblShiftId);
+
+        // Current Cash
+        JPanel cashPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        cashPanel.setBackground(AppColors.WHITE);
+        JLabel lblCashLabel = new JLabel("Tiền mặt:");
+        lblCashLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblCashLabel.setForeground(AppColors.DARK);
+        lblCurrentCash = new JLabel("0 ₫");
+        lblCurrentCash.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblCurrentCash.setForeground(AppColors.SUCCESS);
+        cashPanel.add(lblCashLabel);
+        cashPanel.add(lblCurrentCash);
+
+        widget.add(shiftIdPanel);
+        widget.add(cashPanel);
+
+        return widget;
+    }
+
+    private void loadShiftData() {
+        // Check if there's any open shift on this workstation
+        String workstation = busShift.getCurrentWorkstation();
+        Shift workstationShift = busShift.getOpenShiftOnWorkstation(workstation);
+
+        // Then check staff's personal shift
+        Shift staffShift = null;
+        if (currentStaff != null) {
+            staffShift = busShift.getCurrentOpenShiftForStaff(currentStaff);
+        }
+
+        // Use workstation shift if it exists, otherwise use staff shift
+        currentShift = workstationShift != null ? workstationShift : staffShift;
+
+        // Set common button properties
+        btnShift.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnShift.setForeground(Color.WHITE);
+        btnShift.setBorderPainted(false);
+        btnShift.setFocusPainted(false);
+        btnShift.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnShift.setPreferredSize(new Dimension(100, 40));
+
+        if (currentShift != null) {
+            // Shift is open - show shift info and "Đóng ca"
+            lblShiftId.setText(currentShift.getId());
+            BigDecimal currentCash = busShift.calculateSystemCashForShift(currentShift);
+            lblCurrentCash.setText(currency.format(currentCash));
+
+            // Check if this is the staff's own shift
+            boolean isOwnShift = currentStaff != null &&
+                currentShift.getStaff() != null &&
+                currentShift.getStaff().getId().equals(currentStaff.getId());
+
+            btnShift.setText("Đóng ca");
+            btnShift.setToolTipText(isOwnShift ?
+                "Nhấn để đóng ca làm việc" :
+                "Đóng ca của: " + currentShift.getStaff().getFullName());
+            btnShift.setBackground(AppColors.DANGER);
+            btnShift.setEnabled(true);
+        } else {
+            // No open shift - show "Mở ca"
+            lblShiftId.setText("Chưa mở ca");
+            lblCurrentCash.setText("---");
+
+            btnShift.setText("Mở ca");
+            btnShift.setToolTipText("Nhấn để mở ca làm việc");
+            btnShift.setBackground(AppColors.SUCCESS);
+            btnShift.setEnabled(true);
+        }
+    }
+
+    private void handleShiftButtonClick() {
+        if (currentShift != null) {
+            // Close shift
+            DIALOG_CloseShift closeShiftDialog = new DIALOG_CloseShift(
+                (Frame) SwingUtilities.getWindowAncestor(this),
+                currentShift,
+                currentStaff
+            );
+            closeShiftDialog.setVisible(true);
+
+            // Update button and shift info if shift was closed
+            if (closeShiftDialog.isConfirmed()) {
+                Shift closedShift = currentShift;
+                currentShift = null;
+                loadShiftData();
+                refresh();
+
+                // Notify listener that shift was closed
+                if (shiftChangeListener != null) {
+                    shiftChangeListener.onShiftClosed(closedShift);
+                }
+
+                JOptionPane.showMessageDialog(this,
+                    "Ca làm việc đã được đóng thành công!",
+                    "Thông báo",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
+        } else {
+            // Open shift - check for existing shift on workstation
+            String workstation = busShift.getCurrentWorkstation();
+            Shift existingShift = busShift.getOpenShiftOnWorkstation(workstation);
+
+            if (existingShift != null && currentStaff != null &&
+                !existingShift.getStaff().getId().equals(currentStaff.getId())) {
+                // Another staff has an open shift - show takeover dialog
+                handleExistingShift(existingShift);
+            } else {
+                // No existing shift or same staff - open new shift
+                openNewShift();
+            }
+        }
+    }
+
+    private void handleExistingShift(Shift existingShift) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String message = String.format(
+            "Hiện đang có ca do nhân viên %s mở từ %s.\n\n" +
+            "Bạn có muốn tiếp tục ca này không?\n\n" +
+            "Lưu ý: Nếu chọn 'Có', bạn sẽ không thể bán hàng cho đến khi đóng ca này.",
+            existingShift.getStaff().getFullName(),
+            existingShift.getStartTime().format(dtf)
+        );
+
+        int choice = JOptionPane.showConfirmDialog(
+            this,
+            message,
+            "Ca làm việc đang mở",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE
+        );
+
+        if (choice == JOptionPane.YES_OPTION) {
+            currentShift = existingShift;
+            loadShiftData();
+            refresh();
+
+            JOptionPane.showMessageDialog(
+                this,
+                "Bạn đã chọn tiếp tục ca hiện tại.",
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        }
+    }
+
+    private void openNewShift() {
+        DIALOG_OpenShift openShiftDialog = new DIALOG_OpenShift(
+            (Frame) SwingUtilities.getWindowAncestor(this),
+            currentStaff
+        );
+        openShiftDialog.setVisible(true);
+
+        // Update button and shift info if shift was opened
+        if (openShiftDialog.getOpenedShift() != null) {
+            currentShift = openShiftDialog.getOpenedShift();
+            loadShiftData();
+            refresh();
+
+            // Notify listener that shift was opened
+            if (shiftChangeListener != null) {
+                shiftChangeListener.onShiftOpened(currentShift);
+            }
+
+            JOptionPane.showMessageDialog(this,
+                "Ca làm việc đã được mở thành công!",
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
     private JPanel createKpiPanel() {
         JPanel wrap = new JPanel(new GridLayout(1, 4, 12, 0));
         wrap.setOpaque(false);
 
-        cardDoanhThuThuan = new KpiCard("Doanh thu thuần", "Doanh thu bán − Doanh thu trả", KpiTone.TICH_CUC);
-        cardLoiNhuan = new KpiCard("Lợi nhuận / Lỗ", "Doanh thu hóa đơn − Giá vốn", KpiTone.TU_DONG);
-        cardTraHang = new KpiCard("Tổng đơn trả hàng", "Chỉ báo vấn đề kinh doanh", KpiTone.CANH_BAO);
-        cardChenhLechTienMat = new KpiCard("Chênh lệch tiền mặt", "Thực tế − Hệ thống", KpiTone.NGUY_CO);
+        cardNetRevenue = new KpiCard("Doanh thu thuần", "Doanh thu bán − Doanh thu trả", KpiTone.POSITIVE);
+        cardProfit = new KpiCard("Lợi nhuận / Lỗ", "Doanh thu hóa đơn − Giá vốn", KpiTone.AUTO);
+        cardReturns = new KpiCard("Tổng đơn trả hàng", "Chỉ báo vấn đề kinh doanh", KpiTone.WARNING);
+        cardCashMismatch = new KpiCard("Chênh lệch tiền mặt", "Thực tế − Hệ thống", KpiTone.RISK);
 
-        wrap.add(cardDoanhThuThuan);
-        wrap.add(cardLoiNhuan);
-        wrap.add(cardTraHang);
-        wrap.add(cardChenhLechTienMat);
+        wrap.add(cardNetRevenue);
+        wrap.add(cardProfit);
+        wrap.add(cardReturns);
+        wrap.add(cardCashMismatch);
 
         return wrap;
     }
@@ -211,12 +426,12 @@ public class TAB_Dashboard_Manager extends JPanel {
         JPanel left = new JPanel(new BorderLayout(10, 10));
         left.setOpaque(false);
         left.add(createChartPanel(), BorderLayout.NORTH);
-        left.add(createDotBienPanel(), BorderLayout.CENTER);
+        left.add(createTrendingPanel(), BorderLayout.CENTER);
 
         JPanel right = new JPanel(new BorderLayout(10, 10));
         right.setOpaque(false);
         right.add(createActionHintPanel(), BorderLayout.NORTH);
-        right.add(createDoiSoatPanel(), BorderLayout.CENTER);
+        right.add(createReconciliationPanel(), BorderLayout.CENTER);
 
         center.add(left);
         center.add(right);
@@ -245,7 +460,7 @@ public class TAB_Dashboard_Manager extends JPanel {
         return p;
     }
 
-    private JPanel createDotBienPanel() {
+    private JPanel createTrendingPanel() {
         JPanel p = new JPanel(new BorderLayout());
         p.setOpaque(false);
         p.setBorder(BorderFactory.createTitledBorder(
@@ -258,14 +473,14 @@ public class TAB_Dashboard_Manager extends JPanel {
         note.setForeground(AppColors.DARK);
         note.setFont(new Font("Segoe UI", Font.ITALIC, 12));
 
-        mdlDotBien = new DefaultTableModel(new Object[]{"Mã", "Tên sản phẩm", "Nhóm", "Doanh thu hôm nay", "TB 7 ngày", "% tăng"}, 0) {
+        mdlTrending = new DefaultTableModel(new Object[]{"Mã", "Tên sản phẩm", "Nhóm", "Doanh thu hôm nay", "TB 7 ngày", "% tăng"}, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-        tblDotBien = new JTable(mdlDotBien);
-        styleTable(tblDotBien);
-        tblDotBien.getColumnModel().getColumn(5).setCellRenderer(new PercentCellRenderer());
+        tblTrending = new JTable(mdlTrending);
+        styleTable(tblTrending);
+        tblTrending.getColumnModel().getColumn(5).setCellRenderer(new PercentCellRenderer());
 
-        p.add(new JScrollPane(tblDotBien), BorderLayout.CENTER);
+        p.add(new JScrollPane(tblTrending), BorderLayout.CENTER);
         p.add(note, BorderLayout.SOUTH);
         return p;
     }
@@ -297,7 +512,7 @@ public class TAB_Dashboard_Manager extends JPanel {
         return p;
     }
 
-    private JPanel createDoiSoatPanel() {
+    private JPanel createReconciliationPanel() {
         JPanel p = new JPanel(new BorderLayout());
         p.setOpaque(false);
         p.setBorder(BorderFactory.createTitledBorder(
@@ -310,14 +525,14 @@ public class TAB_Dashboard_Manager extends JPanel {
         note.setForeground(AppColors.DARK);
         note.setFont(new Font("Segoe UI", Font.ITALIC, 12));
 
-        mdlDoiSoat = new DefaultTableModel(new Object[]{"Mã ca", "Nhân viên", "Mở ca", "Tiền đầu ca", "Tiền cuối ca", "Doanh thu hệ thống", "Tiền thực tế", "Chênh lệch"}, 0) {
+        mdlReconciliation = new DefaultTableModel(new Object[]{"Mã ca", "Nhân viên", "Mở ca", "Tiền đầu ca", "Tiền cuối ca", "Doanh thu hệ thống", "Tiền thực tế", "Chênh lệch"}, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-        tblDoiSoat = new JTable(mdlDoiSoat);
-        styleTable(tblDoiSoat);
-        tblDoiSoat.getColumnModel().getColumn(7).setCellRenderer(new CashMismatchRenderer());
+        tblReconciliation = new JTable(mdlReconciliation);
+        styleTable(tblReconciliation);
+        tblReconciliation.getColumnModel().getColumn(7).setCellRenderer(new CashMismatchRenderer());
 
-        p.add(new JScrollPane(tblDoiSoat), BorderLayout.CENTER);
+        p.add(new JScrollPane(tblReconciliation), BorderLayout.CENTER);
         p.add(note, BorderLayout.SOUTH);
         return p;
     }
@@ -326,28 +541,28 @@ public class TAB_Dashboard_Manager extends JPanel {
 
     // Đổi các hàm binding để dùng enum nội bộ
     private ComparisonPeriod getComparisonPeriodLocal() {
-        int idx = cbSoSanh != null ? cbSoSanh.getSelectedIndex() : 0;
-        return idx == 0 ? ComparisonPeriod.HOM_QUA : ComparisonPeriod.TUAN_TRUOC_CUNG_KY;
+        int idx = cbComparison != null ? cbComparison.getSelectedIndex() : 0;
+        return idx == 0 ? ComparisonPeriod.YESTERDAY : ComparisonPeriod.LAST_WEEK_SAME_DAY;
     }
 
     private TimeGranularity getTimeGranularityLocal() {
-        int idx = cbBieuDo != null ? cbBieuDo.getSelectedIndex() : 0;
-        return idx == 0 ? TimeGranularity.THEO_NGAY_7_NGAY : TimeGranularity.THEO_GIO_HOM_NAY;
+        int idx = cbChart != null ? cbChart.getSelectedIndex() : 0;
+        return idx == 0 ? TimeGranularity.DAILY_LAST_7_DAYS : TimeGranularity.HOURLY_TODAY;
     }
 
     // ================== Tổng hợp số liệu (không tạo BUS/DAO mới) ==================
 
     private static class PeriodAgg {
-        BigDecimal doanhThuBan = BigDecimal.ZERO;
-        BigDecimal doanhThuTra = BigDecimal.ZERO;
-        BigDecimal doanhThuThuan = BigDecimal.ZERO;
-        BigDecimal loiNhuan = BigDecimal.ZERO;
-        int soDonTraHang = 0;
+        BigDecimal salesRevenue = BigDecimal.ZERO;
+        BigDecimal returnRevenue = BigDecimal.ZERO;
+        BigDecimal netRevenue = BigDecimal.ZERO;
+        BigDecimal profit = BigDecimal.ZERO;
+        int returnOrderCount = 0;
     }
 
-    private ManagerKpis buildKpisHomNay(ComparisonPeriod compare) {
+    private ManagerKpis buildKpisToday(ComparisonPeriod compare) {
         LocalDate today = LocalDate.now();
-        LocalDate prev = (compare == ComparisonPeriod.HOM_QUA) ? today.minusDays(1) : today.minusDays(7);
+        LocalDate prev = (compare == ComparisonPeriod.YESTERDAY) ? today.minusDays(1) : today.minusDays(7);
 
         PeriodAgg cur = aggregateInvoicesForDay(today);
         PeriodAgg pre = aggregateInvoicesForDay(prev);
@@ -356,15 +571,15 @@ public class TAB_Dashboard_Manager extends JPanel {
         BigDecimal mismatchPre = calculateCashMismatchForDay(prev);
 
         return new ManagerKpis(
-            new KpiTrend(cur.doanhThuThuan, pre.doanhThuThuan),
-            new KpiTrend(cur.loiNhuan, pre.loiNhuan),
-            new KpiTrend(BigDecimal.valueOf(cur.soDonTraHang), BigDecimal.valueOf(pre.soDonTraHang)),
+            new KpiTrend(cur.netRevenue, pre.netRevenue),
+            new KpiTrend(cur.profit, pre.profit),
+            new KpiTrend(BigDecimal.valueOf(cur.returnOrderCount), BigDecimal.valueOf(pre.returnOrderCount)),
             new KpiTrend(mismatchCur, mismatchPre)
         );
     }
 
-    private List<TimePoint> buildDoanhThuLoiNhuanSeries(TimeGranularity g) {
-        return (g == TimeGranularity.THEO_NGAY_7_NGAY) ? buildSeries7Ngay() : buildSeriesTheoGioHomNay();
+    private List<TimePoint> buildRevenueProfitSeries(TimeGranularity g) {
+        return (g == TimeGranularity.DAILY_LAST_7_DAYS) ? buildSeriesLast7Days() : buildSeriesTodayByHour();
     }
 
     private PeriodAgg aggregateInvoicesForDay(LocalDate day) {
@@ -391,15 +606,15 @@ public class TAB_Dashboard_Manager extends JPanel {
             }
         }
 
-        agg.doanhThuBan = totalRevenue;
-        agg.doanhThuTra = totalReturn;
-        agg.doanhThuThuan = totalRevenue.subtract(totalReturn);
-        agg.loiNhuan = totalRevenue.subtract(totalCost);
-        agg.soDonTraHang = returnCount;
+        agg.salesRevenue = totalRevenue;
+        agg.returnRevenue = totalReturn;
+        agg.netRevenue = totalRevenue.subtract(totalReturn);
+        agg.profit = totalRevenue.subtract(totalCost);
+        agg.returnOrderCount = returnCount;
         return agg;
     }
 
-    private List<TimePoint> buildSeries7Ngay() {
+    private List<TimePoint> buildSeriesLast7Days() {
         LocalDate end = LocalDate.now();
         LocalDate start = end.minusDays(6);
         java.time.format.DateTimeFormatter f = java.time.format.DateTimeFormatter.ofPattern("dd/MM");
@@ -408,12 +623,12 @@ public class TAB_Dashboard_Manager extends JPanel {
         for (int i = 0; i < 7; i++) {
             LocalDate d = start.plusDays(i);
             PeriodAgg a = aggregateInvoicesForDay(d);
-            out.add(new TimePoint(d.format(f), a.doanhThuThuan, a.loiNhuan));
+            out.add(new TimePoint(d.format(f), a.netRevenue, a.profit));
         }
         return out;
     }
 
-    private List<TimePoint> buildSeriesTheoGioHomNay() {
+    private List<TimePoint> buildSeriesTodayByHour() {
         LocalDate today = LocalDate.now();
         List<Invoice> invoices = safeInvoices().stream()
             .filter(i -> i != null && i.getCreationDate() != null && i.getCreationDate().toLocalDate().equals(today))
@@ -475,10 +690,11 @@ public class TAB_Dashboard_Manager extends JPanel {
 
         BigDecimal sum = BigDecimal.ZERO;
         for (Shift s : shifts) {
-            BigDecimal startCash = nz(s.getStartCash());
-            BigDecimal systemCash = s.getSystemCash();
+            // Only calculate for closed shifts (endCash != null)
             BigDecimal endCash = s.getEndCash();
+            if (endCash == null) continue; // Skip open shifts
 
+            BigDecimal systemCash = s.getSystemCash();
             if (systemCash == null && s.getId() != null) {
                 try {
                     systemCash = daoShift.calculateSystemCashForShift(s.getId());
@@ -487,14 +703,15 @@ public class TAB_Dashboard_Manager extends JPanel {
                 }
             }
 
-            BigDecimal expected = nz(systemCash).subtract(startCash); // doanh thu hệ thống
-            BigDecimal actual = nz(endCash);
-            sum = sum.add(actual.subtract(expected));
+            // mismatch = actual end cash - expected system cash
+            // negative = shortage (potential loss), positive = surplus
+            BigDecimal mismatch = endCash.subtract(nz(systemCash));
+            sum = sum.add(mismatch);
         }
         return sum;
     }
 
-    private List<TrendingProductRow> buildSanPhamDotBienTop(int topN) {
+    private List<TrendingProductRow> buildTrendingProductsTop(int topN) {
         LocalDate today = LocalDate.now();
         LocalDate from7 = today.minusDays(7);
 
@@ -529,13 +746,13 @@ public class TAB_Dashboard_Manager extends JPanel {
                 .multiply(BigDecimal.valueOf(100));
 
             Product p = busProduct.getProductById(productId);
-            String ten = p != null ? p.getName() : productId;
-            String nhom = p != null ? mapNhomSanPham(p.getCategory()) : "";
+            String name = p != null ? p.getName() : productId;
+            String category = p != null ? mapProductCategory(p.getCategory()) : "";
 
-            rows.add(new TrendingProductRow(productId, ten, nhom, revToday, avg7, pct));
+            rows.add(new TrendingProductRow(productId, name, category, revToday, avg7, pct));
         }
 
-        rows.sort(java.util.Comparator.comparing(TrendingProductRow::getPhanTramTang).reversed());
+        rows.sort(java.util.Comparator.comparing(TrendingProductRow::getPercentIncrease).reversed());
         if (rows.size() > topN) return rows.subList(0, topN);
         return rows;
     }
@@ -569,7 +786,7 @@ public class TAB_Dashboard_Manager extends JPanel {
         return out;
     }
 
-    private List<ShiftReconciliationRow> buildDoiSoatCaHomNay() {
+    private List<ShiftReconciliationRow> buildTodayShiftReconciliation() {
         LocalDate today = LocalDate.now();
         List<Shift> shifts = daoShift.listShiftsOpenedOn(today);
         if (shifts == null || shifts.isEmpty()) return java.util.List.of();
@@ -578,8 +795,8 @@ public class TAB_Dashboard_Manager extends JPanel {
 
         java.util.ArrayList<ShiftReconciliationRow> out = new java.util.ArrayList<>();
         for (Shift s : shifts) {
-            BigDecimal start = s.getStartCash();
-            BigDecimal end = s.getEndCash();
+            BigDecimal startCash = nz(s.getStartCash());
+            BigDecimal endCash = s.getEndCash();
             BigDecimal systemCash = s.getSystemCash();
 
             if (systemCash == null && s.getId() != null) {
@@ -590,14 +807,22 @@ public class TAB_Dashboard_Manager extends JPanel {
                 }
             }
 
-            BigDecimal doanhThuHeThong = nz(systemCash).subtract(nz(start));
-            BigDecimal tienThucTe = nz(end);
-            BigDecimal chenh = tienThucTe.subtract(doanhThuHeThong);
+            // systemCash = startCash + sales - returns + exchanges (total expected cash at end)
+            // systemRevenue = systemCash - startCash (net revenue from transactions)
+            BigDecimal systemCashTotal = nz(systemCash);
+            BigDecimal systemRevenue = systemCashTotal.subtract(startCash);
 
-            String tenNv = (s.getStaff() != null) ? s.getStaff().getFullName() : "";
-            String tg = (s.getStartTime() != null) ? s.getStartTime().format(dtfLocal) : "";
+            // For display: actualCash is endCash (or current system cash if shift still open)
+            BigDecimal actualCash = endCash != null ? endCash : systemCashTotal;
 
-            out.add(new ShiftReconciliationRow(s.getId(), tenNv, tg, start, end, doanhThuHeThong, tienThucTe, chenh));
+            // mismatch = actual - expected (only meaningful for closed shifts)
+            BigDecimal mismatch = endCash != null ? endCash.subtract(systemCashTotal) : BigDecimal.ZERO;
+
+            String staffName = (s.getStaff() != null) ? s.getStaff().getFullName() : "";
+            String startTime = (s.getStartTime() != null) ? s.getStartTime().format(dtfLocal) : "";
+
+            out.add(new ShiftReconciliationRow(s.getId(), staffName, startTime, startCash,
+                endCash != null ? endCash : systemCashTotal, systemRevenue, actualCash, mismatch));
         }
 
         return out;
@@ -627,7 +852,7 @@ public class TAB_Dashboard_Manager extends JPanel {
 
     private static BigDecimal nz(BigDecimal v) { return v != null ? v : BigDecimal.ZERO; }
 
-    private static String mapNhomSanPham(ProductCategory c) {
+    private static String mapProductCategory(ProductCategory c) {
         if (c == null) return "Thuốc không kê đơn";
         return switch (c) {
             case ETC -> "Thuốc kê đơn";
@@ -639,10 +864,10 @@ public class TAB_Dashboard_Manager extends JPanel {
     // ================== Components ==================
 
     private enum KpiTone {
-        TICH_CUC, // xanh
-        NGUY_CO,  // đỏ
-        CANH_BAO, // vàng
-        TU_DONG   // tùy theo giá trị
+        POSITIVE, // xanh
+        RISK,     // đỏ
+        WARNING,  // vàng
+        AUTO      // tùy theo giá trị
     }
 
     private static class KpiCard extends JPanel {
@@ -712,9 +937,9 @@ public class TAB_Dashboard_Manager extends JPanel {
         public void setTone(KpiTone tone) {
             this.tone = tone;
             Color c = switch (tone) {
-                case TICH_CUC -> AppColors.SUCCESS;
-                case NGUY_CO -> AppColors.DANGER;
-                case CANH_BAO -> AppColors.WARNING;
+                case POSITIVE -> AppColors.SUCCESS;
+                case RISK -> AppColors.DANGER;
+                case WARNING -> AppColors.WARNING;
                 default -> AppColors.TEXT;
             };
             applyToneColor(c);
@@ -779,13 +1004,13 @@ public class TAB_Dashboard_Manager extends JPanel {
 
     // ====== DTO/enum nội bộ cho dashboard (không tạo BUS/DAO mới) ======
     private enum ComparisonPeriod {
-        HOM_QUA,
-        TUAN_TRUOC_CUNG_KY
+        YESTERDAY,
+        LAST_WEEK_SAME_DAY
     }
 
     private enum TimeGranularity {
-        THEO_NGAY_7_NGAY,
-        THEO_GIO_HOM_NAY
+        DAILY_LAST_7_DAYS,
+        HOURLY_TODAY
     }
 
     private static class KpiTrend {
@@ -812,119 +1037,119 @@ public class TAB_Dashboard_Manager extends JPanel {
     }
 
     private static class ManagerKpis {
-        private final KpiTrend doanhThuThuan;
-        private final KpiTrend loiNhuan;
-        private final KpiTrend tongDonTraHang;
-        private final KpiTrend chenhLechTienMat;
+        private final KpiTrend netRevenue;
+        private final KpiTrend profit;
+        private final KpiTrend totalReturnOrders;
+        private final KpiTrend cashMismatch;
 
-        public ManagerKpis(KpiTrend doanhThuThuan, KpiTrend loiNhuan, KpiTrend tongDonTraHang, KpiTrend chenhLechTienMat) {
-            this.doanhThuThuan = doanhThuThuan;
-            this.loiNhuan = loiNhuan;
-            this.tongDonTraHang = tongDonTraHang;
-            this.chenhLechTienMat = chenhLechTienMat;
+        public ManagerKpis(KpiTrend netRevenue, KpiTrend profit, KpiTrend totalReturnOrders, KpiTrend cashMismatch) {
+            this.netRevenue = netRevenue;
+            this.profit = profit;
+            this.totalReturnOrders = totalReturnOrders;
+            this.cashMismatch = cashMismatch;
         }
 
-        public KpiTrend getDoanhThuThuan() { return doanhThuThuan; }
-        public KpiTrend getLoiNhuan() { return loiNhuan; }
-        public KpiTrend getTongDonTraHang() { return tongDonTraHang; }
-        public KpiTrend getChenhLechTienMat() { return chenhLechTienMat; }
+        public KpiTrend getNetRevenue() { return netRevenue; }
+        public KpiTrend getProfit() { return profit; }
+        public KpiTrend getTotalReturnOrders() { return totalReturnOrders; }
+        public KpiTrend getCashMismatch() { return cashMismatch; }
     }
 
     private static class TimePoint {
-        private final String nhan;
-        private final BigDecimal doanhThuThuan;
-        private final BigDecimal loiNhuan;
+        private final String label;
+        private final BigDecimal netRevenue;
+        private final BigDecimal profit;
 
-        public TimePoint(String nhan, BigDecimal doanhThuThuan, BigDecimal loiNhuan) {
-            this.nhan = nhan;
-            this.doanhThuThuan = nz(doanhThuThuan);
-            this.loiNhuan = nz(loiNhuan);
+        public TimePoint(String label, BigDecimal netRevenue, BigDecimal profit) {
+            this.label = label;
+            this.netRevenue = nz(netRevenue);
+            this.profit = nz(profit);
         }
 
-        public String getNhan() { return nhan; }
-        public BigDecimal getDoanhThuThuan() { return doanhThuThuan; }
-        public BigDecimal getLoiNhuan() { return loiNhuan; }
+        public String getLabel() { return label; }
+        public BigDecimal getNetRevenue() { return netRevenue; }
+        public BigDecimal getProfit() { return profit; }
     }
 
     private static class TrendingProductRow {
-        private final String ma;
-        private final String ten;
-        private final String nhom;
-        private final BigDecimal doanhThuHomNay;
-        private final BigDecimal doanhThuTrungBinh7Ngay;
-        private final BigDecimal phanTramTang;
+        private final String id;
+        private final String name;
+        private final String category;
+        private final BigDecimal todayRevenue;
+        private final BigDecimal avg7DayRevenue;
+        private final BigDecimal percentIncrease;
 
-        public TrendingProductRow(String ma, String ten, String nhom, BigDecimal doanhThuHomNay, BigDecimal doanhThuTrungBinh7Ngay, BigDecimal phanTramTang) {
-            this.ma = ma;
-            this.ten = ten;
-            this.nhom = nhom;
-            this.doanhThuHomNay = nz(doanhThuHomNay);
-            this.doanhThuTrungBinh7Ngay = nz(doanhThuTrungBinh7Ngay);
-            this.phanTramTang = nz(phanTramTang);
+        public TrendingProductRow(String id, String name, String category, BigDecimal todayRevenue, BigDecimal avg7DayRevenue, BigDecimal percentIncrease) {
+            this.id = id;
+            this.name = name;
+            this.category = category;
+            this.todayRevenue = nz(todayRevenue);
+            this.avg7DayRevenue = nz(avg7DayRevenue);
+            this.percentIncrease = nz(percentIncrease);
         }
 
-        public String getMa() { return ma; }
-        public String getTen() { return ten; }
-        public String getNhom() { return nhom; }
-        public BigDecimal getDoanhThuHomNay() { return doanhThuHomNay; }
-        public BigDecimal getDoanhThuTrungBinh7Ngay() { return doanhThuTrungBinh7Ngay; }
-        public BigDecimal getPhanTramTang() { return phanTramTang; }
+        public String getId() { return id; }
+        public String getName() { return name; }
+        public String getCategory() { return category; }
+        public BigDecimal getTodayRevenue() { return todayRevenue; }
+        public BigDecimal getAvg7DayRevenue() { return avg7DayRevenue; }
+        public BigDecimal getPercentIncrease() { return percentIncrease; }
     }
 
     private static class ShiftReconciliationRow {
-        private final String maCa;
-        private final String nhanVien;
-        private final String thoiGianMo;
-        private final BigDecimal tienDauCa;
-        private final BigDecimal tienCuoiCa;
-        private final BigDecimal doanhThuHeThong;
-        private final BigDecimal tienThucTe;
-        private final BigDecimal chenhlech;
+        private final String shiftId;
+        private final String staffName;
+        private final String openTime;
+        private final BigDecimal startCash;
+        private final BigDecimal endCash;
+        private final BigDecimal systemRevenue;
+        private final BigDecimal actualCash;
+        private final BigDecimal mismatch;
 
-        public ShiftReconciliationRow(String maCa, String nhanVien, String thoiGianMo, BigDecimal tienDauCa, BigDecimal tienCuoiCa,
-                                     BigDecimal doanhThuHeThong, BigDecimal tienThucTe, BigDecimal chenhlech) {
-            this.maCa = maCa;
-            this.nhanVien = nhanVien;
-            this.thoiGianMo = thoiGianMo;
-            this.tienDauCa = nz(tienDauCa);
-            this.tienCuoiCa = nz(tienCuoiCa);
-            this.doanhThuHeThong = nz(doanhThuHeThong);
-            this.tienThucTe = nz(tienThucTe);
-            this.chenhlech = nz(chenhlech);
+        public ShiftReconciliationRow(String shiftId, String staffName, String openTime, BigDecimal startCash, BigDecimal endCash,
+                                     BigDecimal systemRevenue, BigDecimal actualCash, BigDecimal mismatch) {
+            this.shiftId = shiftId;
+            this.staffName = staffName;
+            this.openTime = openTime;
+            this.startCash = nz(startCash);
+            this.endCash = nz(endCash);
+            this.systemRevenue = nz(systemRevenue);
+            this.actualCash = nz(actualCash);
+            this.mismatch = nz(mismatch);
         }
 
-        public String getMaCa() { return maCa; }
-        public String getNhanVien() { return nhanVien; }
-        public String getThoiGianMo() { return thoiGianMo; }
-        public BigDecimal getTienDauCa() { return tienDauCa; }
-        public BigDecimal getTienCuoiCa() { return tienCuoiCa; }
-        public BigDecimal getDoanhThuHeThong() { return doanhThuHeThong; }
-        public BigDecimal getTienThucTe() { return tienThucTe; }
-        public BigDecimal getChenhlech() { return chenhlech; }
+        public String getShiftId() { return shiftId; }
+        public String getStaffName() { return staffName; }
+        public String getOpenTime() { return openTime; }
+        public BigDecimal getStartCash() { return startCash; }
+        public BigDecimal getEndCash() { return endCash; }
+        public BigDecimal getSystemRevenue() { return systemRevenue; }
+        public BigDecimal getActualCash() { return actualCash; }
+        public BigDecimal getMismatch() { return mismatch; }
     }
 
-    // Cập nhật applyKpis / renderChart / loadDotBien / loadDoiSoat dùng DTO nội bộ
+    // Cập nhật applyKpis / renderChart / loadTrending / loadReconciliation dùng DTO nội bộ
     private void applyKpis(ManagerKpis k) {
         if (k == null) return;
 
-        cardDoanhThuThuan.setValue(currency.format(k.getDoanhThuThuan().getCurrent()));
-        cardDoanhThuThuan.setTrend(k.getDoanhThuThuan().getPercentChange(), k.getDoanhThuThuan().getDelta());
-        cardDoanhThuThuan.setTone(KpiTone.TICH_CUC);
+        cardNetRevenue.setValue(currency.format(k.getNetRevenue().getCurrent()));
+        cardNetRevenue.setTrend(k.getNetRevenue().getPercentChange(), k.getNetRevenue().getDelta());
+        cardNetRevenue.setTone(KpiTone.POSITIVE);
 
         // Lợi nhuận: xanh nếu dương, đỏ nếu âm
-        BigDecimal profit = k.getLoiNhuan().getCurrent();
-        cardLoiNhuan.setValue(currency.format(profit));
-        cardLoiNhuan.setTrend(k.getLoiNhuan().getPercentChange(), k.getLoiNhuan().getDelta());
-        cardLoiNhuan.setTone(profit.compareTo(BigDecimal.ZERO) >= 0 ? KpiTone.TICH_CUC : KpiTone.NGUY_CO);
+        BigDecimal profit = k.getProfit().getCurrent();
+        cardProfit.setValue(currency.format(profit));
+        cardProfit.setTrend(k.getProfit().getPercentChange(), k.getProfit().getDelta());
+        cardProfit.setTone(profit.compareTo(BigDecimal.ZERO) >= 0 ? KpiTone.POSITIVE : KpiTone.RISK);
 
-        cardTraHang.setValue(formatInt(k.getTongDonTraHang().getCurrent()));
-        cardTraHang.setTrend(k.getTongDonTraHang().getPercentChange(), k.getTongDonTraHang().getDelta());
-        cardTraHang.setTone(KpiTone.CANH_BAO);
+        cardReturns.setValue(formatInt(k.getTotalReturnOrders().getCurrent()));
+        cardReturns.setTrend(k.getTotalReturnOrders().getPercentChange(), k.getTotalReturnOrders().getDelta());
+        cardReturns.setTone(KpiTone.WARNING);
 
-        BigDecimal mismatch = k.getChenhLechTienMat().getCurrent();
-        cardChenhLechTienMat.setValue(currency.format(mismatch));
-        cardChenhLechTienMat.setTrend(k.getChenhLechTienMat().getPercentChange(), k.getChenhLechTienMat().getDelta());
-        cardChenhLechTienMat.setTone(mismatch.compareTo(BigDecimal.ZERO) == 0 ? KpiTone.TICH_CUC : KpiTone.NGUY_CO);
+        BigDecimal mismatch = k.getCashMismatch().getCurrent();
+        cardCashMismatch.setValue(currency.format(mismatch));
+        cardCashMismatch.setTrend(k.getCashMismatch().getPercentChange(), k.getCashMismatch().getDelta());
+        cardCashMismatch.setTone(mismatch.compareTo(BigDecimal.ZERO) == 0 ? KpiTone.POSITIVE : KpiTone.RISK);
     }
 
     private void renderChart(List<TimePoint> points) {
@@ -939,14 +1164,30 @@ public class TAB_Dashboard_Manager extends JPanel {
             return;
         }
 
-        List<String> x = points.stream().map(TimePoint::getNhan).toList();
-        List<Double> doanhThu = points.stream().map(p -> p.getDoanhThuThuan().doubleValue()).toList();
-        List<Double> loiNhuan = points.stream().map(p -> p.getLoiNhuan().doubleValue()).toList();
+        boolean isHourlyView = points.size() == 24;
+
+        // For hourly view, show labels only for key hours (0, 6, 12, 18) but keep all data points
+        List<String> x = new java.util.ArrayList<>();
+        for (int i = 0; i < points.size(); i++) {
+            if (isHourlyView) {
+                // Show label only every 6 hours: 0, 6, 12, 18
+                if (i % 6 == 0) {
+                    x.add(points.get(i).getLabel());
+                } else {
+                    x.add(" "); // Use space instead of empty string to avoid XChart error
+                }
+            } else {
+                x.add(points.get(i).getLabel());
+            }
+        }
+
+        List<Double> revenue = points.stream().map(p -> p.getNetRevenue().doubleValue()).toList();
+        List<Double> profitData = points.stream().map(p -> p.getProfit().doubleValue()).toList();
 
         CategoryChart chart = new CategoryChartBuilder()
             .width(600)
             .height(280)
-            .title("Doanh thu thuần và Lợi nhuận")
+            .title(isHourlyView ? "Doanh thu & Lợi nhuận theo giờ (hôm nay)" : "Doanh thu & Lợi nhuận (7 ngày)")
             .xAxisTitle("Thời gian")
             .yAxisTitle("Giá trị (₫)")
             .build();
@@ -958,45 +1199,48 @@ public class TAB_Dashboard_Manager extends JPanel {
         chart.getStyler().setAxisTickLabelsFont(new Font("Segoe UI", Font.PLAIN, 11));
         chart.getStyler().setLegendFont(new Font("Segoe UI", Font.PLAIN, 12));
         chart.getStyler().setChartTitleFont(new Font("Segoe UI", Font.BOLD, 14));
-        chart.getStyler().setAvailableSpaceFill(.8);
+        chart.getStyler().setAvailableSpaceFill(isHourlyView ? 0.95 : 0.8);
         chart.getStyler().setOverlapped(true);
 
-        chart.addSeries("Doanh thu thuần", x, doanhThu).setFillColor(AppColors.PRIMARY);
-        chart.addSeries("Lợi nhuận", x, loiNhuan).setFillColor(AppColors.SUCCESS);
+        // Custom Y-axis formatter to avoid E notation (scientific notation)
+        chart.getStyler().setYAxisDecimalPattern("#,###");
+
+        chart.addSeries("Doanh thu thuần", x, revenue).setFillColor(AppColors.PRIMARY);
+        chart.addSeries("Lợi nhuận", x, profitData).setFillColor(AppColors.SUCCESS);
 
         chartWrap.add(new XChartPanel<>(chart), BorderLayout.CENTER);
         chartWrap.revalidate();
         chartWrap.repaint();
     }
 
-    private void loadDotBien(List<TrendingProductRow> rows) {
-        mdlDotBien.setRowCount(0);
+    private void loadTrending(List<TrendingProductRow> rows) {
+        mdlTrending.setRowCount(0);
         if (rows == null || rows.isEmpty()) return;
         for (TrendingProductRow r : rows) {
-            mdlDotBien.addRow(new Object[]{
-                r.getMa(),
-                r.getTen(),
-                r.getNhom(),
-                currency.format(r.getDoanhThuHomNay()),
-                currency.format(r.getDoanhThuTrungBinh7Ngay()),
-                r.getPhanTramTang()
+            mdlTrending.addRow(new Object[]{
+                r.getId(),
+                r.getName(),
+                r.getCategory(),
+                currency.format(r.getTodayRevenue()),
+                currency.format(r.getAvg7DayRevenue()),
+                r.getPercentIncrease()
             });
         }
     }
 
-    private void loadDoiSoat(List<ShiftReconciliationRow> rows) {
-        mdlDoiSoat.setRowCount(0);
+    private void loadReconciliation(List<ShiftReconciliationRow> rows) {
+        mdlReconciliation.setRowCount(0);
         if (rows == null || rows.isEmpty()) return;
         for (ShiftReconciliationRow r : rows) {
-            mdlDoiSoat.addRow(new Object[]{
-                r.getMaCa(),
-                r.getNhanVien(),
-                r.getThoiGianMo(),
-                currency.format(r.getTienDauCa()),
-                currency.format(r.getTienCuoiCa()),
-                currency.format(r.getDoanhThuHeThong()),
-                currency.format(r.getTienThucTe()),
-                r.getChenhlech()
+            mdlReconciliation.addRow(new Object[]{
+                r.getShiftId(),
+                r.getStaffName(),
+                r.getOpenTime(),
+                currency.format(r.getStartCash()),
+                currency.format(r.getEndCash()),
+                currency.format(r.getSystemRevenue()),
+                currency.format(r.getActualCash()),
+                r.getMismatch()
             });
         }
     }
@@ -1024,5 +1268,31 @@ public class TAB_Dashboard_Manager extends JPanel {
     private String formatInt(BigDecimal bd) {
         if (bd == null) return "0";
         return String.valueOf(bd.setScale(0, RoundingMode.HALF_UP).intValue());
+    }
+
+    // ================= DataChangeListener implementation =================
+
+    @Override
+    public void onInvoiceCreated() {
+        // Immediately refresh dashboard when a new invoice is created
+        SwingUtilities.invokeLater(this::refresh);
+    }
+
+    @Override
+    public void onProductChanged() {
+        // Immediately refresh dashboard when products change
+        SwingUtilities.invokeLater(this::refresh);
+    }
+
+    @Override
+    public void onPromotionChanged() {
+        // Immediately refresh dashboard when promotions change
+        SwingUtilities.invokeLater(this::refresh);
+    }
+
+    @Override
+    public void onDataChanged() {
+        // General data change - refresh everything
+        SwingUtilities.invokeLater(this::refresh);
     }
 }
