@@ -1,6 +1,6 @@
 package com.interfaces;
 
-import com.entities.PrescribedCustomer;
+import com.entities.Customer;
 
 import java.util.List;
 
@@ -9,13 +9,13 @@ import java.util.List;
  */
 public interface ICustomer {
 
-    public boolean addCustomer(PrescribedCustomer customer);
-    public boolean updateCustomer(PrescribedCustomer customer);
+    public boolean addCustomer(Customer customer);
+    public boolean updateCustomer(Customer customer);
     public boolean deleteCustomer(String id);
-    public List<PrescribedCustomer> getAllCustomers();
-    public PrescribedCustomer getCustomerById(String id);
-    public PrescribedCustomer getCustomerByPhoneNumber(String phoneNumber);
-    public List<PrescribedCustomer> searchCustomersByName(String name);
+    public List<Customer> getAllCustomers();
+    public Customer getCustomerById(String id);
+    public Customer getCustomerByPhoneNumber(String phoneNumber);
+    public List<Customer> searchCustomersByName(String name);
     public boolean existsByPhoneNumber(String phoneNumber);
     public boolean existsByPhoneNumberExcludingId(String phoneNumber, String excludeId);
 }

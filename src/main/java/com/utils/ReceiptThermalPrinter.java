@@ -109,8 +109,8 @@ public class ReceiptThermalPrinter {
             }
 
             // Row 4: Customer Name (if exists)
-            if (invoice.getPrescribedCustomer() != null && invoice.getPrescribedCustomer().getName() != null) {
-                escpos.writeLF(normalLeft, LEFT_PADDING + "Khach hang: " + truncateText(removeAccents(invoice.getPrescribedCustomer().getName()), 30));
+            if (invoice.getCustomer() != null && invoice.getCustomer().getName() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Khach hang: " + truncateText(removeAccents(invoice.getCustomer().getName()), 30));
             }
 
             // Prescription code if exists

@@ -1,7 +1,7 @@
 package com.bus;
 
 import com.dao.DAO_Customer;
-import com.entities.PrescribedCustomer;
+import com.entities.Customer;
 import com.interfaces.ICustomer;
 
 import java.util.List;
@@ -17,20 +17,20 @@ public class BUS_Customer implements ICustomer {
     }
 
     @Override
-    public boolean addCustomer(PrescribedCustomer customer) {
+    public boolean addCustomer(Customer customer) {
         validateCustomer(customer);
         checkDuplicates(customer);
         return daoCustomer.addCustomer(customer);
     }
 
     @Override
-    public boolean updateCustomer(PrescribedCustomer customer) {
+    public boolean updateCustomer(Customer customer) {
         if (customer == null || customer.getId() == null || customer.getId().trim().isEmpty()) {
             throw new IllegalArgumentException("Không tìm thấy thông tin khách hàng cần cập nhật");
         }
 
         // Kiểm tra khách hàng có tồn tại không
-        PrescribedCustomer existingCustomer = daoCustomer.getCustomerById(customer.getId());
+        Customer existingCustomer = daoCustomer.getCustomerById(customer.getId());
         if (existingCustomer == null) {
             throw new IllegalArgumentException("Khách hàng không tồn tại trong hệ thống");
         }
@@ -50,7 +50,7 @@ public class BUS_Customer implements ICustomer {
             throw new IllegalArgumentException("Mã khách hàng không hợp lệ");
         }
 
-        PrescribedCustomer customer = daoCustomer.getCustomerById(id);
+        Customer customer = daoCustomer.getCustomerById(id);
         if (customer == null) {
             throw new IllegalArgumentException("Khách hàng không tồn tại trong hệ thống");
         }
@@ -59,22 +59,22 @@ public class BUS_Customer implements ICustomer {
     }
 
     @Override
-    public List<PrescribedCustomer> getAllCustomers() {
+    public List<Customer> getAllCustomers() {
         return daoCustomer.getAllCustomers();
     }
 
     @Override
-    public PrescribedCustomer getCustomerById(String id) {
+    public Customer getCustomerById(String id) {
         return daoCustomer.getCustomerById(id);
     }
 
     @Override
-    public PrescribedCustomer getCustomerByPhoneNumber(String phoneNumber) {
+    public Customer getCustomerByPhoneNumber(String phoneNumber) {
         return daoCustomer.getCustomerByPhoneNumber(phoneNumber);
     }
 
     @Override
-    public List<PrescribedCustomer> searchCustomersByName(String name) {
+    public List<Customer> searchCustomersByName(String name) {
         return daoCustomer.searchCustomersByName(name);
     }
 
@@ -93,7 +93,7 @@ public class BUS_Customer implements ICustomer {
     /**
      * Validate customer information
      */
-    private void validateCustomer(PrescribedCustomer customer) {
+    private void validateCustomer(Customer customer) {
         if (customer == null) {
             throw new IllegalArgumentException("Thông tin khách hàng không được để trống");
         }
@@ -130,7 +130,7 @@ public class BUS_Customer implements ICustomer {
     /**
      * Check for duplicate phone number when adding new customer
      */
-    private void checkDuplicates(PrescribedCustomer customer) {
+    private void checkDuplicates(Customer customer) {
         // Kiểm tra số điện thoại trùng (nếu có)
         if (customer.getPhoneNumber() != null && !customer.getPhoneNumber().trim().isEmpty()) {
             if (existsByPhoneNumber(customer.getPhoneNumber())) {
@@ -142,7 +142,7 @@ public class BUS_Customer implements ICustomer {
     /**
      * Check for duplicate phone number when updating customer
      */
-    private void checkDuplicatesForUpdate(PrescribedCustomer customer) {
+    private void checkDuplicatesForUpdate(Customer customer) {
         // Kiểm tra số điện thoại trùng (loại trừ chính khách hàng đang cập nhật)
         if (customer.getPhoneNumber() != null && !customer.getPhoneNumber().trim().isEmpty()) {
             if (existsByPhoneNumberExcludingId(customer.getPhoneNumber(), customer.getId())) {
