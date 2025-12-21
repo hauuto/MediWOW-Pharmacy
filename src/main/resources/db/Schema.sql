@@ -5,7 +5,6 @@
 CREATE DATABASE MediWOW
 GO
 USE MediWOW
-
 -- 1. Staff Table
 CREATE TABLE Staff (
                        id NVARCHAR(50) PRIMARY KEY,
@@ -171,7 +170,7 @@ CREATE TABLE InvoiceLine (
                              id NVARCHAR(50) PRIMARY KEY, -- ID riêng cho dòng này
                              invoice NVARCHAR(50) NOT NULL,
                              product NVARCHAR(50) NOT NULL,
-                             unitOfMeasure NVARCHAR(100) NOT NULL, -- Chỉ lưu tên (phần 'name' của UOM)
+                             unitOfMeasure INT NOT NULL IDENTITY(1,1), -- Chỉ lưu tên (phần 'name' của UOM)
                              quantity INT NOT NULL,
                              unitPrice DECIMAL(18,2) NOT NULL, -- Giá snapshot tại thời điểm bán
                              lineType NVARCHAR(50) NOT NULL CHECK (lineType IN ('SALE', 'RETURN', 'EXCHANGE_OUT', 'EXCHANGE_IN')),

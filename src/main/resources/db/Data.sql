@@ -84,31 +84,31 @@ VALUES (N'Viên'),(N'Vỉ'),(N'Hộp'),(N'ml'),(N'Chai'),(N'Lọ'),(N'Gói'),(N'
 -- =====================================================
 
 -- UOMs for Paracetamol (PRO2025-0001) - base unit: Viên
-INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0001', 1, 200.00, 1.0000),   -- Viên
-                                                                                      ('PRO2025-0001', 2, 2000.00, 0.1000),  -- Vỉ
-                                                                                      ('PRO2025-0001', 3, 20000.00, 0.0100); -- Hộp
+INSERT INTO UnitOfMeasure (product,price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0001', 200.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0001', 2000.00, 0.1000),  -- Vỉ
+                                                                                      ('PRO2025-0001', 20000.00, 0.0100); -- Hộp
 
 -- UOMs for Vitamin C (PRO2025-0002) - base unit: ml
-INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0002', 4, 100.00, 1.0000),  -- ml
-                                                                                      ('PRO2025-0002', 5, 10000.00, 0.0100);-- Chai
+INSERT INTO UnitOfMeasure (product,price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0002',  100.00, 1.0000),  -- ml
+                                                                                      ('PRO2025-0002', 10000.00, 0.0100);-- Chai
 
 -- UOMs for Amoxicillin (PRO2025-0003) - base unit: Viên
-INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0003', 1, 500.00, 1.0000),   -- Viên
-                                                                                      ('PRO2025-0003', 2, 5000.00, 0.1000),  -- Vỉ
-                                                                                      ('PRO2025-0003', 3, 50000.00, 0.0100); -- Hộp
+INSERT INTO UnitOfMeasure (product, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0003', 500.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0003', 5000.00, 0.1000),  -- Vỉ
+                                                                                      ('PRO2025-0003', 50000.00, 0.0100); -- Hộp
 
 -- UOMs for Omeprazole (PRO2025-0004) - base unit: ml
-INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0004', 4, 200.00, 1.0000),   -- ml
-                                                                                      ('PRO2025-0004', 5, 24000.00, 0.0083); -- Chai
+INSERT INTO UnitOfMeasure (product, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0004', 200.00, 1.0000),   -- ml
+                                                                                      ('PRO2025-0004', 24000.00, 0.0083); -- Chai
 
 -- UOMs for Omega 3 (PRO2025-0005) - base unit: Viên
-INSERT INTO UnitOfMeasure (product, measurementId, price, baseUnitConversionRate) VALUES
-                                                                                      ('PRO2025-0005', 1, 1500.00, 1.0000),   -- Viên
-                                                                                      ('PRO2025-0005', 6, 90000.00, 0.0167);  -- Lọ
+INSERT INTO UnitOfMeasure (product, price, baseUnitConversionRate) VALUES
+                                                                                      ('PRO2025-0005', 1500.00, 1.0000),   -- Viên
+                                                                                      ('PRO2025-0005', 90000.00, 0.0167);  -- Lọ
 
 -- =====================================================
 -- 6. LOT DATA (Each product has at least 2 lots, at least 2 lots are unavailable)
