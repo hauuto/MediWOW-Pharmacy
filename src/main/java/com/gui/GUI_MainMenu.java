@@ -97,7 +97,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         invoiceMenu.setDataChangeListener((DataChangeListener) dashboard);
 
         TAB_Promotion promotion = new TAB_Promotion();
-        TAB_Statistic statistic = new TAB_Statistic();
+        TAB_Statistics statistic = new TAB_Statistics(currentStaff);
         TAB_Product product = new TAB_Product();
         TAB_Staff staffTab = new TAB_Staff();
         TAB_Customer customer = new TAB_Customer();
@@ -105,7 +105,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         pnlMain.add(dashboard, "dashboard"); // Fixed: dashboard is already a JPanel
         pnlMain.add(invoiceMenu.pnlInvoiceMenu, "invoiceMenu");
         pnlMain.add(promotion, "promotion");
-        pnlMain.add(statistic.pStatistic, "statistic");
+        pnlMain.add(statistic, "statistic"); // Fixed: statistic extends JPanel, add directly
         pnlMain.add(product.pProduct, "product");
         pnlMain.add(staffTab.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
