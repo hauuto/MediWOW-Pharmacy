@@ -9,7 +9,6 @@ import com.utils.HibernateUtil;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
-import org.hibernate.query.Query;   // ⇦ NEW
 import org.hibernate.Hibernate;
 import java.util.List;
 
@@ -29,7 +28,7 @@ public class DAO_Product implements IProduct {
             // 1) FETCH UOM
             Product product = session.createQuery(
                             "SELECT DISTINCT p FROM Product p " +
-                                    "LEFT JOIN FETCH p.unitOfMeasureList " +
+                                    "LEFT JOIN FETCH p.unitOfMeasureSet " +
                                     "WHERE p.id = :id", Product.class)
                     .setParameter("id", id)
                     .uniqueResult();
@@ -38,14 +37,14 @@ public class DAO_Product implements IProduct {
                 // 2) FETCH LOT (trong cùng persistence context)
                 session.createQuery(
                                 "SELECT DISTINCT p FROM Product p " +
-                                        "LEFT JOIN FETCH p.lotList " +
+                                        "LEFT JOIN FETCH p.lotSet " +
                                         "WHERE p.id = :id", Product.class)
                         .setParameter("id", id)
                         .uniqueResult();
 
                 // 3) Defensive: đảm bảo cả 2 collection đã init trước khi đóng session
-                Hibernate.initialize(product.getUnitOfMeasureList());
-                Hibernate.initialize(product.getLotList());
+                Hibernate.initialize(product.getUnitOfMeasureSet());
+                Hibernate.initialize(product.getLotSet());
             }
             return product;
 
@@ -150,13 +149,13 @@ public class DAO_Product implements IProduct {
         try {
             session = sessionFactory.openSession();
             List<Product> products = session.createQuery(
-                    "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.unitOfMeasureList",
+                    "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.unitOfMeasureSet",
                     Product.class
             ).list();
 
             if (!products.isEmpty()) {
                 session.createQuery(
-                        "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.lotList WHERE p IN :products",
+                        "SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.lotSet WHERE p IN :products",
                         Product.class
                 ).setParameter("products", products).list();
             }

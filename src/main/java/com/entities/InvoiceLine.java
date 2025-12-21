@@ -30,8 +30,9 @@ public class InvoiceLine {
     @JoinColumn(name = "product", nullable = false)
     private Product product;
 
-    @Column(name = "unitOfMeasure", nullable = false, length = 100)
-    private String unitOfMeasure;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "unitOfMeasure", nullable = false)
+    private MeasurementName unitOfMeasure;
 
     @Column(name = "quantity", nullable = false)
     private int quantity;
@@ -51,7 +52,7 @@ public class InvoiceLine {
     /**
      * Constructor without ID - Hibernate will auto-generate UUID
      */
-    public InvoiceLine(Product product, Invoice invoice, String unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
+    public InvoiceLine(Product product, Invoice invoice, MeasurementName unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
         this.product = product;
         this.invoice = invoice;
         this.unitOfMeasure = unitOfMeasure;
@@ -60,7 +61,7 @@ public class InvoiceLine {
         this.unitPrice = unitPrice;
     }
 
-    public InvoiceLine(String id, Product product, Invoice invoice, String unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
+    public InvoiceLine(String id, Product product, Invoice invoice, MeasurementName unitOfMeasure, LineType lineType, int quantity, BigDecimal unitPrice) {
         this.id = id;
         this.product = product;
         this.invoice = invoice;
@@ -102,11 +103,11 @@ public class InvoiceLine {
         this.quantity = quantity;
     }
 
-    public String getUnitOfMeasure() {
+    public MeasurementName getUnitOfMeasure() {
         return unitOfMeasure;
     }
 
-    public void setUnitOfMeasure(String unitOfMeasure) {
+    public void setUnitOfMeasure(MeasurementName unitOfMeasure) {
         this.unitOfMeasure = unitOfMeasure;
     }
 
@@ -177,7 +178,7 @@ public class InvoiceLine {
         int baseQuantityNeeded = convertToBaseQuantity();
 
         // Get all available lots sorted by expiry date (FIFO - oldest first)
-        List<Lot> availableLots = product.getLotList().stream()
+        List<Lot> availableLots = product.getLotSet().stream()
                 .filter(lot -> lot.getStatus() == LotStatus.AVAILABLE && lot.getQuantity() > 0)
                 .sorted(Comparator.comparing(Lot::getExpiryDate))
                 .toList();
@@ -222,7 +223,7 @@ public class InvoiceLine {
         }
 
         // Find the UOM conversion rate
-        UnitOfMeasure uom = product.getUnitOfMeasureList().stream()
+        UnitOfMeasure uom = product.getUnitOfMeasureSet().stream()
                 .filter(u -> u.getName().equals(unitOfMeasure))
                 .findFirst()
                 .orElse(null);

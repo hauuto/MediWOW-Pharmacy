@@ -737,14 +737,14 @@ public class TAB_Promotion extends JPanel {
                         }
 
                         Product p = daoProduct.getProductById(productId);
-                        if (p == null || p.getUnitOfMeasureList() == null || p.getUnitOfMeasureList().isEmpty()) {
+                        if (p == null || p.getUnitOfMeasureSet() == null || p.getUnitOfMeasureSet().isEmpty()) {
                             JOptionPane.showMessageDialog(table, "Không tìm thấy đơn vị tính cho sản phẩm đã chọn.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
                             return;
                         }
 
                         // Yêu cầu 3: Combobox cho đơn vị
                         java.util.List<String> names = new java.util.ArrayList<>();
-                        for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
+                        for (UnitOfMeasure u : p.getUnitOfMeasureSet()) {
                             if (u != null && u.getName() != null) names.add(u.getName());
                         }
                         if (names.isEmpty()) {

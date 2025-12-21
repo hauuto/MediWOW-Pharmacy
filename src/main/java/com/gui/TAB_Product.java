@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.dao.DAO_MeasurementName;
+import com.entities.MeasurementName;
 import com.utils.AppColors;
 
 import javax.swing.*;
@@ -101,10 +103,11 @@ public class TAB_Product {
     private boolean isBindingFromTable = false;
 
     private static final String DEFAULT_IMG_PATH = "\\src\\main\\resources\\images\\products\\etc\\etc1.jpg";
-
+    private DAO_MeasurementName msDao;
     public TAB_Product() {
         buildUI();
         setEditMode(false);
+        msDao = new DAO_MeasurementName();
     }
 
     // ===================== UI =====================
@@ -1303,22 +1306,23 @@ public class TAB_Product {
         p.setBaseUnitOfMeasure(txtBaseUom.getText().trim());
 
         // UOM (không bắt buộc). Chỉ tạo nếu có mã ĐV (cột 0) — nếu ID trống, bỏ qua dòng đó.
-        java.util.List<UnitOfMeasure> uoms = new java.util.ArrayList<>();
+        Set<UnitOfMeasure> uoms = new HashSet<>();
         for (int r = 0; r < uomModel.getRowCount(); r++) {
             String id = valStr(uomModel.getValueAt(r, UOM_COL_ID));
             String name = valStr(uomModel.getValueAt(r, UOM_COL_NAME));
+            MeasurementName msName = msDao.findMeasurementNameByName(name);
             Integer rate = parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE));
             if (id.isEmpty() || name.isEmpty() || rate == null) continue; // bỏ dòng thiếu
             // UnitOfMeasure price: hệ thống hiện lấy từ lot raw price * conversion. Ở màn này chưa nhập nên tạm để 0.
             java.math.BigDecimal price = java.math.BigDecimal.ZERO;
-            UnitOfMeasure u = new UnitOfMeasure(p, name, price, java.math.BigDecimal.valueOf(rate));
+            UnitOfMeasure u = new UnitOfMeasure(p, msName, price, java.math.BigDecimal.valueOf(rate));
             u.setProduct(p);
             uoms.add(u);
         }
-        p.setUnitOfMeasureList(uoms);
+        p.setUnitOfMeasureSet(uoms);
 
         // LOT (bắt buộc ≥ 1 dòng theo validateBeforeSave)
-        java.util.List<Lot> lots = new java.util.ArrayList<>();
+        Set<Lot> lots = new HashSet<>();
         for (int r = 0; r < lotModel.getRowCount(); r++) {
             String bn = valStr(lotModel.getValueAt(r, LOT_COL_ID));
             Integer qty = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY));
@@ -1330,12 +1334,12 @@ public class TAB_Product {
             LotStatus status = mapLotStatusVN(st);
 
             // Generate UUID for new lot id, use batchNumber as is
-            String lotId = java.util.UUID.randomUUID().toString();
+            String lotId = UUID.randomUUID().toString();
             Lot lot = new Lot(lotId, bn, p, (qty == null ? 0 : qty), (price == null ? java.math.BigDecimal.ZERO : price), expiry, status);
             lot.setProduct(p);
             lots.add(lot);
         }
-        p.setLotList(lots);
+        p.setLotSet(lots);
 
         return p;
     }
@@ -1404,8 +1408,8 @@ public class TAB_Product {
 
         // Bảng ĐƠN VỊ QUY ĐỔI
         uomModel.setRowCount(0);
-        if (p.getUnitOfMeasureList() != null) {
-            for (UnitOfMeasure u : p.getUnitOfMeasureList()) {
+        if (p.getUnitOfMeasureSet() != null) {
+            for (UnitOfMeasure u : p.getUnitOfMeasureSet()) {
                 uomModel.addRow(new Object[]{
                         safe(u.getName()), // UnitOfMeasure now uses composite key, use name as ID
                         safe(u.getName()),
@@ -1416,8 +1420,8 @@ public class TAB_Product {
 
         // Bảng LÔ & HSD
         lotModel.setRowCount(0);
-        if (p.getLotList() != null) {
-            for (Lot l : p.getLotList()) {
+        if (p.getLotSet() != null) {
+            for (Lot l : p.getLotSet()) {
                 String lotId = safe(l.getBatchNumber());
                 Integer qty  = l.getQuantity();
                 java.math.BigDecimal price = l.getRawPrice();

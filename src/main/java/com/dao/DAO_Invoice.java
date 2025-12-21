@@ -200,7 +200,7 @@ public class DAO_Invoice implements IInvoice {
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
                     "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotList " +
+                    "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice.id = :id",
                     InvoiceLine.class
                 ).setParameter("id", id).list();
@@ -299,7 +299,7 @@ public class DAO_Invoice implements IInvoice {
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
                     "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotList " +
+                    "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice IN :invoices",
                     InvoiceLine.class
                 ).setParameter("invoices", invoices).list();
@@ -342,7 +342,7 @@ public class DAO_Invoice implements IInvoice {
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
                     "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotList " +
+                    "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il.invoice.id = :invoiceId",
                     InvoiceLine.class
                 ).setParameter("invoiceId", invoiceId).list();
@@ -392,7 +392,7 @@ public class DAO_Invoice implements IInvoice {
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
                     "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotList " +
+                    "LEFT JOIN FETCH p.lotSet " +
                     "WHERE il IN :invoiceLines",
                     InvoiceLine.class
                 ).setParameter("invoiceLines", invoiceLines).list();

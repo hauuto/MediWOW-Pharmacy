@@ -44,10 +44,10 @@ public class BUS_Product implements IProduct {
         checkDuplicates(p);
 
         // Gán quan hệ 2 chiều (phòng trường hợp caller chưa set)
-        if (p.getUnitOfMeasureList() != null)
-            for (UnitOfMeasure u : p.getUnitOfMeasureList()) if (u != null) u.setProduct(p);
-        if (p.getLotList() != null)
-            for (Lot l : p.getLotList()) if (l != null) l.setProduct(p);
+        if (p.getUnitOfMeasureSet() != null)
+            for (UnitOfMeasure u : p.getUnitOfMeasureSet()) if (u != null) u.setProduct(p);
+        if (p.getLotSet() != null)
+            for (Lot l : p.getLotSet()) if (l != null) l.setProduct(p);
 
         return dao.addProduct(p);
     }
@@ -106,9 +106,9 @@ public class BUS_Product implements IProduct {
             throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
 
         // Lot: khi thêm mới, yêu cầu >= 1 dòng (theo UI validate)
-        if (p.getLotList() == null || p.getLotList().isEmpty())
+        if (p.getLotSet() == null || p.getLotSet().isEmpty())
             throw new IllegalArgumentException("Sản phẩm mới cần có ít nhất 1 lô hàng");
-        for (Lot lot : p.getLotList()) {
+        for (Lot lot : p.getLotSet()) {
             if (lot == null) continue;
             if (lot.getBatchNumber() == null || lot.getBatchNumber().trim().isEmpty())
                 throw new IllegalArgumentException("Mã lô không được để trống");
@@ -132,8 +132,8 @@ public class BUS_Product implements IProduct {
             if (existsByNameAndManufacturer(p.getName(), p.getManufacturer()))
                 throw new IllegalArgumentException("Sản phẩm '" + p.getName() + "' của hãng '" + p.getManufacturer() + "' đã tồn tại");
         }
-        if (p.getLotList() != null) {
-            for (Lot lot : p.getLotList()) {
+        if (p.getLotSet() != null) {
+            for (Lot lot : p.getLotSet()) {
                 if (lot != null && lot.getBatchNumber() != null && !lot.getBatchNumber().trim().isEmpty()) {
                     if (existsLotByBatchNumber(lot.getBatchNumber()))
                         throw new IllegalArgumentException("Mã lô '" + lot.getBatchNumber() + "' đã tồn tại");

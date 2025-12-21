@@ -5,21 +5,21 @@ import com.enums.ProductCategory;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "Product")
 public class Product {
 
     @Id
-    @UuidGenerator
-    @Column(name = "id", insertable = false, updatable = false, nullable = false, length = 50)
+    @Column(name = "id", updatable = false, nullable = false, length = 50)
     private String id;
 
     @Column(name = "barcode", unique = true)
@@ -57,11 +57,14 @@ public class Product {
     @Column(name = "baseUnitOfMeasure", nullable = false)
     private String baseUnitOfMeasure;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<UnitOfMeasure> unitOfMeasureList = new ArrayList<>();
+    @Column(name = "image")
+    private String image;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<Lot> lotList = new ArrayList<>();
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Lot> lotSet = new HashSet<>();
+
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<UnitOfMeasure> unitOfMeasureSet = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "creationDate", updatable = false)
@@ -75,7 +78,7 @@ public class Product {
 
     public Product(String id, String barcode, ProductCategory category, DosageForm form, String name, String shortName,
                    String manufacturer, String activeIngredient, double vat, String strength, String description,
-                   String baseUnitOfMeasure, List<UnitOfMeasure> unitOfMeasureList, List<Lot> lotList, LocalDateTime updateDate) {
+                   String baseUnitOfMeasure, Set<UnitOfMeasure> unitOfMeasureSet, Set<Lot> lotSet, LocalDateTime updateDate) {
         this.id = id;
         setBarcode(barcode);
         setCategory(category);
@@ -88,8 +91,8 @@ public class Product {
         this.strength = strength;
         this.description = description;
         setBaseUnitOfMeasure(baseUnitOfMeasure);
-        setUnitOfMeasureList(unitOfMeasureList);
-        setLotList(lotList);
+        setUnitOfMeasureSet(unitOfMeasureSet);
+        setLotSet(lotSet);
         this.updateDate = updateDate;
     }
 
@@ -175,16 +178,20 @@ public class Product {
         this.baseUnitOfMeasure = baseUnitOfMeasure.trim();
     }
 
-    public List<UnitOfMeasure> getUnitOfMeasureList() { return unitOfMeasureList; }
-    public void setUnitOfMeasureList(List<UnitOfMeasure> unitOfMeasureList) {
-        this.unitOfMeasureList = (unitOfMeasureList == null) ? new ArrayList<>() : new ArrayList<>(unitOfMeasureList);
-        for (UnitOfMeasure u : this.unitOfMeasureList) if (u != null) u.setProduct(this); // quan hệ 2 chiều
+    public String getImage() { return image; }
+    public void setImage(String image) { this.image = (image == null) ? null : image.trim(); }
+
+
+    public Set<UnitOfMeasure> getUnitOfMeasureSet() { return unitOfMeasureSet; }
+    public void setUnitOfMeasureSet(Set<UnitOfMeasure> unitOfMeasureSet) {
+        this.unitOfMeasureSet = (unitOfMeasureSet == null) ? new HashSet<>() : new HashSet<>(unitOfMeasureSet);
+        for (UnitOfMeasure u : this.unitOfMeasureSet) if (u != null) u.setProduct(this); // quan hệ 2 chiều
     }
 
-    public List<Lot> getLotList() { return lotList; }
-    public void setLotList(List<Lot> lotList) {
-        this.lotList = (lotList == null) ? new ArrayList<>() : new ArrayList<>(lotList);
-        for (Lot l : this.lotList) if (l != null) l.setProduct(this); // quan hệ 2 chiều
+    public Set<Lot> getLotSet() { return lotSet; }
+    public void setLotSet(Set<Lot> lotSet) {
+        this.lotSet = (lotSet == null) ? new HashSet<>() : new HashSet<>(lotSet);
+        for (Lot l : this.lotSet) if (l != null) l.setProduct(this); // quan hệ 2 chiều
     }
 
     public LocalDateTime getCreationDate() { return creationDate; }
@@ -205,11 +212,11 @@ public class Product {
         if (lot == null)
             return false;
 
-        for (Lot existingLot : lotList)
+        for (Lot existingLot : lotSet)
             if (existingLot.equals(lot))
                 return false;
 
-        lotList.add(lot);
+        lotSet.add(lot);
         return true;
     }
 
@@ -221,7 +228,7 @@ public class Product {
      * @return The oldest available Lot, or null if none are available.
      */
     public Lot getOldestLotAvailable() {
-        return lotList.stream()
+        return lotSet.stream()
                 .filter(lot -> lot.getStatus().equals(com.enums.LotStatus.AVAILABLE) && lot.getQuantity() > 0)
                 .min((lot1, lot2) -> lot1.getExpiryDate().compareTo(lot2.getExpiryDate()))
                 .orElse(null);
@@ -239,7 +246,7 @@ public class Product {
         if (updatedLot == null)
             return false;
 
-        for (Lot lot : lotList) {
+        for (Lot lot : lotSet) {
             if (lot.equals(updatedLot)) {
                 lot.setExpiryDate(updatedLot.getExpiryDate());
                 lot.setQuantity(updatedLot.getQuantity());
@@ -262,7 +269,7 @@ public class Product {
      * @return true if the Lot was found and removed, false otherwise.
      */
     public boolean removeLot(String batchNumber) {
-        return lotList.removeIf(lot -> lot.getBatchNumber().equals(batchNumber));
+        return lotSet.removeIf(lot -> lot.getBatchNumber().equals(batchNumber));
     }
 
     @Override
