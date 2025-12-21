@@ -18,8 +18,6 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.util.List;
 import java.util.regex.Pattern;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -30,8 +28,6 @@ import java.awt.event.ActionListener;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-import javax.swing.event.PopupMenuListener;
-import javax.swing.event.PopupMenuEvent;
 
 public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     JPanel pnlMainMenu;
@@ -199,18 +195,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         });
         timer.start();
 
-        // Make search popup non-focusable and ensure txtSearch regains focus when popup appears
-        searchPopup.setFocusable(false);
-        searchPopup.addPopupMenuListener(new PopupMenuListener() {
-            @Override public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
-                // re-request focus to the search field when the popup is shown
-                SwingUtilities.invokeLater(() -> {
-                    if (txtSearch != null) txtSearch.requestFocusInWindow();
-                });
-            }
-            @Override public void popupMenuWillBecomeInvisible(PopupMenuEvent e) { /* no-op */ }
-            @Override public void popupMenuCanceled(PopupMenuEvent e) { /* no-op */ }
-        });
 
     }
 
@@ -453,7 +437,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 for (PrescribedCustomer c : customers) {
                     String label = String.format("%s - %s", c.getName(), c.getPhoneNumber() == null ? "" : c.getPhoneNumber());
                     JMenuItem item = new JMenuItem(label, customerIcon);
-                    item.setFocusable(false);
                     item.addActionListener(e -> {
                         // Fallback: open customer tab and show basic info
                         SwingUtilities.invokeLater(() -> {
@@ -475,7 +458,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 for (Invoice inv : invoices) {
                     String who = inv.getPrescribedCustomer() != null ? inv.getPrescribedCustomer().getName() : (inv.getCreator() != null ? inv.getCreator().getFullName() : "");
                     JMenuItem item = new JMenuItem("Hóa đơn: " + inv.getId() + " - " + who, invoiceIcon);
-                    item.setFocusable(false);
                     final String whoDisplay = who;
                     item.addActionListener(e -> {
                         // Fallback: switch to invoice menu and show basic info
@@ -498,7 +480,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 for (Product p : products) {
                     String label = String.format("%s - %s", p.getName(), p.getBarcode() == null ? "" : p.getBarcode());
                     JMenuItem item = new JMenuItem(label, productIcon);
-                    item.setFocusable(false);
                     item.addActionListener(e -> {
                         // Fallback: open product tab and show basic info
                         SwingUtilities.invokeLater(() -> {
@@ -522,7 +503,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 for (Invoice inv : invoices) {
                     String who = inv.getPrescribedCustomer() != null ? inv.getPrescribedCustomer().getName() : (inv.getCreator() != null ? inv.getCreator().getFullName() : "");
                     JMenuItem item = new JMenuItem("Hóa đơn: " + inv.getId() + " - " + who, invoiceIcon);
-                    item.setFocusable(false);
                     final String whoDisplay = who;
                     item.addActionListener(e -> {
                         // Fallback: switch to invoice menu and show basic info
@@ -546,7 +526,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 for (Product p : products) {
                     String label = String.format("%s - %s", p.getName(), p.getBarcode() == null ? "" : p.getBarcode());
                     JMenuItem item = new JMenuItem(label, productIcon);
-                    item.setFocusable(false);
                     item.addActionListener(e -> {
                         // Fallback: open product tab and show basic info
                         SwingUtilities.invokeLater(() -> {
@@ -568,7 +547,6 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 for (PrescribedCustomer c : customers) {
                     String label = String.format("%s - %s", c.getName(), c.getPhoneNumber() == null ? "" : c.getPhoneNumber());
                     JMenuItem item = new JMenuItem(label, customerIcon);
-                    item.setFocusable(false);
                     item.addActionListener(e -> {
                         // Fallback: open customer tab and show basic info
                         SwingUtilities.invokeLater(() -> {
@@ -589,16 +567,11 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         if (totalAdded == 0) {
             JMenuItem none = new JMenuItem("Không có kết quả");
             none.setEnabled(false);
-            none.setFocusable(false);
             searchPopup.add(none);
         }
 
         // Show the popup below the search field
         searchPopup.show(txtSearch, 0, txtSearch.getHeight());
-        // Ensure the text field retains focus (popup may attempt to steal it)
-        SwingUtilities.invokeLater(() -> {
-            if (txtSearch != null) txtSearch.requestFocusInWindow();
-        });
     }
 
 
