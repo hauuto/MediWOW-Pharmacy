@@ -80,8 +80,6 @@ public class TAB_Product {
     private JButton btnImportExcel;
 
     // ==== Chi tiết phải ====
-    private JLabel lbImage;
-    private JButton btnChangeImage;
     private JTextField txtId, txtName, txtShortName, txtBarcode, txtActiveIngredient, txtManufacturer, txtStrength;
     private JComboBox<String> cbCategoryDetail, cbFormDetail;
     private JComboBox<MeasurementName> cbBaseUom; // Thay đổi từ JTextField thành JComboBox
@@ -109,11 +107,6 @@ public class TAB_Product {
     private int newProductRowIndex = -1;
     private boolean suppressSelectionEvent = false;
     private boolean isBindingFromTable = false;
-
-    private static final String DEFAULT_IMG_PATH = "\\src\\main\\resources\\images\\products\\etc\\etc1.jpg";
-
-    // Store the current image path (full path)
-    private String currentImagePath = null;
 
     // ==== Danh sách MeasurementName từ DB ====
     private List<MeasurementName> allMeasurementNames = new ArrayList<>();
@@ -339,25 +332,9 @@ public class TAB_Product {
     }
 
     private JComponent buildRow0ImageAndBasicInfo() {
-        JPanel row0 = new JPanel(new GridLayout(1, 2, 12, 0));
+        // Image UI removed: keep only the right-side basic info panel
+        JPanel row0 = new JPanel(new GridLayout(1, 1, 12, 0));
         row0.setOpaque(false);
-
-        JPanel left = new JPanel(new BorderLayout(8, 8));
-        left.setOpaque(false);
-        left.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(210, 230, 240)),
-                new EmptyBorder(10, 10, 10, 10)));
-
-        lbImage = new JLabel("No Image", SwingConstants.CENTER);
-        lbImage.setPreferredSize(new Dimension(180, 180));
-        setImage(DEFAULT_IMG_PATH);
-
-        btnChangeImage = new JButton("Đổi ảnh…");
-        styleButton(btnChangeImage, AppColors.PRIMARY, Color.WHITE);
-        btnChangeImage.addActionListener(e -> chooseImage());
-
-        left.add(lbImage, BorderLayout.CENTER);
-        left.add(btnChangeImage, BorderLayout.SOUTH);
 
         JPanel right = new JPanel(new GridLayout(6, 1, 10, 8)); // 6 hàng: + Tên viết tắt
         right.setOpaque(false);
@@ -374,7 +351,7 @@ public class TAB_Product {
         right.add(labeled("Mã vạch:", txtBarcode));
         right.add(labeled("Loại:", cbCategoryDetail));
 
-        row0.add(left); row0.add(right);
+        row0.add(right);
 
         cbCategoryDetail.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED && isEditMode && !isBindingFromTable) applyDefaultVatByCategory();
@@ -661,8 +638,6 @@ public class TAB_Product {
     }
 
     private void setComponentsEditable(boolean editable) {
-        btnChangeImage.setEnabled(editable);
-
         txtId.setEditable(false);                 // KHÓA MÃ SẢN PHẨM (luôn)
         txtName.setEditable(editable);
         if (txtShortName != null) txtShortName.setEditable(editable);
@@ -701,7 +676,6 @@ public class TAB_Product {
     private void applyEditabilityForMode() {
         if (!isEditMode) {
             // View mode: mọi thứ read-only
-            btnChangeImage.setEnabled(false);
             uomModel.setEditable(false); uomModel.lockRowsBefore(0); uomModel.setAlwaysEditableColumns();
             lotModel.setEditable(false); lotModel.lockRowsBefore(0); lotModel.setAlwaysEditableColumns();
             if (uomFooterBar != null) uomFooterBar.setVisible(false);
@@ -711,7 +685,6 @@ public class TAB_Product {
 
         if (isAddingNew) {
             // Thêm mới: cho chỉnh mọi field + mọi cột bảng con
-            btnChangeImage.setEnabled(true);
 
             txtId.setEditable(false);
             txtName.setEditable(true);
@@ -733,7 +706,6 @@ public class TAB_Product {
         } else {
             // Chỉnh sửa SP hiện có:
             // 1) chỉ cho đổi Trạng thái SP
-            btnChangeImage.setEnabled(false);
 
             txtId.setEditable(false);
             txtName.setEditable(false);
@@ -760,39 +732,6 @@ public class TAB_Product {
 
             if (uomFooterBar != null) uomFooterBar.setVisible(true);
             if (lotFooterBar != null) lotFooterBar.setVisible(true);
-        }
-    }
-
-    private void chooseImage() {
-        JFileChooser chooser = new JFileChooser(getProjectImagesDir());
-        chooser.setFileFilter(new FileNameExtensionFilter("Ảnh (*.png, *.jpg, *.jpeg)", "png", "jpg", "jpeg"));
-        chooser.setAcceptAllFileFilterUsed(true);
-
-        int result = chooser.showOpenDialog(pProduct);
-        if (result == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-            setImage(file.getAbsolutePath());
-        }
-    }
-
-    private void setImage(String path) {
-        try {
-            File f = new File(path);
-            if (!f.exists()) {
-                lbImage.setText("No Image");
-                lbImage.setIcon(null);
-                currentImagePath = null; // Cập nhật để tránh giữ path cũ không tồn tại
-                return;
-            }
-            ImageIcon icon = new ImageIcon(path);
-            Image scaled = icon.getImage().getScaledInstance(180, 180, Image.SCALE_SMOOTH);
-            lbImage.setIcon(new ImageIcon(scaled));
-            lbImage.setText(null);
-            currentImagePath = path; // Cập nhật đường dẫn ảnh hiện tại
-        } catch (Exception ex) {
-            lbImage.setText("No Image");
-            lbImage.setIcon(null);
-            currentImagePath = null; // Cập nhật khi có exception
         }
     }
 
@@ -1021,16 +960,6 @@ public class TAB_Product {
         }
         out.add(cur.toString());
         return out.toArray(new String[0]);
-    }
-
-    private File getProjectImagesDir() {
-        String userDir = System.getProperty("user.dir");
-        String[] candidates = {"src/main/resources/images/products"};
-        for (String c : candidates) {
-            File f = new File(userDir, c);
-            if (f.exists() && f.isDirectory()) return f;
-        }
-        return new File(userDir); // fallback: thư mục project
     }
 
     // ==== Model tối ưu (BitSet) ====
@@ -1404,7 +1333,6 @@ public class TAB_Product {
         p.setDescription(txtDescription.getText().trim());
         p.setVat(((Number) spVat.getValue()).doubleValue());
         p.setBaseUnitOfMeasure(cbBaseUom.getSelectedItem().toString().trim());
-        p.setImage(currentImagePath);
 
         // UOM (không bắt buộc). Chỉ kiểm tra name và rate, BỎ QUA kiểm tra ID vì UOM dùng composite key
         Set<UnitOfMeasure> uoms = new HashSet<>();
@@ -1569,7 +1497,7 @@ public class TAB_Product {
         return p;
     }
 
-    /** Map status Vietnamese label to Vietnamese for display */
+    /** Map status Vietnamese label to Vietnamese */
     private String mapStatusToVN(String status) {
         if (status == null) return "Đang kinh doanh";
         if (status.contains("Ngừng") || status.toLowerCase().contains("ngung")) {
@@ -1625,22 +1553,6 @@ public class TAB_Product {
         txtDescription.setText(safe(p.getDescription()));
         cbBaseUom.setSelectedItem(safe(p.getBaseUnitOfMeasure()));
 
-        // Display product image
-        String imagePath = p.getImage();
-        if (imagePath != null && !imagePath.trim().isEmpty()) {
-            File imageFile = new File(imagePath);
-            if (imageFile.exists()) {
-                setImage(imagePath);
-            } else {
-                lbImage.setText("No Image");
-                lbImage.setIcon(null);
-                currentImagePath = null;
-            }
-        } else {
-            lbImage.setText("No Image");
-            lbImage.setIcon(null);
-            currentImagePath = null;
-        }
 
         // Enum -> nhãn/combobox
         if (p.getCategory() != null)
