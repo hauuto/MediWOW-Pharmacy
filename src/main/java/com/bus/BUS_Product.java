@@ -379,4 +379,36 @@ public class BUS_Product implements IProduct {
     public MeasurementName getOrCreateMeasurementName(String name) {
         return dao.getOrCreateMeasurementName(name);
     }
+
+    /**
+     * Validate product data for UI layer.
+     * UI should call this and simply display the thrown message (IllegalArgumentException#getMessage).
+     *
+     * @param p     product to validate
+     * @param isNew true when adding new product, false when updating
+     */
+    public void validateForUi(Product p, boolean isNew) {
+        if (p == null) throw new IllegalArgumentException("Không có thông tin sản phẩm để " + (isNew ? "thêm" : "cập nhật"));
+
+        // Barcode format: digits only, 8–20 chars (UI previously checked this manually)
+        if (p.getBarcode() == null || p.getBarcode().trim().isEmpty()) {
+            throw new IllegalArgumentException("Mã vạch không được để trống");
+        }
+        String bc = p.getBarcode().trim();
+        if (!bc.matches("\\d{8,20}")) {
+            throw new IllegalArgumentException("Mã vạch chỉ gồm 8–20 chữ số.");
+        }
+
+        if (isNew) {
+            validateProduct(p);
+            checkDuplicates(p);
+        } else {
+            // update requires id to exist; keep same wording as updateProduct
+            if (p.getId() == null || p.getId().trim().isEmpty()) {
+                throw new IllegalArgumentException("Không tìm thấy thông tin sản phẩm cần cập nhật");
+            }
+            validateProductForUpdate(p);
+            checkDuplicatesForUpdate(p);
+        }
+    }
 }
