@@ -308,6 +308,18 @@ public class BUS_Product implements IProduct {
     }
 
     /**
+     * Search top 5 lots by batch number for omni-search.
+     */
+    public List<Lot> searchTop5LotsByBatchNumber(String keyword) {
+        try {
+            return dao.searchTop5LotsByBatchNumber(keyword);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /**
      * Deduct a specific quantity from a lot
      * @param lotId The ID of the lot
      * @param quantityToDeduct The quantity to deduct

@@ -85,6 +85,31 @@ public class DAO_Product implements IProduct {
         }
     }
 
+    /**
+     * Search top 5 lots by batch number (contains, case-insensitive).
+     */
+    @Override
+    public List<Lot> searchTop5LotsByBatchNumber(String keyword) {
+        if (keyword == null) return java.util.Collections.emptyList();
+        String kw = keyword.trim();
+        if (kw.isEmpty()) return java.util.Collections.emptyList();
+
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            String jpql = "FROM Lot l LEFT JOIN FETCH l.product p WHERE lower(l.batchNumber) LIKE :kw ORDER BY l.batchNumber";
+            Query<Lot> q = session.createQuery(jpql, Lot.class);
+            q.setParameter("kw", "%" + kw.toLowerCase() + "%");
+            q.setMaxResults(5);
+            return q.list();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        } finally {
+            if (session != null) session.close();
+        }
+    }
+
     @Override
     public List<Lot> getAllLots() {
         Session session = null;

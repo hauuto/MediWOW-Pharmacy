@@ -1,19 +1,15 @@
 package com.gui;
 
+import com.entities.*;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.interfaces.DataChangeListener;
 import com.utils.AppColors;
-import com.entities.Staff;
-import com.entities.Shift;
 import com.bus.BUS_Shift;
 import com.interfaces.ShiftChangeListener;
 import com.bus.BUS_Product;
 import com.bus.BUS_Customer;
 import com.bus.BUS_Invoice;
-import com.entities.Product;
-import com.entities.Customer;
-import com.entities.Invoice;
 import com.enums.Role;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -69,6 +65,8 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     private volatile long lastSearchAt = 0L;
     private static final Pattern PHONE_PATTERN = Pattern.compile("^\\d{10,11}$");
     private static final Pattern INVOICE_PREFIX = Pattern.compile("^(HD|INV).*", Pattern.CASE_INSENSITIVE);
+    // Batch number pattern: letters/digits and optional dashes, length >=4
+    private static final Pattern BATCH_PATTERN = Pattern.compile("^[A-Za-z0-9-]{4,}$");
 
 
     /**
@@ -503,6 +501,31 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 }
             }
 
+            // Also search lots by batch number if it looks like a batch
+            if (BATCH_PATTERN.matcher(searchText).matches()) {
+                List<Lot> lots = productBUS.searchTop5LotsByBatchNumber(searchText);
+                if (lots != null && !lots.isEmpty()) {
+                    for (Lot lot : lots) {
+                        String prodName = (lot.getProduct() != null) ? lot.getProduct().getName() : "";
+                        String label = String.format("Lô: %s - %s", lot.getBatchNumber(), prodName);
+                        JMenuItem item = new JMenuItem(label, productIcon);
+                        item.addActionListener(e -> {
+                            SwingUtilities.invokeLater(() -> {
+                                try {
+                                    setActiveButton(btnProduct);
+                                    cardLayout.show(pnlMain, "product");
+                                } catch (Exception ex) { /* ignore */ }
+                                String info = "Lô: " + lot.getBatchNumber() + (prodName != null && !prodName.isEmpty() ? "\nSản phẩm: " + prodName : "")
+                                        + "\nSố lượng: " + lot.getQuantity();
+                                JOptionPane.showMessageDialog(pnlMainMenu, info, "Lô hàng", JOptionPane.INFORMATION_MESSAGE);
+                            });
+                        });
+                        searchPopup.add(item);
+                        totalAdded++;
+                    }
+                }
+            }
+
         } else if (isInvoiceCode) {
             // Only query invoices
             List<Invoice> invoices = invoiceBUS.searchTop5ById(searchText);
@@ -567,6 +590,31 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                     });
                     searchPopup.add(item);
                     totalAdded++;
+                }
+            }
+
+            // Also allow searching lots by batch number in default mode
+            if (BATCH_PATTERN.matcher(searchText).matches()) {
+                List<Lot> lots = productBUS.searchTop5LotsByBatchNumber(searchText);
+                if (lots != null && !lots.isEmpty()) {
+                    for (Lot lot : lots) {
+                        String prodName = (lot.getProduct() != null) ? lot.getProduct().getName() : "";
+                        String label = String.format("Lô: %s - %s", lot.getBatchNumber(), prodName);
+                        JMenuItem item = new JMenuItem(label, productIcon);
+                        item.addActionListener(e -> {
+                            SwingUtilities.invokeLater(() -> {
+                                try {
+                                    setActiveButton(btnProduct);
+                                    cardLayout.show(pnlMain, "product");
+                                } catch (Exception ex) { /* ignore */ }
+                                String info = "Lô: " + lot.getBatchNumber() + (prodName != null && !prodName.isEmpty() ? "\nSản phẩm: " + prodName : "")
+                                        + "\nSố lượng: " + lot.getQuantity();
+                                JOptionPane.showMessageDialog(pnlMainMenu, info, "Lô hàng", JOptionPane.INFORMATION_MESSAGE);
+                            });
+                        });
+                        searchPopup.add(item);
+                        totalAdded++;
+                    }
                 }
             }
         }
