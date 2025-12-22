@@ -496,6 +496,24 @@ public class TAB_Statistics extends JPanel {
                 updateProductTableColumns();
             });
         }
+
+        // Add validation listeners to ensure dpToDate >= dpFromDate
+        java.beans.PropertyChangeListener validationListener = evt -> {
+            if ("date".equals(evt.getPropertyName())) {
+                try {
+                    java.util.Date from = dpFromDate.getDate();
+                    java.util.Date to = dpToDate.getDate();
+                    if (from != null) {
+                        dpToDate.setMinDate(from);
+                        if (to != null && to.before(from)) {
+                            dpToDate.setDate(from);
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+        };
+        dpFromDate.addPropertyChangeListener(validationListener);
+        dpToDate.addPropertyChangeListener(validationListener);
     }
 
     /**
