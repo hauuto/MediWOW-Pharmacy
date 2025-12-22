@@ -446,6 +446,23 @@ public class Invoice {
         return total.setScale(2, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Calculate the exchange invoice total.
+     * Formula: Exchange Invoice Total - Original Invoice Total
+     * This method is only valid for EXCHANGE type invoices with a referenced invoice.
+     *
+     * @return The difference between exchange invoice total and original invoice total.
+     *         Returns the regular total if not an exchange invoice or no referenced invoice.
+     */
+    public BigDecimal calculateExchangeTotal() {
+        if (type != InvoiceType.EXCHANGE || referencedInvoice == null) {
+            return calculateTotal();
+        }
+        BigDecimal exchangeTotal = calculateTotal();
+        BigDecimal originalTotal = referencedInvoice.calculateTotal();
+        return exchangeTotal.subtract(originalTotal).setScale(2, RoundingMode.HALF_UP);
+    }
+
     @Override
     public String toString() {
         return super.toString();

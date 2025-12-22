@@ -827,6 +827,40 @@ public class DAO_Product implements IProduct {
         }
     }
 
+    /**
+     * Add a specific quantity to a lot (for exchange returns)
+     * @param lotId The ID of the lot
+     * @param quantityToAdd The quantity to add to the lot
+     * @return true if successful, false otherwise
+     */
+    public boolean addLotQuantity(String lotId, int quantityToAdd) {
+        if (lotId == null || lotId.trim().isEmpty() || quantityToAdd <= 0) return false;
+        Transaction transaction = null;
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            transaction = session.beginTransaction();
+
+            Lot lot = session.get(Lot.class, lotId);
+            if (lot != null) {
+                int newQuantity = lot.getQuantity() + quantityToAdd;
+                lot.setQuantity(newQuantity);
+                session.merge(lot);
+                transaction.commit();
+                return true;
+            }
+
+            transaction.rollback();
+            return false;
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
+    }
+
     public MeasurementName findMeasurementNameByName(String name) {
         if (name == null || name.trim().isEmpty()) return null;
 
