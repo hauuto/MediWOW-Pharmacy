@@ -205,8 +205,9 @@ public class TAB_Product extends JPanel {
         txtSearch = new JTextField(18);
         btnSearch = new JButton("Tìm");
         btnRefresh = new JButton("Làm mới");
-        cbCategory = new JComboBox<>(new String[]{"Tất cả","Thuốc kê đơn","Thuốc không kê đơn","Sản phẩm chức năng"});
-        cbForm = new JComboBox<>(new String[]{"Tất cả","Viên nén","Viên nang","Thuốc bột","Kẹo ngậm","Si rô","Thuốc nhỏ giọt","Súc miệng"});
+        // Keep combo boxes for internal logic but do not render them on toolbar
+        if (cbCategory == null) cbCategory = new JComboBox<>(new String[]{"Tất cả","Thuốc kê đơn","Thuốc không kê đơn","Sản phẩm chức năng"});
+        if (cbForm == null) cbForm = new JComboBox<>(new String[]{"Tất cả","Viên nén","Viên nang","Thuốc bột","Kẹo ngậm","Si rô","Thuốc nhỏ giọt","Súc miệng"});
         cbCategory.setSelectedIndex(0);
         cbForm.setSelectedIndex(0);
 
@@ -233,10 +234,14 @@ public class TAB_Product extends JPanel {
         btnExportCSV.addActionListener(e -> exportProductsToCSV());
         btnImportCSV.addActionListener(e -> importProductsFromCSV());
 
-        top.add(new JLabel("Tìm kiếm:")); top.add(txtSearch); top.add(btnSearch); top.add(btnRefresh);
-        top.add(new JLabel("Loại:")); top.add(cbCategory);
-        top.add(new JLabel("Dạng:")); top.add(cbForm);
-        top.add(btnExportCSV); top.add(btnImportCSV); top.add(btnAddTop);
+        top.add(new JLabel("Tìm kiếm:"));
+        top.add(txtSearch);
+        top.add(btnSearch);
+        top.add(btnRefresh);
+        // Removed category/form filter components from toolbar
+        top.add(btnExportCSV);
+        top.add(btnImportCSV);
+        top.add(btnAddTop);
         return top;
     }
 
@@ -464,59 +469,75 @@ public class TAB_Product extends JPanel {
     }
 
     private JPanel buildInfoPanel() {
-        JPanel info = new JPanel(new BorderLayout(0, 10));
+        JPanel info = new JPanel();
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
         info.setBackground(new Color(245, 250, 250));
         info.setBorder(new EmptyBorder(5, 10, 5, 10));
 
-        // Create two columns to spare space
-        JPanel leftCol = new JPanel(new GridLayout(3, 1, 15, 10)); leftCol.setOpaque(false);
-        JPanel rightCol = new JPanel(new GridLayout(2, 1, 15, 10)); rightCol.setOpaque(false);
-        JPanel topTwoCols = new JPanel(new GridLayout(1, 2, 15, 10)); topTwoCols.setOpaque(false);
-
+        // Initialize fields
         txtId = new JTextField(); txtId.setEditable(false);
         txtName = new JTextField();
         txtShortName = new JTextField();
         txtBarcode = new JTextField();
         cbCategoryDetail = new JComboBox<>(new String[]{"Thuốc kê đơn","Thuốc không kê đơn","Sản phẩm chức năng"});
-
-        // Left column: Mã, Tên viết tắt, Loại
-        leftCol.add(labeled("Mã:", txtId));
-        leftCol.add(labeled("Tên viết tắt (tuỳ chọn):", txtShortName));
-        leftCol.add(labeled("Loại:", cbCategoryDetail));
-        // Right column: Tên, Mã vạch
-        rightCol.add(labeled("Tên:", txtName));
-        rightCol.add(labeled("Mã vạch:", txtBarcode));
-        topTwoCols.add(leftCol); topTwoCols.add(rightCol);
-
-        JPanel grid2 = new JPanel(new GridLayout(3, 2, 15, 10));
-        grid2.setOpaque(false);
         cbFormDetail = new JComboBox<>(new String[]{"Viên nén", "Viên nang", "Thuốc bột", "Kẹo ngậm", "Si rô", "Thuốc nhỏ giọt", "Súc miệng"});
         txtActiveIngredient = new JTextField();
         txtManufacturer = new JTextField();
         txtStrength = new JTextField();
         spVat = new JSpinner(new SpinnerNumberModel(5.0, 0.0, 100.0, 0.1));
         cbBaseUom = new JComboBox<>();
-
-        grid2.add(labeled("Dạng:", cbFormDetail));
-        grid2.add(labeled("Hoạt chất:", txtActiveIngredient));
-        grid2.add(labeled("Nhà sản xuất:", txtManufacturer));
-        grid2.add(labeled("Hàm lượng:", txtStrength));
-        grid2.add(labeled("VAT (%):", spVat));
-        grid2.add(labeled("ĐVT gốc:", cbBaseUom));
-
-        // Make description smaller
         txtDescription = new JTextArea(3, 24);
         txtDescription.setLineWrap(true); txtDescription.setWrapStyleWord(true);
         txtDescription.setBorder(BorderFactory.createLineBorder(new Color(210, 230, 240)));
+
+        // Row 1: Name (full width)
+        JPanel row1 = new JPanel(new BorderLayout(15, 10)); row1.setOpaque(false);
+        row1.add(labeled("Tên:", txtName), BorderLayout.CENTER);
+        info.add(row1);
+        info.add(Box.createVerticalStrut(8));
+
+        // Row 2: ID + Barcode
+        JPanel row2 = new JPanel(new GridLayout(1, 2, 15, 10)); row2.setOpaque(false);
+        row2.add(labeled("Mã:", txtId));
+        row2.add(labeled("Mã vạch:", txtBarcode));
+        info.add(row2);
+        info.add(Box.createVerticalStrut(8));
+
+        // Row 3: Short name + Category
+        JPanel row3 = new JPanel(new GridLayout(1, 2, 15, 10)); row3.setOpaque(false);
+        row3.add(labeled("Tên viết tắt (tuỳ chọn):", txtShortName));
+        row3.add(labeled("Loại:", cbCategoryDetail));
+        info.add(row3);
+        info.add(Box.createVerticalStrut(8));
+
+        // Row 4: Form + Active ingredient
+        JPanel row4 = new JPanel(new GridLayout(1, 2, 15, 10)); row4.setOpaque(false);
+        row4.add(labeled("Dạng:", cbFormDetail));
+        row4.add(labeled("Hoạt chất:", txtActiveIngredient));
+        info.add(row4);
+        info.add(Box.createVerticalStrut(8));
+
+        // Row 5: Manufacturer + Strength
+        JPanel row5 = new JPanel(new GridLayout(1, 2, 15, 10)); row5.setOpaque(false);
+        row5.add(labeled("Nhà sản xuất:", txtManufacturer));
+        row5.add(labeled("Hàm lượng:", txtStrength));
+        info.add(row5);
+        info.add(Box.createVerticalStrut(8));
+
+        // Row 6: VAT + Base UOM
+        JPanel row6 = new JPanel(new GridLayout(1, 2, 15, 10)); row6.setOpaque(false);
+        row6.add(labeled("VAT (%):", spVat));
+        row6.add(labeled("ĐVT gốc:", cbBaseUom));
+        info.add(row6);
+        info.add(Box.createVerticalStrut(8));
+
+        // Description section
         JScrollPane descScroll = new JScrollPane(txtDescription);
         descScroll.setPreferredSize(new Dimension(0, 130));
         descScroll.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(new Color(200, 230, 240)),
                 "Mô tả", 0, 0, new Font("Segoe UI", Font.BOLD, 12), AppColors.PRIMARY));
-
-        info.add(topTwoCols, BorderLayout.NORTH);
-        info.add(grid2, BorderLayout.CENTER);
-        info.add(descScroll, BorderLayout.SOUTH);
+        info.add(descScroll);
 
         cbCategoryDetail.addItemListener(e -> { if (e.getStateChange() == ItemEvent.SELECTED && isEditingFields) applyDefaultVatByCategory(); });
         return info;
