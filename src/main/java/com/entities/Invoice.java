@@ -281,6 +281,40 @@ public class Invoice {
         return calculateSubtotal().add(calculateVatAmount());
     }
 
+    /**
+     * Calculate subtotal for EXCHANGE_OUT lines only.
+     * Used for exchange invoices to calculate the value of products going out.
+     */
+    public BigDecimal calculateExchangeOutSubtotal() {
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (InvoiceLine line : invoiceLineList) {
+            if (line != null && line.getLineType() == com.enums.LineType.EXCHANGE_OUT) {
+                subtotal = subtotal.add(line.calculateSubtotal());
+            }
+        }
+        return subtotal;
+    }
+
+    /**
+     * Calculate VAT for EXCHANGE_OUT lines only.
+     */
+    public BigDecimal calculateExchangeOutVatAmount() {
+        BigDecimal vatAmount = BigDecimal.ZERO;
+        for (InvoiceLine line : invoiceLineList) {
+            if (line != null && line.getLineType() == com.enums.LineType.EXCHANGE_OUT) {
+                vatAmount = vatAmount.add(line.calculateVatAmount());
+            }
+        }
+        return vatAmount;
+    }
+
+    /**
+     * Calculate subtotal with VAT for EXCHANGE_OUT lines only.
+     */
+    public BigDecimal calculateExchangeOutSubtotalWithVat() {
+        return calculateExchangeOutSubtotal().add(calculateExchangeOutVatAmount());
+    }
+
 
     // =====================================================
     // Promotion checks & discounts
@@ -444,6 +478,23 @@ public class Invoice {
         BigDecimal total = calculateSubtotalWithVat().subtract(calculatePromotion());
         // Money scale = 2 for tax/discount; round half-up.
         return total.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Calculate the exchange invoice total.
+     * Formula: Exchange Invoice Total - Original Invoice Total
+     * This method is only valid for EXCHANGE type invoices with a referenced invoice.
+     *
+     * @return The difference between exchange invoice total and original invoice total.
+     *         Returns the regular total if not an exchange invoice or no referenced invoice.
+     */
+    public BigDecimal calculateExchangeTotal() {
+        if (type != InvoiceType.EXCHANGE || referencedInvoice == null) {
+            return calculateTotal();
+        }
+        BigDecimal exchangeTotal = calculateTotal();
+        BigDecimal originalTotal = referencedInvoice.calculateTotal();
+        return exchangeTotal.subtract(originalTotal).setScale(2, RoundingMode.HALF_UP);
     }
 
     @Override

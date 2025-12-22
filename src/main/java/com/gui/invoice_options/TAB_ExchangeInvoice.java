@@ -1,44 +1,159 @@
 package com.gui.invoice_options;
 
+import com.bus.*;
 import com.dao.DAO_Invoice;
 import com.entities.*;
-import com.enums.InvoiceType;
+import com.enums.*;
+import com.gui.DIALOG_MomoQRCode;
+import com.interfaces.DataChangeListener;
+import com.interfaces.ShiftChangeListener;
 import com.utils.*;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.*;
+import javax.swing.plaf.basic.*;
 import javax.swing.table.*;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.beans.*;
 import java.math.BigDecimal;
 import java.text.*;
 import java.util.*;
 import java.util.List;
 
-public class TAB_ExchangeInvoice extends JFrame implements ActionListener, MouseListener, FocusListener, KeyListener, DocumentListener {
+public class TAB_ExchangeInvoice extends JFrame implements ActionListener, MouseListener, FocusListener, KeyListener, DocumentListener, PropertyChangeListener, TableModelListener {
     public JPanel pnlExchangeInvoice, pnlCashOptions;
     private static final int LEFT_MIN = 750, RIGHT_MIN = 530, TOP_MIN = 200, BOTTOM_MIN = 316;
     private static final String INVOICE_ID_PATTERN = "^INV\\d{4}-\\d{4}$";
+
+    // BUS layer
+    private final BUS_Product busProduct = new BUS_Product();
+    private final BUS_Invoice busInvoice = new BUS_Invoice();
+    private final BUS_Shift busShift = new BUS_Shift();
+    private final BUS_Customer busCustomer = new BUS_Customer();
     private final DAO_Invoice daoInvoice = new DAO_Invoice();
+
+    // Staff and Shift
+    private final Staff currentStaff;
+    private Shift currentShift;
+    private ShiftChangeListener shiftChangeListener;
+    private DataChangeListener dataChangeListener;
+
+    // Invoice objects
+    private Invoice exchangeInvoice;
     private Invoice selectedOriginalInvoice;
+
+    // Products
+    private final List<Product> products;
+    private final Map<String, Product> productMap = new HashMap<>();
+    private final Map<Integer, String> previousUOMMap = new HashMap<>();
+    private final Map<Integer, String> oldUOMIdMap = new HashMap<>();
+    private final Map<Integer, Integer> previousQuantityMap = new HashMap<>();
+
+    // Original invoice line max quantities (row index -> original quantity)
+    private final Map<Integer, Integer> originalMaxQuantityMap = new HashMap<>();
+
+    // Tables
     private DefaultTableModel mdlOriginalInvoiceLine, mdlExchangeInvoiceLine;
     private JTable tblOriginalInvoiceLine, tblExchangeInvoiceLine;
     private JScrollPane scrOriginalInvoiceLine, scrExchangeInvoiceLine;
-    private JButton btnBarcodeScan, btnProcessPayment;
+
+    // Search components
     private JWindow productSearchWindow;
     private JList<String> productSearchResultsList;
     private DefaultListModel<String> productSearchResultsModel;
     private List<Product> currentProductSearchResults = new ArrayList<>();
+
+    // UI components
+    private JButton btnBarcodeScan, btnProcessPayment;
+    private JRadioButton rdoCash, rdoBank;
+    private JWindow barcodeScanOverlay;
     private boolean barcodeScanningEnabled = false;
-    private JTextField txtPrescriptionCode, txtVat, txtTotal, txtShiftId, txtCustomerName, txtInvoiceSearch, txtProductSearch;
+    private boolean isUpdatingInvoiceLine = false;
+    private JTextField txtOriginalTotal, txtExchangeTotal, txtVat, txtTotal, txtShiftId, txtCustomerName, txtInvoiceSearch, txtProductSearch;
     private JFormattedTextField txtCustomerPayment;
     private Window parentWindow;
 
-    public TAB_ExchangeInvoice(Staff creator) {
+    public TAB_ExchangeInvoice(Staff creator, ShiftChangeListener shiftChangeListener) {
+        this(creator, shiftChangeListener, null);
+    }
+
+    public TAB_ExchangeInvoice(Staff creator, ShiftChangeListener shiftChangeListener, DataChangeListener dataChangeListener) {
+        this.currentStaff = Objects.requireNonNull(creator, "Staff cannot be null");
+        this.shiftChangeListener = shiftChangeListener;
+        this.dataChangeListener = dataChangeListener;
         $$$setupUI$$$();
         parentWindow = SwingUtilities.getWindowAncestor(pnlExchangeInvoice);
+        currentShift = ensureCurrentShift();
+        products = busProduct.getAllProducts();
         createMainLayout();
+        setFieldsEnabled(false); // Disable all fields until invoice is selected
+    }
+
+    // Legacy constructor for backward compatibility
+    public TAB_ExchangeInvoice(Staff creator) {
+        this(creator, null, null);
+    }
+
+    private Shift ensureCurrentShift() {
+        String workstation = busShift.getCurrentWorkstation();
+        Shift shift = busShift.getOpenShiftOnWorkstation(workstation);
+        while (shift == null) {
+            Object[] options = {"Mở ca", "Hủy"};
+            int choice = JOptionPane.showOptionDialog(parentWindow,
+                "Chưa có ca làm việc nào đang mở trên máy này.",
+                "Yêu cầu mở ca", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+            if (choice != JOptionPane.YES_OPTION) {
+                throw new IllegalStateException("Người dùng chưa mở ca làm việc");
+            }
+            shift = promptOpenShiftDialog();
+        }
+        return shift;
+    }
+
+    private Shift promptOpenShiftDialog() {
+        JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(parentWindow);
+        if (parentFrame == null) parentFrame = new JFrame();
+        com.gui.DIALOG_OpenShift openShiftDialog = new com.gui.DIALOG_OpenShift(parentFrame, currentStaff);
+        openShiftDialog.setVisible(true);
+        Shift openedShift = openShiftDialog.getOpenedShift();
+        if (openedShift != null && shiftChangeListener != null) {
+            shiftChangeListener.onShiftOpened(openedShift);
+        }
+        return openedShift;
+    }
+
+    private void setFieldsEnabled(boolean enabled) {
+        // Product search
+        if (txtProductSearch != null) { txtProductSearch.setEnabled(enabled); txtProductSearch.setFocusable(enabled); }
+        if (btnBarcodeScan != null) btnBarcodeScan.setEnabled(enabled);
+
+        // Invoice panel fields
+        if (txtCustomerName != null) { txtCustomerName.setEnabled(enabled); txtCustomerName.setFocusable(enabled); }
+        if (txtCustomerPayment != null) { txtCustomerPayment.setEnabled(enabled); txtCustomerPayment.setFocusable(enabled); }
+        if (rdoCash != null) rdoCash.setEnabled(enabled);
+        if (rdoBank != null) rdoBank.setEnabled(enabled);
+        if (pnlCashOptions != null) setComponentsEnabled(pnlCashOptions, enabled);
+
+        // Exchange table
+        if (tblExchangeInvoiceLine != null) tblExchangeInvoiceLine.setEnabled(enabled);
+
+        updateProcessPaymentButton();
+    }
+
+    private void setComponentsEnabled(Container container, boolean enabled) {
+        for (Component c : container.getComponents()) {
+            c.setEnabled(enabled);
+            if (c instanceof Container) setComponentsEnabled((Container) c, enabled);
+        }
+    }
+
+    private void updateProcessPaymentButton() {
+        if (btnProcessPayment == null) return;
+        boolean hasOriginalInvoice = selectedOriginalInvoice != null;
+        boolean hasExchangeLines = mdlExchangeInvoiceLine != null && mdlExchangeInvoiceLine.getRowCount() > 0;
+        btnProcessPayment.setEnabled(hasOriginalInvoice && hasExchangeLines);
     }
 
     private void createMainLayout() {
@@ -107,15 +222,47 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             return;
         }
         selectedOriginalInvoice = invoice;
+
+        // Create the exchange invoice with reference to original
+        exchangeInvoice = new Invoice(InvoiceType.EXCHANGE, currentStaff, currentShift);
+        exchangeInvoice.setReferencedInvoice(selectedOriginalInvoice);
+        exchangeInvoice.setPaymentMethod(PaymentMethod.CASH);
+
         loadOriginalInvoiceLines(invoice);
+
+        // Clear exchange table for new exchange
+        if (mdlExchangeInvoiceLine != null) {
+            mdlExchangeInvoiceLine.setRowCount(0);
+            productMap.clear();
+            previousUOMMap.clear();
+            oldUOMIdMap.clear();
+            previousQuantityMap.clear();
+        }
+
+        // Update shift display
+        refreshOpenShiftAndUI();
+
+        // Enable all fields now that invoice is selected
+        setFieldsEnabled(true);
+
+        // Update displays
+        updateSubtotalDisplay();
+        updateVatDisplay();
+        updateTotalDisplay();
+
         txtInvoiceSearch.setText("");
         txtInvoiceSearch.setForeground(AppColors.TEXT);
-        setPlaceholderAndTooltip(txtInvoiceSearch, "Nhập mã hóa đơn cần đổi...", "Nhập mã hóa đơn cần đổi");
         txtInvoiceSearch.requestFocusInWindow();
+
+        JOptionPane.showMessageDialog(parentWindow,
+            "Đã chọn hóa đơn gốc: " + normalizedId + "\nBây giờ bạn có thể thêm sản phẩm đổi.",
+            "Thành công", JOptionPane.INFORMATION_MESSAGE);
     }
     private void loadOriginalInvoiceLines(Invoice invoice) {
         mdlOriginalInvoiceLine.setRowCount(0);
+        originalMaxQuantityMap.clear();
         if (invoice == null || invoice.getInvoiceLineList() == null) return;
+        int rowIndex = 0;
         for (InvoiceLine line : invoice.getInvoiceLineList()) {
             Product product = line.getProduct();
             UnitOfMeasure uom = line.getUnitOfMeasure();
@@ -125,8 +272,11 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             String uomName = uom.getName();
             int quantity = line.getQuantity();
             BigDecimal unitPrice = line.getUnitPrice();
-            BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(quantity));
-            mdlOriginalInvoiceLine.addRow(new Object[]{productId, productName, uomName, quantity, unitPrice, total});
+            BigDecimal subtotal = line.calculateSubtotal(); // Use the proper calculation from InvoiceLine
+            mdlOriginalInvoiceLine.addRow(new Object[]{productId, productName, uomName, quantity, unitPrice, subtotal});
+            // Store original quantity as max for this row
+            originalMaxQuantityMap.put(rowIndex, quantity);
+            rowIndex++;
         }
     }
 
@@ -217,7 +367,17 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             productSearchWindow.setVisible(false); return;
         }
         productSearchResultsModel.clear(); currentProductSearchResults.clear();
-        // TODO: Replace with actual product search from BUS_Product
+
+        // Search products from BUS_Product
+        for (Product p : products) {
+            if ((p.getId() != null && p.getId().toLowerCase().contains(search)) ||
+                (p.getName() != null && p.getName().toLowerCase().contains(search)) ||
+                (p.getShortName() != null && p.getShortName().toLowerCase().contains(search))) {
+                currentProductSearchResults.add(p);
+                productSearchResultsModel.addElement(p.getId() + " - " + p.getName() + " - " + p.getShortName());
+            }
+        }
+
         if (!currentProductSearchResults.isEmpty()) {
             Point loc = txtProductSearch.getLocationOnScreen();
             int h = Math.min(currentProductSearchResults.size(), 5) * 25 + 4;
@@ -237,7 +397,161 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     }
 
     private void addProductToExchangeTable(Product product) {
-        // TODO: Add product to exchange invoice line table
+        if (selectedOriginalInvoice == null || exchangeInvoice == null) {
+            JOptionPane.showMessageDialog(parentWindow, "Vui lòng chọn hóa đơn gốc trước!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        isUpdatingInvoiceLine = true;
+        try {
+            UnitOfMeasure baseUOM = findUnitOfMeasure(product, product.getBaseUnitOfMeasure());
+
+            // Check if product already exists in table
+            for (int i = 0; i < mdlExchangeInvoiceLine.getRowCount(); i++) {
+                if (mdlExchangeInvoiceLine.getValueAt(i, 0).equals(product.getId()) &&
+                    mdlExchangeInvoiceLine.getValueAt(i, 2).equals(product.getBaseUnitOfMeasure())) {
+                    int qty = (int) mdlExchangeInvoiceLine.getValueAt(i, 3) + 1;
+
+                    // Check inventory
+                    Lot lot = product.getOldestLotAvailable();
+                    BigDecimal rawPrice = lot != null ? lot.getRawPrice() : BigDecimal.ZERO;
+                    BigDecimal basePriceConversion = (baseUOM != null && baseUOM.getBasePriceConversionRate() != null)
+                            ? baseUOM.getBasePriceConversionRate() : BigDecimal.ONE;
+                    BigDecimal unitPrice = rawPrice.multiply(basePriceConversion);
+
+                    InvoiceLine tempLine = new InvoiceLine(exchangeInvoice, baseUOM, qty, unitPrice, LineType.EXCHANGE_OUT, new ArrayList<>());
+                    if (!tempLine.allocateLots()) {
+                        int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
+                        JOptionPane.showMessageDialog(parentWindow,
+                            "Số lượng yêu cầu vượt quá tồn kho!\nSản phẩm: " + product.getName() +
+                            "\nTồn kho còn lại: " + remaining + " " + product.getBaseUnitOfMeasure(),
+                            "Không đủ tồn kho", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+
+                    mdlExchangeInvoiceLine.setValueAt(qty, i, 3);
+                    BigDecimal price = parseCurrencyValue(mdlExchangeInvoiceLine.getValueAt(i, 4).toString());
+                    mdlExchangeInvoiceLine.setValueAt(price.multiply(BigDecimal.valueOf(qty)), i, 5);
+
+                    InvoiceLine updatedLine = new InvoiceLine(exchangeInvoice, baseUOM, qty, unitPrice, LineType.EXCHANGE_OUT, new ArrayList<>());
+                    updatedLine.allocateLots();
+                    exchangeInvoice.updateInvoiceLine(product.getId(), product.getBaseUnitOfMeasure(), updatedLine);
+                    previousQuantityMap.put(i, qty);
+                    updateSubtotalDisplay(); updateVatDisplay(); updateTotalDisplay(); updateProcessPaymentButton();
+                    return;
+                }
+            }
+
+            // Add new product
+            Lot lot = product.getOldestLotAvailable();
+            BigDecimal price = lot != null ? lot.getRawPrice() : BigDecimal.ZERO;
+
+            InvoiceLine newLine = new InvoiceLine(exchangeInvoice, baseUOM, 1, price, LineType.EXCHANGE_OUT, new ArrayList<>());
+            if (!newLine.allocateLots()) {
+                int remaining = getRemainingInventoryInUOM(product, product.getBaseUnitOfMeasure());
+                JOptionPane.showMessageDialog(parentWindow,
+                    "Số lượng yêu cầu vượt quá tồn kho!\nSản phẩm: " + product.getName() +
+                    "\nTồn kho còn lại: " + remaining + " " + product.getBaseUnitOfMeasure(),
+                    "Không đủ tồn kho", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            mdlExchangeInvoiceLine.addRow(new Object[]{product.getId(), product.getName(), product.getBaseUnitOfMeasure(), 1, price, price});
+            productMap.put(product.getId(), product);
+            int row = mdlExchangeInvoiceLine.getRowCount() - 1;
+            previousUOMMap.put(row, product.getBaseUnitOfMeasure());
+            oldUOMIdMap.put(row, product.getBaseUnitOfMeasure());
+            previousQuantityMap.put(row, 1);
+            exchangeInvoice.addInvoiceLine(newLine);
+            updateSubtotalDisplay(); updateVatDisplay(); updateTotalDisplay(); updateProcessPaymentButton();
+        } finally {
+            isUpdatingInvoiceLine = false;
+        }
+    }
+
+    private UnitOfMeasure findUnitOfMeasure(Product product, String name) {
+        if (name.equals(product.getBaseUnitOfMeasure())) {
+            for (UnitOfMeasure uom : product.getUnitOfMeasureSet())
+                if (uom.getName().equals(name)) return uom;
+        }
+        for (UnitOfMeasure uom : product.getUnitOfMeasureSet())
+            if (uom.getName().equals(name)) return uom;
+        return null;
+    }
+
+    private int getRemainingInventoryInUOM(Product product, String uomName) {
+        int totalBaseQuantity = product.getLotSet().stream()
+                .filter(lot -> lot.getStatus() == LotStatus.AVAILABLE && lot.getQuantity() > 0)
+                .mapToInt(Lot::getQuantity).sum();
+        if (uomName.equals(product.getBaseUnitOfMeasure())) return totalBaseQuantity;
+        UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+        if (uom == null || uom.getBaseUnitConversionRate() == null || uom.getBaseUnitConversionRate().compareTo(BigDecimal.ZERO) == 0)
+            return totalBaseQuantity;
+        BigDecimal remaining = BigDecimal.valueOf(totalBaseQuantity).multiply(uom.getBaseUnitConversionRate());
+        return remaining.setScale(0, java.math.RoundingMode.FLOOR).intValue();
+    }
+
+    private void updateExchangeInvoiceLineFromTable(int row) {
+        if (isUpdatingInvoiceLine || row < 0 || row >= mdlExchangeInvoiceLine.getRowCount()) return;
+        isUpdatingInvoiceLine = true;
+        try {
+            String productId = (String) mdlExchangeInvoiceLine.getValueAt(row, 0);
+            String uomName = (String) mdlExchangeInvoiceLine.getValueAt(row, 2);
+            int quantity = (int) mdlExchangeInvoiceLine.getValueAt(row, 3);
+            Product product = productMap.get(productId);
+            if (product == null) return;
+
+            // Check for duplicates
+            for (int i = 0; i < mdlExchangeInvoiceLine.getRowCount(); i++) {
+                if (i != row && mdlExchangeInvoiceLine.getValueAt(i, 0).equals(productId) && mdlExchangeInvoiceLine.getValueAt(i, 2).equals(uomName)) {
+                    JOptionPane.showMessageDialog(parentWindow, "Sản phẩm với đơn vị này đã tồn tại!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                    String prev = previousUOMMap.get(row);
+                    mdlExchangeInvoiceLine.setValueAt(prev != null ? prev : product.getBaseUnitOfMeasure(), row, 2);
+                    return;
+                }
+            }
+
+            UnitOfMeasure uom = findUnitOfMeasure(product, uomName);
+            Lot lot = product.getOldestLotAvailable();
+            BigDecimal rawPrice = lot != null ? lot.getRawPrice() : BigDecimal.ZERO;
+            BigDecimal basePriceConversion = (uom != null && uom.getBasePriceConversionRate() != null)
+                    ? uom.getBasePriceConversionRate() : BigDecimal.ONE;
+            BigDecimal price = rawPrice.multiply(basePriceConversion);
+
+            String oldUomName = oldUOMIdMap.getOrDefault(row, uomName);
+            InvoiceLine newLine = new InvoiceLine(exchangeInvoice, uom, quantity, price, LineType.EXCHANGE_OUT, new ArrayList<>());
+            if (!newLine.allocateLots()) {
+                int remaining = getRemainingInventoryInUOM(product, uomName);
+                JOptionPane.showMessageDialog(parentWindow,
+                    "Số lượng yêu cầu vượt quá tồn kho!\nTồn kho còn lại: " + remaining + " " + uomName,
+                    "Không đủ tồn kho", JOptionPane.WARNING_MESSAGE);
+                String prevUom = previousUOMMap.get(row);
+                if (prevUom != null) mdlExchangeInvoiceLine.setValueAt(prevUom, row, 2);
+                Integer prevQty = previousQuantityMap.get(row);
+                mdlExchangeInvoiceLine.setValueAt(prevQty != null ? prevQty : 1, row, 3);
+                return;
+            }
+
+            mdlExchangeInvoiceLine.setValueAt(price, row, 4);
+            mdlExchangeInvoiceLine.setValueAt(price.multiply(BigDecimal.valueOf(quantity)), row, 5);
+            exchangeInvoice.updateInvoiceLine(productId, oldUomName, newLine);
+            oldUOMIdMap.put(row, uomName);
+            previousUOMMap.put(row, uomName);
+            previousQuantityMap.put(row, quantity);
+            updateSubtotalDisplay(); updateVatDisplay(); updateTotalDisplay();
+        } finally {
+            isUpdatingInvoiceLine = false;
+        }
+    }
+
+    private BigDecimal parseCurrencyValue(String val) {
+        String c = val.replace("D", "").replace("Đ", "").trim().replace(".", "").replace(",", ".");
+        try {
+            if (c.isEmpty()) return BigDecimal.ZERO;
+            return new BigDecimal(c);
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
     }
 
     private void updateBarcodeScanButtonAppearance() {
@@ -247,17 +561,115 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private void toggleBarcodeScanning() {
         barcodeScanningEnabled = !barcodeScanningEnabled;
         updateBarcodeScanButtonAppearance();
-        txtProductSearch.setText(""); txtProductSearch.requestFocusInWindow();
-        JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã " + (barcodeScanningEnabled ? "BẬT" : "TẮT") + "!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+        txtProductSearch.setText("");
+
+        if (barcodeScanningEnabled) {
+            JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã BẬT!\n\nNhấn chuột bất kỳ để tắt.", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+            SwingUtilities.invokeLater(this::showBarcodeScanOverlay);
+        } else {
+            hideBarcodeScanOverlay();
+            JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã TẮT!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void setupBarcodeScanOverlay() {
+        barcodeScanOverlay = new JWindow();
+        barcodeScanOverlay.setBackground(new Color(0, 0, 0, 1)); // Nearly transparent
+
+        JPanel overlayPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                // Semi-transparent overlay to indicate scanning mode
+                g.setColor(new Color(0, 0, 0, 30));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        overlayPanel.setOpaque(false);
+        overlayPanel.setLayout(null);
+
+        // Mouse listener to disable barcode scanning on any click
+        overlayPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                disableBarcodeScanning();
+            }
+        });
+
+        barcodeScanOverlay.setContentPane(overlayPanel);
+        barcodeScanOverlay.setAlwaysOnTop(true);
+    }
+
+    private void showBarcodeScanOverlay() {
+        if (barcodeScanOverlay == null) setupBarcodeScanOverlay();
+
+        Window ancestor = SwingUtilities.getWindowAncestor(pnlExchangeInvoice);
+        if (ancestor != null) {
+            Point loc = ancestor.getLocationOnScreen();
+            barcodeScanOverlay.setLocation(loc);
+            barcodeScanOverlay.setSize(ancestor.getSize());
+        } else {
+            // Fallback to screen size
+            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+            barcodeScanOverlay.setLocation(0, 0);
+            barcodeScanOverlay.setSize(screenSize);
+        }
+
+        barcodeScanOverlay.setVisible(true);
+        // Set focus on the product search bar for barcode input
         SwingUtilities.invokeLater(() -> txtProductSearch.requestFocusInWindow());
+    }
+
+    private void hideBarcodeScanOverlay() {
+        if (barcodeScanOverlay != null) {
+            barcodeScanOverlay.setVisible(false);
+        }
+    }
+
+    private void disableBarcodeScanning() {
+        if (barcodeScanningEnabled) {
+            barcodeScanningEnabled = false;
+            updateBarcodeScanButtonAppearance();
+            hideBarcodeScanOverlay();
+            JOptionPane.showMessageDialog(parentWindow, "Chế độ quét mã vạch đã TẮT!", "Quét mã vạch", JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     private void createOriginalInvoiceLineTable() {
         mdlOriginalInvoiceLine = new DefaultTableModel(new String[]{"Mã thuốc", "Tên thuốc", "Đơn vị", "Số lượng", "Đơn giá", "Thành tiền"}, 0) {
-            public boolean isCellEditable(int r, int c) { return false; }
+            public boolean isCellEditable(int r, int c) { return c == 3; } // Only quantity column is editable
         };
         tblOriginalInvoiceLine = new JTable(mdlOriginalInvoiceLine);
-        styleTable(tblOriginalInvoiceLine);
+        tblOriginalInvoiceLine.setBackground(AppColors.WHITE);
+        tblOriginalInvoiceLine.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
+        tblOriginalInvoiceLine.setFont(new Font("Arial", Font.PLAIN, 16));
+        tblOriginalInvoiceLine.getTableHeader().setReorderingAllowed(false);
+        tblOriginalInvoiceLine.setRowHeight(35);
+        tblOriginalInvoiceLine.getTableHeader().setBackground(AppColors.PRIMARY);
+        tblOriginalInvoiceLine.getTableHeader().setForeground(AppColors.WHITE);
+        tblOriginalInvoiceLine.getTableHeader().setFont(new Font("Arial", Font.BOLD, 16));
+        tblOriginalInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new OriginalQuantitySpinnerEditor());
+        tblOriginalInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
+        tblOriginalInvoiceLine.setName("tblOriginalInvoiceLine");
+        tblOriginalInvoiceLine.addPropertyChangeListener("tableCellEditor", this);
+        mdlOriginalInvoiceLine.addTableModelListener(this);
+
+        // Alternating row color renderer for columns 0-2
+        DefaultTableCellRenderer defaultRenderer = new DefaultTableCellRenderer() {
+            public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int row, int col) {
+                Component c = super.getTableCellRendererComponent(t, v, s, f, row, col);
+                c.setBackground(row % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
+                if (s) c.setBackground(t.getSelectionBackground());
+                return c;
+            }
+        };
+        for (int i = 0; i < 3; i++) tblOriginalInvoiceLine.getColumnModel().getColumn(i).setCellRenderer(defaultRenderer);
+
+        // Currency renderer
+        CurrencyRenderer currencyRenderer = new CurrencyRenderer();
+        tblOriginalInvoiceLine.getColumnModel().getColumn(4).setCellRenderer(currencyRenderer);
+        tblOriginalInvoiceLine.getColumnModel().getColumn(5).setCellRenderer(currencyRenderer);
+
         scrOriginalInvoiceLine = new JScrollPane(tblOriginalInvoiceLine);
     }
 
@@ -266,7 +678,38 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             public boolean isCellEditable(int r, int c) { return c == 2 || c == 3; }
         };
         tblExchangeInvoiceLine = new JTable(mdlExchangeInvoiceLine);
-        styleTable(tblExchangeInvoiceLine);
+        tblExchangeInvoiceLine.setBackground(AppColors.WHITE);
+        tblExchangeInvoiceLine.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
+        tblExchangeInvoiceLine.setFont(new Font("Arial", Font.PLAIN, 16));
+        tblExchangeInvoiceLine.getTableHeader().setReorderingAllowed(false);
+        tblExchangeInvoiceLine.setRowHeight(35);
+        tblExchangeInvoiceLine.getTableHeader().setBackground(AppColors.PRIMARY);
+        tblExchangeInvoiceLine.getTableHeader().setForeground(AppColors.WHITE);
+        tblExchangeInvoiceLine.getTableHeader().setFont(new Font("Arial", Font.BOLD, 16));
+        tblExchangeInvoiceLine.getColumnModel().getColumn(2).setCellEditor(new UnitOfMeasureCellEditor());
+        tblExchangeInvoiceLine.getColumnModel().getColumn(3).setCellEditor(new QuantitySpinnerEditor());
+        tblExchangeInvoiceLine.getColumnModel().getColumn(3).setCellRenderer(new QuantitySpinnerRenderer());
+        tblExchangeInvoiceLine.setName("tblExchangeInvoiceLine");
+        tblExchangeInvoiceLine.addFocusListener(this);
+        tblExchangeInvoiceLine.addPropertyChangeListener("tableCellEditor", this);
+        mdlExchangeInvoiceLine.addTableModelListener(this);
+
+        // Alternating row color renderer for columns 0-3
+        DefaultTableCellRenderer defaultRenderer = new DefaultTableCellRenderer() {
+            public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int row, int col) {
+                Component c = super.getTableCellRendererComponent(t, v, s, f, row, col);
+                c.setBackground(row % 2 == 0 ? AppColors.WHITE : AppColors.BACKGROUND);
+                if (s) c.setBackground(t.getSelectionBackground());
+                return c;
+            }
+        };
+        for (int i = 0; i < 4; i++) tblExchangeInvoiceLine.getColumnModel().getColumn(i).setCellRenderer(defaultRenderer);
+
+        // Currency renderer
+        CurrencyRenderer currencyRenderer = new CurrencyRenderer();
+        tblExchangeInvoiceLine.getColumnModel().getColumn(4).setCellRenderer(currencyRenderer);
+        tblExchangeInvoiceLine.getColumnModel().getColumn(5).setCellRenderer(currencyRenderer);
+
         scrExchangeInvoiceLine = new JScrollPane(tblExchangeInvoiceLine);
     }
 
@@ -306,13 +749,28 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         int[] rows = tblExchangeInvoiceLine.getSelectedRows();
         if (rows.length == 0) { JOptionPane.showMessageDialog(parentWindow, "Vui lòng chọn sản phẩm cần xóa!", "Thông báo", JOptionPane.WARNING_MESSAGE); return; }
         if (JOptionPane.showConfirmDialog(parentWindow, "Bạn có chắc chắn muốn xóa " + rows.length + " sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
-        for (int i = rows.length - 1; i >= 0; i--) mdlExchangeInvoiceLine.removeRow(rows[i]);
+        for (int i = rows.length - 1; i >= 0; i--) {
+            int row = rows[i];
+            String id = (String) mdlExchangeInvoiceLine.getValueAt(row, 0);
+            String uomName = (String) mdlExchangeInvoiceLine.getValueAt(row, 2);
+            if (exchangeInvoice != null) exchangeInvoice.removeInvoiceLine(id, uomName);
+            mdlExchangeInvoiceLine.removeRow(row);
+        }
+        previousUOMMap.clear(); oldUOMIdMap.clear(); previousQuantityMap.clear();
+        updateSubtotalDisplay(); updateVatDisplay(); updateTotalDisplay(); updateProcessPaymentButton();
     }
 
     private void removeAllExchangeItems() {
         if (mdlExchangeInvoiceLine.getRowCount() == 0) { JOptionPane.showMessageDialog(parentWindow, "Không có sản phẩm nào để xóa!", "Thông báo", JOptionPane.INFORMATION_MESSAGE); return; }
         if (JOptionPane.showConfirmDialog(parentWindow, "Bạn có chắc chắn muốn xóa tất cả sản phẩm?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+        for (int i = mdlExchangeInvoiceLine.getRowCount() - 1; i >= 0; i--) {
+            String id = (String) mdlExchangeInvoiceLine.getValueAt(i, 0);
+            String uomName = (String) mdlExchangeInvoiceLine.getValueAt(i, 2);
+            if (exchangeInvoice != null) exchangeInvoice.removeInvoiceLine(id, uomName);
+        }
         mdlExchangeInvoiceLine.setRowCount(0);
+        previousUOMMap.clear(); oldUOMIdMap.clear(); previousQuantityMap.clear(); productMap.clear();
+        updateSubtotalDisplay(); updateVatDisplay(); updateTotalDisplay(); updateProcessPaymentButton();
     }
 
     private JPanel createRightPanel() {
@@ -342,10 +800,6 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         pv.add(generateLabelAndTextField(new JLabel("Mã ca:"), txtShiftId, "", "Mã ca làm việc", 112));
         pv.add(Box.createVerticalStrut(10));
 
-        txtPrescriptionCode = new JTextField(); txtPrescriptionCode.setName("txtPrescriptionCode"); txtPrescriptionCode.addFocusListener(this);
-        pv.add(generateLabelAndTextField(new JLabel("Mã đơn kê thuốc:"), txtPrescriptionCode, "Điền mã đơn kê thuốc (nếu có)...", "Điền mã đơn kê thuốc", 39));
-        pv.add(Box.createVerticalStrut(10));
-
         txtCustomerName = new JTextField(); txtCustomerName.setName("txtCustomerName");
         pv.add(generateLabelAndTextField(new JLabel("Tên khách hàng:"), txtCustomerName, "Điền tên khách hàng (nếu có)...", "Điền tên khách hàng", 46));
         pv.add(Box.createVerticalStrut(10));
@@ -356,12 +810,25 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         pay.setBorder(payb);
         v.add(pay);
         Box payv = Box.createVerticalBox(); pay.add(payv);
-        txtVat = new JTextField(); txtVat.setEditable(false); txtVat.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("VAT:"), txtVat, "", "Thuế hóa đơn", 124));
+
+        // Total of original invoice lines (Subtotal + VAT)
+        txtOriginalTotal = new JTextField(); txtOriginalTotal.setEditable(false); txtOriginalTotal.setFocusable(false);
+        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ gốc:"), txtOriginalTotal, "", "Tổng tiền hóa đơn gốc (bao gồm VAT)", 54));
         payv.add(Box.createVerticalStrut(10));
 
+        // Total of exchange invoice lines (Subtotal + VAT)
+        txtExchangeTotal = new JTextField(); txtExchangeTotal.setEditable(false); txtExchangeTotal.setFocusable(false);
+        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ đổi:"), txtExchangeTotal, "", "Tổng tiền hóa đơn đổi (bao gồm VAT)", 56));
+        payv.add(Box.createVerticalStrut(10));
+
+        // VAT for exchange invoice only
+        txtVat = new JTextField(); txtVat.setEditable(false); txtVat.setFocusable(false);
+        payv.add(generateLabelAndTextField(new JLabel("VAT (hàng đổi):"), txtVat, "", "Thuế VAT của hàng đổi", 35));
+        payv.add(Box.createVerticalStrut(10));
+
+        // Difference = Exchange Total - Original Total
         txtTotal = new JTextField(); txtTotal.setEditable(false); txtTotal.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("Tổng tiền:"), txtTotal, "", "Tổng tiền", 91));
+        payv.add(generateLabelAndTextField(new JLabel("Chênh lệch:"), txtTotal, "", "Tiền chênh lệch (phải trả thêm hoặc hoàn lại)", 63));
         payv.add(Box.createVerticalStrut(10));
 
         NumberFormatter fmt = new NumberFormatter(createCurrencyFormat());
@@ -375,11 +842,11 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         JLabel lpm = new JLabel("Phương thức thanh toán:"); lpm.setFont(new Font("Arial", Font.PLAIN, 16));
         pm.add(lpm); pm.add(Box.createHorizontalStrut(29));
         ButtonGroup bg = new ButtonGroup();
-        JRadioButton cash = new JRadioButton("Tiền mặt"), bank = new JRadioButton("Ngân hàng/Ví điện tử");
-        cash.setFont(new Font("Arial", Font.PLAIN, 16)); cash.setSelected(true); cash.setName("rdoCash"); cash.addActionListener(this);
-        bank.setFont(new Font("Arial", Font.PLAIN, 16)); bank.setName("rdoBankOrDigitalWallet"); bank.addActionListener(this);
-        bg.add(cash); bg.add(bank);
-        pm.add(cash); pm.add(Box.createHorizontalStrut(10)); pm.add(bank); pm.add(Box.createHorizontalGlue());
+        rdoCash = new JRadioButton("Tiền mặt"); rdoBank = new JRadioButton("Ngân hàng/Ví điện tử");
+        rdoCash.setFont(new Font("Arial", Font.PLAIN, 16)); rdoCash.setSelected(true); rdoCash.setName("rdoCash"); rdoCash.addActionListener(this);
+        rdoBank.setFont(new Font("Arial", Font.PLAIN, 16)); rdoBank.setName("rdoBankOrDigitalWallet"); rdoBank.addActionListener(this);
+        bg.add(rdoCash); bg.add(rdoBank);
+        pm.add(rdoCash); pm.add(Box.createHorizontalStrut(10)); pm.add(rdoBank); pm.add(Box.createHorizontalGlue());
         payv.add(pm); payv.add(Box.createVerticalStrut(10));
 
         Box co = Box.createHorizontalBox(); co.add(Box.createHorizontalStrut(203));
@@ -389,7 +856,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         v.add(Box.createVerticalStrut(20));
         Box pb1 = Box.createHorizontalBox(); pb1.add(Box.createHorizontalGlue());
         btnProcessPayment = createStyledButton("Thanh toán");
-        btnProcessPayment.setEnabled(true); btnProcessPayment.setName("btnProcessPayment"); btnProcessPayment.addActionListener(this);
+        btnProcessPayment.setEnabled(false); btnProcessPayment.setName("btnProcessPayment"); btnProcessPayment.addActionListener(this);
         pb1.add(btnProcessPayment);
         v.add(pb1);
         return h;
@@ -398,8 +865,36 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private JPanel createCashOptionsPanel() {
         JPanel p = new JPanel(new GridLayout(0, 3, 10, 10));
         p.setBackground(AppColors.WHITE); p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
-        for (long inc : new long[]{1000L, 2000L, 5000L, 10000L, 20000L, 50000L, 100000L, 200000L, 500000L}) p.add(createCashButton(inc));
+        // Initial buttons will be added by updateCashButtons
         return p;
+    }
+
+    private void updateCashButtons() {
+        if (pnlCashOptions == null || exchangeInvoice == null) return;
+        pnlCashOptions.removeAll();
+
+        BigDecimal total = calculateDifference();
+        // Only show cash buttons if total > 0 (customer needs to pay)
+        if (total.compareTo(BigDecimal.ZERO) <= 0) {
+            pnlCashOptions.revalidate();
+            pnlCashOptions.repaint();
+            return;
+        }
+
+        BigDecimal thousand = BigDecimal.valueOf(1000);
+        long roundedToThousand = total.divide(thousand, 0, java.math.RoundingMode.CEILING).multiply(thousand).longValue();
+
+        long[] amounts = {
+            1000L, 2000L, 5000L, 10000L, 20000L, 50000L, 100000L, 200000L, 500000L,
+            roundedToThousand
+        };
+        for (long inc : amounts) {
+            pnlCashOptions.add(createCashButton(inc));
+            if (inc == 500000L)
+                pnlCashOptions.add(new JPanel()); // Placeholder for alignment
+        }
+        pnlCashOptions.revalidate();
+        pnlCashOptions.repaint();
     }
 
     private JButton createCashButton(long amt) {
@@ -449,7 +944,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private DecimalFormat createCurrencyFormat() {
         DecimalFormatSymbols s = new DecimalFormatSymbols();
         s.setGroupingSeparator('.'); s.setDecimalSeparator(',');
-        DecimalFormat f = new DecimalFormat("#,000 'Đ'", s);
+        DecimalFormat f = new DecimalFormat("#,##0 'Đ'", s);
         f.setGroupingUsed(true); f.setGroupingSize(3);
         return f;
     }
@@ -502,17 +997,347 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     }
 
     private void handleCashPaymentMethod() {
-        pnlCashOptions.setVisible(true); pnlCashOptions.getParent().revalidate(); pnlCashOptions.getParent().repaint();
-        if (txtCustomerPayment != null) { txtCustomerPayment.setEnabled(true); txtCustomerPayment.setEditable(true); }
+        if (txtCustomerPayment != null) {
+            txtCustomerPayment.setEnabled(true);
+            txtCustomerPayment.setEditable(true);
+        }
+        if (exchangeInvoice != null) exchangeInvoice.setPaymentMethod(PaymentMethod.CASH);
+        updateCashButtons();
+        updatePaymentOptionsVisibility();
     }
 
     private void handleBankPaymentMethod() {
         pnlCashOptions.setVisible(false); pnlCashOptions.getParent().revalidate(); pnlCashOptions.getParent().repaint();
-        if (txtCustomerPayment != null) { txtCustomerPayment.setEnabled(false); txtCustomerPayment.setEditable(false); }
+        if (txtCustomerPayment != null && exchangeInvoice != null) {
+            txtCustomerPayment.setEnabled(false); txtCustomerPayment.setEditable(false);
+            BigDecimal difference = calculateDifference();
+            if (difference.compareTo(BigDecimal.ZERO) > 0) {
+                txtCustomerPayment.setValue(difference.longValue());
+            }
+        }
+        if (exchangeInvoice != null) exchangeInvoice.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
+    }
+
+    private void updatePaymentOptionsVisibility() {
+        if (exchangeInvoice == null || pnlCashOptions == null) return;
+
+        // Calculate the actual difference: Exchange OUT total - Original Invoice total
+        BigDecimal difference = calculateDifference();
+        boolean needsPayment = difference.compareTo(BigDecimal.ZERO) > 0;
+        boolean hasExchangeLines = mdlExchangeInvoiceLine != null && mdlExchangeInvoiceLine.getRowCount() > 0;
+
+        // Cash options only visible if: cash is selected, needs payment, and has exchange lines
+        boolean showCashOptions = rdoCash != null && rdoCash.isSelected() && needsPayment && hasExchangeLines;
+        pnlCashOptions.setVisible(showCashOptions);
+
+        // If difference <= 0 (refund or break-even), disable payment selection
+        if (rdoCash != null) rdoCash.setEnabled(needsPayment);
+        if (rdoBank != null) rdoBank.setEnabled(needsPayment);
+        if (txtCustomerPayment != null) {
+            txtCustomerPayment.setEnabled(needsPayment && rdoCash != null && rdoCash.isSelected());
+            txtCustomerPayment.setEditable(needsPayment && rdoCash != null && rdoCash.isSelected());
+            // Reset payment value when no payment is needed
+            if (!needsPayment) {
+                txtCustomerPayment.setValue(0L);
+            }
+        }
+        if (pnlCashOptions != null) {
+            pnlCashOptions.getParent().revalidate();
+            pnlCashOptions.getParent().repaint();
+        }
+    }
+
+    /**
+     * Calculate the difference between exchange out total and original invoice total.
+     * Positive = customer needs to pay more
+     * Negative = customer gets refund
+     * Zero = break-even
+     */
+    private BigDecimal calculateDifference() {
+        BigDecimal exchangeOutTotal = BigDecimal.ZERO;
+        BigDecimal originalTotal = BigDecimal.ZERO;
+
+        if (exchangeInvoice != null) {
+            exchangeOutTotal = exchangeInvoice.calculateExchangeOutSubtotalWithVat();
+        }
+        if (selectedOriginalInvoice != null) {
+            originalTotal = selectedOriginalInvoice.calculateTotal();
+        }
+
+        return exchangeOutTotal.subtract(originalTotal);
+    }
+
+    private void updateSubtotalDisplay() {
+        // Update Original Invoice Total (Subtotal + VAT)
+        if (txtOriginalTotal != null && selectedOriginalInvoice != null) {
+            BigDecimal originalTotal = selectedOriginalInvoice.calculateTotal();
+            txtOriginalTotal.setText(createCurrencyFormat().format(originalTotal));
+        } else if (txtOriginalTotal != null) {
+            txtOriginalTotal.setText("");
+        }
+
+        // Update Exchange Invoice Total (Subtotal + VAT for EXCHANGE_OUT lines only)
+        if (txtExchangeTotal != null && exchangeInvoice != null) {
+            BigDecimal exchangeTotal = exchangeInvoice.calculateExchangeOutSubtotalWithVat();
+            txtExchangeTotal.setText(createCurrencyFormat().format(exchangeTotal));
+        } else if (txtExchangeTotal != null) {
+            txtExchangeTotal.setText("");
+        }
+    }
+
+    private void updateVatDisplay() {
+        // VAT is only for exchange invoice lines (EXCHANGE_OUT)
+        if (txtVat != null) {
+            if (exchangeInvoice != null && exchangeInvoice.getInvoiceLineList() != null && !exchangeInvoice.getInvoiceLineList().isEmpty()) {
+                txtVat.setText(createCurrencyFormat().format(exchangeInvoice.calculateExchangeOutVatAmount()));
+            } else {
+                txtVat.setText("0 Đ");
+            }
+        }
+    }
+
+    private void updateTotalDisplay() {
+        // Chênh lệch = Exchange Total - Original Total
+        if (txtTotal != null) {
+            BigDecimal exchangeTotal = BigDecimal.ZERO;
+            BigDecimal originalTotal = BigDecimal.ZERO;
+
+            if (exchangeInvoice != null) {
+                exchangeTotal = exchangeInvoice.calculateExchangeOutSubtotalWithVat();
+            }
+            if (selectedOriginalInvoice != null) {
+                originalTotal = selectedOriginalInvoice.calculateTotal();
+            }
+
+            BigDecimal difference = exchangeTotal.subtract(originalTotal);
+            String prefix = difference.compareTo(BigDecimal.ZERO) >= 0 ? "" : "-";
+            txtTotal.setText(prefix + createCurrencyFormat().format(difference.abs()));
+        }
+        updateCashButtons();
+        updatePaymentOptionsVisibility();
+        updateProcessPaymentButton();
+    }
+
+    private void refreshOpenShiftAndUI() {
+        try {
+            String workstation = busShift.getCurrentWorkstation();
+            Shift openShift = busShift.getOpenShiftOnWorkstation(workstation);
+            if (openShift != null) {
+                currentShift = openShift;
+                if (exchangeInvoice != null) exchangeInvoice.setShift(openShift);
+                if (txtShiftId != null) txtShiftId.setText(openShift.getId());
+            } else {
+                if (txtShiftId != null) txtShiftId.setText(currentShift != null ? currentShift.getId() : "N/A");
+            }
+        } catch (Exception ex) {
+            if (txtShiftId != null) txtShiftId.setText(currentShift != null ? currentShift.getId() : "N/A");
+        }
+    }
+
+    private String getCustomerNameValue() {
+        if (txtCustomerName == null) return null;
+        String text = txtCustomerName.getText().trim();
+        if (text.isEmpty() || text.equals("Điền tên khách hàng (nếu có)...") ||
+            txtCustomerName.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
+            return null;
+        }
+        return text;
     }
 
     private void processPayment() {
-        JOptionPane.showMessageDialog(parentWindow, "Chức năng thanh toán đang được phát triển!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        // Remove original invoice lines with quantity 0 before processing
+        if (selectedOriginalInvoice != null && selectedOriginalInvoice.getInvoiceLineList() != null) {
+            selectedOriginalInvoice.getInvoiceLineList().removeIf(line -> line.getQuantity() == 0);
+        }
+
+        if (exchangeInvoice == null || exchangeInvoice.getInvoiceLineList() == null || exchangeInvoice.getInvoiceLineList().isEmpty()) {
+            JOptionPane.showMessageDialog(parentWindow, "Danh sách sản phẩm đổi trống!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Add original invoice lines as EXCHANGE_IN to the exchange invoice
+        if (selectedOriginalInvoice != null && selectedOriginalInvoice.getInvoiceLineList() != null) {
+            for (InvoiceLine origLine : selectedOriginalInvoice.getInvoiceLineList()) {
+                if (origLine.getQuantity() > 0) {
+                    // Create a new invoice line for EXCHANGE_IN (returned products)
+                    InvoiceLine exchangeInLine = new InvoiceLine(
+                        exchangeInvoice,
+                        origLine.getUnitOfMeasure(),
+                        origLine.getQuantity(),
+                        origLine.getUnitPrice(),
+                        LineType.EXCHANGE_IN,
+                        new ArrayList<>()
+                    );
+                    exchangeInvoice.addInvoiceLine(exchangeInLine);
+                }
+            }
+        }
+
+        // Use the difference calculated before adding EXCHANGE_IN lines
+        BigDecimal difference = calculateDifference();
+
+        // If customer needs to pay (difference > 0)
+        if (difference.compareTo(BigDecimal.ZERO) > 0) {
+            if (exchangeInvoice.getPaymentMethod() == PaymentMethod.CASH) {
+                if (txtCustomerPayment != null) {
+                    long pay = txtCustomerPayment.getValue() instanceof Number ? ((Number) txtCustomerPayment.getValue()).longValue() : 0;
+                    if (pay < difference.longValue()) {
+                        JOptionPane.showMessageDialog(parentWindow, "Số tiền không đủ!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                }
+                completeExchangeAndGenerateInvoice();
+            } else if (exchangeInvoice.getPaymentMethod() == PaymentMethod.BANK_TRANSFER) {
+                String orderInfo = "Thanh toán hóa đơn đổi hàng MediWOW Pharmacy";
+                Window owner = SwingUtilities.getWindowAncestor(pnlExchangeInvoice);
+                boolean paymentSuccess = DIALOG_MomoQRCode.showAndPay(owner, difference.longValue(), orderInfo);
+                if (paymentSuccess) {
+                    completeExchangeAndGenerateInvoice();
+                } else {
+                    JOptionPane.showMessageDialog(parentWindow, "Thanh toán qua MoMo đã bị hủy hoặc thất bại.", "Thanh toán không thành công", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        } else {
+            // Customer gets refund or no payment needed - complete directly
+            completeExchangeAndGenerateInvoice();
+        }
+    }
+
+    private void completeExchangeAndGenerateInvoice() {
+        try {
+            refreshOpenShiftAndUI();
+
+            // Process lot quantities based on line type
+            for (InvoiceLine line : exchangeInvoice.getInvoiceLineList()) {
+                if (line.getLineType() == LineType.EXCHANGE_OUT) {
+                    // Deduct lot quantities for EXCHANGE_OUT items (products going out)
+                    for (LotAllocation allocation : line.getLotAllocations()) {
+                        boolean success = busProduct.deductLotQuantity(allocation.getLot().getId(), allocation.getQuantity());
+                        if (!success) {
+                            throw new RuntimeException("Không thể cập nhật số lượng lô: " + allocation.getLot().getId());
+                        }
+                    }
+                } else if (line.getLineType() == LineType.EXCHANGE_IN) {
+                    // Add lot quantities for EXCHANGE_IN items (products coming back)
+                    // Get the original invoice line to find the lot allocations
+                    if (selectedOriginalInvoice != null) {
+                        for (InvoiceLine origLine : selectedOriginalInvoice.getInvoiceLineList()) {
+                            if (origLine.getProduct().getId().equals(line.getProduct().getId()) &&
+                                origLine.getUnitOfMeasure().getName().equals(line.getUnitOfMeasure().getName())) {
+                                // Add back the quantity from original lot allocations
+                                for (LotAllocation allocation : origLine.getLotAllocations()) {
+                                    // Calculate the proportion of quantity being returned
+                                    int returnQty = line.getQuantity();
+                                    int origQty = origLine.getQuantity();
+                                    if (origQty > 0 && returnQty > 0) {
+                                        // Add the quantity back to the lot
+                                        boolean success = busProduct.addLotQuantity(allocation.getLot().getId(), allocation.getQuantity());
+                                        if (!success) {
+                                            throw new RuntimeException("Không thể cập nhật số lượng lô: " + allocation.getLot().getId());
+                                        }
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Create customer if provided
+            String customerName = getCustomerNameValue();
+            if (customerName != null && !customerName.isEmpty()) {
+                try {
+                    Customer customer = new Customer(customerName);
+                    busCustomer.addCustomer(customer);
+                    exchangeInvoice.setCustomer(customer);
+                } catch (Exception e) {
+                    System.err.println("Warning: Could not save customer: " + e.getMessage());
+                }
+            }
+
+            // Save invoice to database
+            String generatedInvoiceId = busInvoice.saveInvoice(exchangeInvoice);
+
+            // Get customer payment
+            BigDecimal customerPayment = BigDecimal.ZERO;
+            if (txtCustomerPayment != null && txtCustomerPayment.getValue() instanceof Number) {
+                customerPayment = BigDecimal.valueOf(((Number) txtCustomerPayment.getValue()).longValue());
+            }
+
+            // Notify dashboard
+            if (dataChangeListener != null) {
+                dataChangeListener.onInvoiceCreated();
+            }
+
+            // Ask to print receipt
+            int printChoice = JOptionPane.showConfirmDialog(parentWindow,
+                "Thanh toán thành công!\nBạn có muốn in hóa đơn không?",
+                "In hóa đơn", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+            if (printChoice == JOptionPane.YES_OPTION) {
+                printExchangeReceiptDirectly(generatedInvoiceId, customerPayment);
+            }
+
+            // Refresh products
+            products.clear();
+            products.addAll(busProduct.getAllProducts());
+
+            // Reset form
+            resetExchangeForm();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(parentWindow, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }
+
+    private void printExchangeReceiptDirectly(String invoiceId, BigDecimal customerPayment) {
+        String[] printers = ReceiptThermalPrinter.getAvailablePrinters();
+        if (printers.length == 0) {
+            JOptionPane.showMessageDialog(parentWindow, "Không tìm thấy máy in nào!", "Lỗi máy in", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        String selectedPrinter = (String) JOptionPane.showInputDialog(parentWindow, "Chọn máy in:", "Chọn máy in",
+            JOptionPane.QUESTION_MESSAGE, null, printers, printers[0]);
+        if (selectedPrinter == null) return;
+        try {
+            ReceiptThermalPrinter.printExchangeReceipt(exchangeInvoice, invoiceId, customerPayment, selectedPrinter);
+            JOptionPane.showMessageDialog(parentWindow, "In hóa đơn thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(parentWindow, "Lỗi in hóa đơn: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+    }
+
+    private void resetExchangeForm() {
+        // Clear exchange table
+        mdlExchangeInvoiceLine.setRowCount(0);
+        productMap.clear();
+        previousUOMMap.clear();
+        oldUOMIdMap.clear();
+        previousQuantityMap.clear();
+
+        // Clear original invoice table
+        mdlOriginalInvoiceLine.setRowCount(0);
+        originalMaxQuantityMap.clear();
+
+        // Reset selected invoice
+        selectedOriginalInvoice = null;
+        exchangeInvoice = null;
+
+        // Reset text fields
+        if (txtCustomerName != null) {
+            txtCustomerName.setText("Điền tên khách hàng (nếu có)...");
+            txtCustomerName.setForeground(AppColors.PLACEHOLDER_TEXT);
+        }
+        if (txtCustomerPayment != null) txtCustomerPayment.setValue(0L);
+        if (txtOriginalTotal != null) txtOriginalTotal.setText("");
+        if (txtExchangeTotal != null) txtExchangeTotal.setText("");
+        if (txtVat != null) txtVat.setText("");
+        if (txtTotal != null) txtTotal.setText("");
+
+        // Disable fields
+        setFieldsEnabled(false);
     }
 
     @Override public void mouseClicked(MouseEvent e) {
@@ -568,8 +1393,12 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private void processBarcodeInput() {
         String code = txtProductSearch.getText().trim(); txtProductSearch.setText("");
         if (code.isEmpty()) return;
+        Product p = products.stream().filter(pr -> code.equals(pr.getBarcode())).findFirst().orElse(null);
         Toolkit.getDefaultToolkit().beep();
-        JOptionPane.showMessageDialog(parentWindow, "Quét mã vạch: " + code, "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        if (p == null)
+            JOptionPane.showMessageDialog(parentWindow, "Không tìm thấy sản phẩm với mã vạch: " + code + "\nBẤM ENTER ĐỂ TẮT THÔNG BÁO!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        else
+            addProductToExchangeTable(p);
         SwingUtilities.invokeLater(() -> { if (barcodeScanningEnabled) txtProductSearch.requestFocusInWindow(); });
     }
 
@@ -583,5 +1412,220 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private void handleDocumentChange(DocumentEvent e) {
         if (txtProductSearch != null && e.getDocument() == txtProductSearch.getDocument()) SwingUtilities.invokeLater(this::performProductSearch);
     }
-}
 
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (isUpdatingInvoiceLine) return; // Guard against re-entry
+        if ("tableCellEditor".equals(evt.getPropertyName()) && evt.getOldValue() != null && evt.getNewValue() == null) {
+            // Handle exchange invoice table
+            if (evt.getSource() == tblExchangeInvoiceLine) {
+                int r = tblExchangeInvoiceLine.getEditingRow();
+                if (r == -1) r = tblExchangeInvoiceLine.getSelectedRow();
+                if (r >= 0) updateExchangeInvoiceLineFromTable(r);
+            }
+            // Handle original invoice table
+            if (evt.getSource() == tblOriginalInvoiceLine) {
+                int r = tblOriginalInvoiceLine.getEditingRow();
+                if (r == -1) r = tblOriginalInvoiceLine.getSelectedRow();
+                if (r >= 0) updateOriginalInvoiceLineFromTable(r);
+            }
+        }
+    }
+
+    @Override
+    public void tableChanged(TableModelEvent e) {
+        if (isUpdatingInvoiceLine) return; // Guard against re-entry
+        if (e.getSource() == mdlExchangeInvoiceLine && e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && (e.getColumn() == 2 || e.getColumn() == 3)) {
+            updateExchangeInvoiceLineFromTable(e.getFirstRow());
+        }
+        if (e.getSource() == mdlOriginalInvoiceLine && e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && e.getColumn() == 3) {
+            updateOriginalInvoiceLineFromTable(e.getFirstRow());
+        }
+    }
+
+    private void updateOriginalInvoiceLineFromTable(int row) {
+        if (isUpdatingInvoiceLine || row < 0 || row >= mdlOriginalInvoiceLine.getRowCount()) return;
+        if (selectedOriginalInvoice == null) return;
+
+        isUpdatingInvoiceLine = true;
+        try {
+            int newQuantity = (int) mdlOriginalInvoiceLine.getValueAt(row, 3);
+
+            // Check if all quantities would be zero
+            boolean allZero = true;
+            for (int i = 0; i < mdlOriginalInvoiceLine.getRowCount(); i++) {
+                int qty = (i == row) ? newQuantity : (int) mdlOriginalInvoiceLine.getValueAt(i, 3);
+                if (qty > 0) {
+                    allZero = false;
+                    break;
+                }
+            }
+            if (allZero) {
+                JOptionPane.showMessageDialog(parentWindow,
+                    "Phải có ít nhất 1 sản phẩm trong hóa đơn gốc!\nKhông thể đặt tất cả số lượng về 0.",
+                    "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+                // Revert to 1
+                mdlOriginalInvoiceLine.setValueAt(1, row, 3);
+                return;
+            }
+
+            // Find the corresponding invoice line and update
+            String productId = (String) mdlOriginalInvoiceLine.getValueAt(row, 0);
+            String uomName = (String) mdlOriginalInvoiceLine.getValueAt(row, 2);
+
+            for (InvoiceLine line : selectedOriginalInvoice.getInvoiceLineList()) {
+                if (line.getProduct().getId().equals(productId) && line.getUnitOfMeasure().getName().equals(uomName)) {
+                    line.setQuantity(newQuantity);
+                    // Use the invoice line's unit price for accurate subtotal calculation
+                    BigDecimal newSubtotal = line.getUnitPrice().multiply(BigDecimal.valueOf(newQuantity));
+                    mdlOriginalInvoiceLine.setValueAt(newSubtotal, row, 5);
+                    break;
+                }
+            }
+
+            // Update exchange invoice reference and recalculate totals
+            if (exchangeInvoice != null) {
+                exchangeInvoice.setReferencedInvoice(selectedOriginalInvoice);
+            }
+            updateSubtotalDisplay();
+            updateVatDisplay();
+            updateTotalDisplay();
+        } finally {
+            isUpdatingInvoiceLine = false;
+        }
+    }
+
+    // ================ CELL EDITORS ================
+
+    private class UnitOfMeasureCellEditor extends DefaultCellEditor {
+        private JComboBox<String> comboBox;
+        private int editingRow = -1;
+
+        public UnitOfMeasureCellEditor() {
+            super(new JComboBox<>());
+            comboBox = (JComboBox<String>) getComponent();
+            comboBox.setFont(new Font("Arial", Font.PLAIN, 16));
+            comboBox.putClientProperty("JComboBox.isTableCellEditor", Boolean.TRUE);
+            setClickCountToStart(1);
+            comboBox.setUI(new BasicComboBoxUI() {
+                @Override
+                protected ComboPopup createPopup() {
+                    return new BasicComboPopup(comboBox) {
+                        @Override
+                        public void show() {
+                            if (editingRow >= 0 && tblExchangeInvoiceLine != null) {
+                                Rectangle cellRect = tblExchangeInvoiceLine.getCellRect(editingRow, 2, true);
+                                Point tableScreenLoc = tblExchangeInvoiceLine.getLocationOnScreen();
+                                int popupX = tableScreenLoc.x + cellRect.x;
+                                int popupY = tableScreenLoc.y + cellRect.y + cellRect.height;
+                                list.setFont(new Font("Arial", Font.PLAIN, 16));
+                                setPopupSize(cellRect.width, getPreferredSize().height);
+                                setLocation(popupX, popupY);
+                                setVisible(true);
+                            } else {
+                                super.show();
+                            }
+                        }
+                    };
+                }
+            });
+        }
+
+        public Component getTableCellEditorComponent(JTable t, Object v, boolean s, int r, int c) {
+            editingRow = r;
+            String id = (String) t.getValueAt(r, 0);
+            Product p = productMap.get(id);
+            comboBox.removeAllItems();
+            if (p != null) {
+                comboBox.addItem(p.getBaseUnitOfMeasure());
+                for (UnitOfMeasure u : p.getUnitOfMeasureSet())
+                    if (!u.getName().equals(p.getBaseUnitOfMeasure())) comboBox.addItem(u.getName());
+            }
+            if (v != null) comboBox.setSelectedItem(v);
+            return comboBox;
+        }
+
+        public boolean stopCellEditing() {
+            editingRow = -1;
+            return super.stopCellEditing();
+        }
+    }
+
+    private class QuantitySpinnerEditor extends DefaultCellEditor {
+        private JSpinner spinner;
+        private JSpinner.DefaultEditor editor;
+
+        public QuantitySpinnerEditor() {
+            super(new JTextField());
+            spinner = new JSpinner(new SpinnerNumberModel(1, 1, 9999, 1));
+            spinner.setFont(new Font("Arial", Font.PLAIN, 16));
+            editor = (JSpinner.DefaultEditor) spinner.getEditor();
+            editor.getTextField().setHorizontalAlignment(JTextField.RIGHT);
+            setClickCountToStart(1);
+        }
+
+        public Component getTableCellEditorComponent(JTable t, Object v, boolean s, int r, int c) {
+            if (v instanceof Integer) spinner.setValue(v);
+            SwingUtilities.invokeLater(() -> {
+                editor.getTextField().requestFocusInWindow();
+                editor.getTextField().selectAll();
+            });
+            return spinner;
+        }
+
+        public Object getCellEditorValue() { return spinner.getValue(); }
+
+        public boolean stopCellEditing() {
+            try { spinner.commitEdit(); } catch (java.text.ParseException e) {}
+            return super.stopCellEditing();
+        }
+    }
+
+    // Quantity spinner for original invoice line (min 0, max = original quantity)
+    private class OriginalQuantitySpinnerEditor extends DefaultCellEditor {
+        private JSpinner spinner;
+        private JSpinner.DefaultEditor editor;
+
+        public OriginalQuantitySpinnerEditor() {
+            super(new JTextField());
+            spinner = new JSpinner(new SpinnerNumberModel(0, 0, 9999, 1));
+            spinner.setFont(new Font("Arial", Font.PLAIN, 16));
+            editor = (JSpinner.DefaultEditor) spinner.getEditor();
+            editor.getTextField().setHorizontalAlignment(JTextField.RIGHT);
+            setClickCountToStart(1);
+        }
+
+        public Component getTableCellEditorComponent(JTable t, Object v, boolean s, int r, int c) {
+            // Get the original max quantity for this row
+            int maxQty = originalMaxQuantityMap.getOrDefault(r, 9999);
+            int currentValue = (v instanceof Integer) ? (Integer) v : 0;
+
+            // Update spinner model with correct max
+            spinner.setModel(new SpinnerNumberModel(currentValue, 0, maxQty, 1));
+
+            SwingUtilities.invokeLater(() -> {
+                editor.getTextField().requestFocusInWindow();
+                editor.getTextField().selectAll();
+            });
+            return spinner;
+        }
+
+        public Object getCellEditorValue() { return spinner.getValue(); }
+
+        public boolean stopCellEditing() {
+            try { spinner.commitEdit(); } catch (java.text.ParseException e) {}
+            return super.stopCellEditing();
+        }
+    }
+
+    private class QuantitySpinnerRenderer implements TableCellRenderer {
+        private JSpinner spinner = new JSpinner(new SpinnerNumberModel(1, 1, 9999, 1));
+
+        public QuantitySpinnerRenderer() { spinner.setFont(new Font("Arial", Font.PLAIN, 16)); }
+
+        public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
+            if (v instanceof Integer) spinner.setValue(v);
+            return spinner;
+        }
+    }
+}
