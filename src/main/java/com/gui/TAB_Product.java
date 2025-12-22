@@ -13,7 +13,6 @@ import com.utils.ProductIO;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.TableModelEvent;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
@@ -211,14 +210,16 @@ public class TAB_Product extends JPanel {
         cbCategory.setSelectedIndex(0);
         cbForm.setSelectedIndex(0);
 
-        btnExportCSV = new JButton("Xuất CSV");
-        btnImportCSV = new JButton("Nhập CSV");
+        btnExportCSV = new JButton("Xuất Excel");
+        btnImportCSV = new JButton("Nhập Excel");
+        JButton btnExportExcelTemplate = new JButton("Excel mẫu");
         btnAddTop = new JButton("Thêm mới");
 
         styleButton(btnSearch, AppColors.PRIMARY);
         styleButton(btnRefresh, AppColors.PRIMARY);
         styleButton(btnExportCSV, AppColors.PRIMARY);
         styleButton(btnImportCSV, AppColors.PRIMARY);
+        styleButton(btnExportExcelTemplate, AppColors.PRIMARY);
         styleButton(btnAddTop, new Color(40, 167, 69));
 
         btnSearch.addActionListener(e -> doSearch());
@@ -231,16 +232,17 @@ public class TAB_Product extends JPanel {
             handleCancelAll();
         });
         btnAddTop.addActionListener(e -> startAddMode());
-        btnExportCSV.addActionListener(e -> exportProductsToCSV());
-        btnImportCSV.addActionListener(e -> importProductsFromCSV());
+        btnExportCSV.addActionListener(e -> exportProductsToExcel());
+        btnImportCSV.addActionListener(e -> importProductsFromExcel());
+        btnExportExcelTemplate.addActionListener(e -> exportExcelTemplate());
 
         top.add(new JLabel("Tìm kiếm:"));
         top.add(txtSearch);
         top.add(btnSearch);
         top.add(btnRefresh);
-        // Removed category/form filter components from toolbar
         top.add(btnExportCSV);
         top.add(btnImportCSV);
+        top.add(btnExportExcelTemplate);
         top.add(btnAddTop);
         return top;
     }
@@ -290,7 +292,12 @@ public class TAB_Product extends JPanel {
         styleButton(btnNextPage, AppColors.PRIMARY);
         btnPrevPage.addActionListener(e -> changePage(currentPage - 1));
         btnNextPage.addActionListener(e -> changePage(currentPage + 1));
-        cbPageSize.addActionListener(e -> { itemsPerPage = (int) cbPageSize.getSelectedItem(); currentPage = 0; loadProducts(); });
+        cbPageSize.addActionListener(e -> {
+            Integer selected = (Integer) cbPageSize.getSelectedItem();
+            if (selected != null) itemsPerPage = selected;
+            currentPage = 0;
+            loadProducts();
+        });
         pagination.add(btnPrevPage); pagination.add(btnNextPage);
         pagination.add(cbPageSize); pagination.add(lblPageInfo);
         panel.add(pagination, BorderLayout.SOUTH);
@@ -363,33 +370,52 @@ public class TAB_Product extends JPanel {
         btnNextPage.setEnabled(currentPage < totalPages - 1);
     }
 
-    private void exportProductsToCSV() {
+    private void exportProductsToExcel() {
         try {
             File dir = getDownloadsDir();
             JFileChooser chooser = new JFileChooser(dir);
-            chooser.setSelectedFile(new File(dir, "products_export.csv"));
+            chooser.setSelectedFile(new File(dir, "products_export.xlsx"));
             int res = chooser.showSaveDialog(this);
             if (res != JFileChooser.APPROVE_OPTION) return;
             File file = chooser.getSelectedFile();
-            int count = productIO.exportProductsTableToCSV(productModel, file);
-            JOptionPane.showMessageDialog(this, "Đã xuất " + count + " dòng tới: " + file.getAbsolutePath(), "Xuất CSV", JOptionPane.INFORMATION_MESSAGE);
+
+            // ProductIO exports full data from BUS/DB; no need to pass the JTable model
+            int count = productIO.exportProductsToExcel(file);
+            JOptionPane.showMessageDialog(this, "Đã xuất " + count + " sản phẩm tới: " + file.getAbsolutePath(), "Xuất Excel", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Xuất thất bại: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void importProductsFromCSV() {
+    private void importProductsFromExcel() {
         try {
             File dir = getDownloadsDir();
             JFileChooser chooser = new JFileChooser(dir);
             int res = chooser.showOpenDialog(this);
             if (res != JFileChooser.APPROVE_OPTION) return;
             File file = chooser.getSelectedFile();
-            int imported = productIO.importProductsFromCSV(file);
-            JOptionPane.showMessageDialog(this, "Đã nhập " + imported + " sản phẩm từ: " + file.getAbsolutePath(), "Nhập CSV", JOptionPane.INFORMATION_MESSAGE);
+            int imported = productIO.importProductsFromExcel(file);
+            JOptionPane.showMessageDialog(this, "Đã nhập " + imported + " sản phẩm từ: " + file.getAbsolutePath(), "Nhập Excel", JOptionPane.INFORMATION_MESSAGE);
             loadProducts();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Nhập thất bại: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void exportExcelTemplate() {
+        try {
+            File dir = getDownloadsDir();
+            JFileChooser chooser = new JFileChooser(dir);
+            chooser.setSelectedFile(new File(dir, "products_template.xlsx"));
+            int res = chooser.showSaveDialog(this);
+            if (res != JFileChooser.APPROVE_OPTION) return;
+            File file = chooser.getSelectedFile();
+
+            // Match ProductIO API
+            productIO.exportExcelTemplate(file);
+            JOptionPane.showMessageDialog(this, "Đã xuất mẫu Excel tới: " + file.getAbsolutePath(), "Xuất excel mẫu", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Xuất mẫu thất bại: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 
