@@ -83,8 +83,8 @@ public class DAO_Invoice implements IInvoice {
                                         "VALUES (:id, :invoice, :product, :unitOfMeasure, :quantity, :unitPrice, :lineType)")
                         .setParameter("id", null)
                         .setParameter("invoice", generatedInvoiceId)
-                        .setParameter("product", line.getProduct().getId())
-                        .setParameter("unitOfMeasure", line.getUnitOfMeasure().getId())
+                        .setParameter("product", line.getUnitOfMeasure().getProduct().getId())
+                        .setParameter("unitOfMeasure", line.getUnitOfMeasure().getMeasurement().getId())
                         .setParameter("quantity", line.getQuantity())
                         .setParameter("unitPrice", line.getUnitPrice())
                         .setParameter("lineType", line.getLineType().name())
@@ -95,8 +95,8 @@ public class DAO_Invoice implements IInvoice {
                                 "SELECT TOP 1 id FROM InvoiceLine WHERE invoice = :invoiceId AND product = :productId AND unitOfMeasure = :uom ORDER BY id DESC",
                                 String.class)
                         .setParameter("invoiceId", generatedInvoiceId)
-                        .setParameter("productId", line.getProduct().getId())
-                        .setParameter("uom", line.getUnitOfMeasure().getId())
+                        .setParameter("productId", line.getUnitOfMeasure().getProduct().getId())
+                        .setParameter("uom", line.getUnitOfMeasure().getMeasurement().getId())
                         .uniqueResult();
 
                 // Save Lot Allocations
@@ -198,22 +198,24 @@ public class DAO_Invoice implements IInvoice {
                     ).setParameter("promotionId", invoice.getPromotion().getId()).uniqueResult();
                 }
 
-                // Fetch products in invoice lines
-                session.createQuery(
+                // Fetch invoice lines with unitOfMeasure (avoid nested fetch on composite key)
+                List<InvoiceLine> lines = session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product " +
+                    "JOIN FETCH il.unitOfMeasure " +
                     "WHERE il.invoice.id = :id",
                     InvoiceLine.class
                 ).setParameter("id", id).list();
 
-                // Fetch lots for products in invoice lines
-                session.createQuery(
-                    "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotSet " +
-                    "WHERE il.invoice.id = :id",
-                    InvoiceLine.class
-                ).setParameter("id", id).list();
+                // Initialize product and measurement for each unitOfMeasure
+                for (InvoiceLine line : lines) {
+                    if (line.getUnitOfMeasure() != null) {
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct());
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getMeasurement());
+                        if (line.getUnitOfMeasure().getProduct() != null) {
+                            org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct().getLotSet());
+                        }
+                    }
+                }
 
                 // Fetch lotAllocations for invoice lines
                 session.createQuery(
@@ -297,22 +299,24 @@ public class DAO_Invoice implements IInvoice {
                     ).setParameter("promotions", promotions).list();
                 }
 
-                // Fetch products in invoice lines
-                session.createQuery(
+                // Fetch invoice lines with unitOfMeasure (avoid nested fetch on composite key)
+                List<InvoiceLine> allLines = session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product " +
+                    "JOIN FETCH il.unitOfMeasure " +
                     "WHERE il.invoice IN :invoices",
                     InvoiceLine.class
                 ).setParameter("invoices", invoices).list();
 
-                // Fetch lots for products in invoice lines
-                session.createQuery(
-                    "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotSet " +
-                    "WHERE il.invoice IN :invoices",
-                    InvoiceLine.class
-                ).setParameter("invoices", invoices).list();
+                // Initialize product and measurement for each unitOfMeasure
+                for (InvoiceLine line : allLines) {
+                    if (line.getUnitOfMeasure() != null) {
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct());
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getMeasurement());
+                        if (line.getUnitOfMeasure().getProduct() != null) {
+                            org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct().getLotSet());
+                        }
+                    }
+                }
 
                 // Fetch lotAllocations for invoice lines
                 session.createQuery(
@@ -339,24 +343,26 @@ public class DAO_Invoice implements IInvoice {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            // Fetch invoice lines with product first
+            // Fetch invoice lines with unitOfMeasure (avoid nested fetch on composite key)
             List<InvoiceLine> invoiceLines = session.createQuery(
                 "SELECT DISTINCT il FROM InvoiceLine il " +
-                "LEFT JOIN FETCH il.product " +
+                "JOIN FETCH il.unitOfMeasure " +
                 "WHERE il.invoice.id = :invoiceId",
                 InvoiceLine.class
             ).setParameter("invoiceId", invoiceId).list();
 
-            if (!invoiceLines.isEmpty()) {
-                // Fetch product's lots
-                session.createQuery(
-                    "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotSet " +
-                    "WHERE il.invoice.id = :invoiceId",
-                    InvoiceLine.class
-                ).setParameter("invoiceId", invoiceId).list();
+            // Initialize product and measurement for each unitOfMeasure
+            for (InvoiceLine line : invoiceLines) {
+                if (line.getUnitOfMeasure() != null) {
+                    org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct());
+                    org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getMeasurement());
+                    if (line.getUnitOfMeasure().getProduct() != null) {
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct().getLotSet());
+                    }
+                }
+            }
 
+            if (!invoiceLines.isEmpty()) {
                 // Fetch lotAllocations
                 session.createQuery(
                     "SELECT DISTINCT il FROM InvoiceLine il " +
@@ -390,22 +396,25 @@ public class DAO_Invoice implements IInvoice {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            // Fetch invoice lines with product first
+            // Fetch invoice lines with unitOfMeasure (avoid nested fetch on composite key)
             List<InvoiceLine> invoiceLines = session.createQuery(
                 "SELECT DISTINCT il FROM InvoiceLine il " +
-                "LEFT JOIN FETCH il.product",
+                "JOIN FETCH il.unitOfMeasure",
                 InvoiceLine.class
             ).list();
 
+            // Initialize product and measurement for each unitOfMeasure
+            for (InvoiceLine line : invoiceLines) {
+                if (line.getUnitOfMeasure() != null) {
+                    org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct());
+                    org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getMeasurement());
+                    if (line.getUnitOfMeasure().getProduct() != null) {
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct().getLotSet());
+                    }
+                }
+            }
+
             if (!invoiceLines.isEmpty()) {
-                // Fetch product's lots
-                session.createQuery(
-                    "SELECT DISTINCT il FROM InvoiceLine il " +
-                    "LEFT JOIN FETCH il.product p " +
-                    "LEFT JOIN FETCH p.lotSet " +
-                    "WHERE il IN :invoiceLines",
-                    InvoiceLine.class
-                ).setParameter("invoiceLines", invoiceLines).list();
 
                 // Fetch lotAllocations
                 session.createQuery(
@@ -483,6 +492,32 @@ public class DAO_Invoice implements IInvoice {
             return java.util.Collections.emptyList();
         } finally {
             if (session != null && session.isOpen()) session.close();
+        }
+    }
+
+    /**
+     * Check if an invoice is referenced by any other invoice (EXCHANGE or RETURN).
+     * @param invoiceId The ID of the invoice to check
+     * @return true if the invoice is referenced, false otherwise
+     */
+    public boolean isInvoiceReferenced(String invoiceId) {
+        if (invoiceId == null || invoiceId.trim().isEmpty()) return false;
+
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            String hql = "SELECT COUNT(i) FROM Invoice i WHERE i.referencedInvoice.id = :invoiceId";
+            Long count = session.createQuery(hql, Long.class)
+                .setParameter("invoiceId", invoiceId)
+                .uniqueResult();
+            return count != null && count > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
         }
     }
 
