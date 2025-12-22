@@ -26,6 +26,7 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -45,7 +46,7 @@ import java.util.Locale;
  * - Trigger Action: Chỉ load dữ liệu khi nhấn nút [Xem Thống Kê]
  * - Export Excel: Chỉ sáng khi có dữ liệu
  *
- * @author MediWOW Team
+ * @author Tô Thanh Hậu
  */
 public class TAB_Statistics extends JPanel {
 
@@ -663,6 +664,43 @@ public class TAB_Statistics extends JPanel {
             return;
         }
 
+        // Determine date range and pick an appropriate labeling step
+        LocalDate startDate = data.get(0).date();
+        LocalDate endDate = data.get(data.size() - 1).date();
+        long daysSpan = ChronoUnit.DAYS.between(startDate, endDate);
+
+        // Choose step for visible labels (leave blanks for intermediate points)
+        int labelStep;
+        DateTimeFormatter labelFmt;
+        // Determine if we should use quarterly labels.
+        // Use quarterly mode when the user selected "Năm nay", or when the span is roughly a year
+        long monthsSpan = ChronoUnit.MONTHS.between(startDate.withDayOfMonth(1), endDate.withDayOfMonth(1));
+        boolean quarterlyMode = false;
+        try {
+            if (cbDatePreset != null && cbDatePreset.getSelectedIndex() == 5) { // "Năm nay"
+                quarterlyMode = true;
+            } else if (daysSpan >= 330) {
+                quarterlyMode = true;
+            } else if (monthsSpan >= 11 && startDate.getYear() == endDate.getYear()) {
+                quarterlyMode = true;
+            }
+        } catch (Exception ignore) {
+            quarterlyMode = (monthsSpan >= 11 && startDate.getYear() == endDate.getYear());
+        }
+        if (quarterlyMode) {
+            labelStep = 90; // quarterly-ish for multi-year ranges
+            labelFmt = DateTimeFormatter.ofPattern("MM/yyyy");
+        } else if (daysSpan <= 31) {
+            labelStep = 1; // daily
+            labelFmt = DateTimeFormatter.ofPattern("dd/MM");
+        } else if (daysSpan <= 120) {
+            labelStep = 7; // weekly
+            labelFmt = DateTimeFormatter.ofPattern("dd/MM");
+        } else {
+            labelStep = 30; // monthly-ish
+            labelFmt = DateTimeFormatter.ofPattern("MM/yyyy");
+        }
+
         // Create chart
         CategoryChart chart = new CategoryChartBuilder()
             .width(800)
@@ -673,24 +711,79 @@ public class TAB_Statistics extends JPanel {
             .theme(Styler.ChartTheme.GGPlot2)
             .build();
 
-        // Prepare data
-        List<String> dates = new ArrayList<>();
-        List<BigDecimal> revenues = new ArrayList<>();
-        List<BigDecimal> profits = new ArrayList<>();
+        // Prepare data and sparse labels
+        List<String> labels = new ArrayList<>();
+        List<Double> revenues = new ArrayList<>();
+        List<Double> profits = new ArrayList<>();
 
-        for (RevenueData rd : data) {
-            dates.add(rd.date().format(DateTimeFormatter.ofPattern("dd/MM")));
-            revenues.add(rd.netRevenue());
-            profits.add(rd.grossProfit());
+        // If quarterlyMode, aggregate data per quarter instead of per-day points
+        if (quarterlyMode) {
+            // Build quarter boundaries starting from the quarter that contains startDate
+            List<LocalDate> quarterStarts = new ArrayList<>();
+            int startQuarterIdx = (startDate.getMonthValue() - 1) / 3; // 0..3
+            LocalDate qStart = LocalDate.of(startDate.getYear(), startQuarterIdx * 3 + 1, 1);
+            // include the quarter containing startDate even if startDate is after qStart
+            // advance quarters until beyond endDate
+            while (!qStart.isAfter(endDate)) {
+                quarterStarts.add(qStart);
+                qStart = qStart.plusMonths(3);
+            }
+
+            // For each quarter, sum revenues/profits from data points falling into that quarter
+            for (LocalDate qs : quarterStarts) {
+                LocalDate qe = qs.plusMonths(3).minusDays(1);
+                BigDecimal sumNet = BigDecimal.ZERO;
+                BigDecimal sumProfit = BigDecimal.ZERO;
+                for (RevenueData rd : data) {
+                    LocalDate d = rd.date();
+                    if ((d.isEqual(qs) || d.isAfter(qs)) && (d.isEqual(qe) || d.isBefore(qe))) {
+                        if (rd.netRevenue() != null) sumNet = sumNet.add(rd.netRevenue());
+                        if (rd.grossProfit() != null) sumProfit = sumProfit.add(rd.grossProfit());
+                    }
+                }
+                int qNum = (qs.getMonthValue() - 1) / 3 + 1;
+                labels.add("Q" + qNum + " " + qs.getYear());
+                revenues.add(sumNet.doubleValue());
+                profits.add(sumProfit.doubleValue());
+            }
+            // Ensure at least one label/point exists (if no quarters were added, fallback to end date)
+            if (labels.isEmpty()) {
+                labels.add(endDate.format(labelFmt));
+                // sum entire range
+                BigDecimal totalNet = BigDecimal.ZERO;
+                BigDecimal totalProfit = BigDecimal.ZERO;
+                for (RevenueData rd : data) {
+                    if (rd.netRevenue() != null) totalNet = totalNet.add(rd.netRevenue());
+                    if (rd.grossProfit() != null) totalProfit = totalProfit.add(rd.grossProfit());
+                }
+                revenues.add(totalNet.doubleValue());
+                profits.add(totalProfit.doubleValue());
+            }
+        } else {
+            for (int i = 0; i < data.size(); i++) {
+                RevenueData rd = data.get(i);
+                LocalDate d = rd.date();
+                // show label based on actual day distance from start to avoid relying on list index
+                long offsetDays = ChronoUnit.DAYS.between(startDate, d);
+                boolean shouldLabel = (offsetDays % labelStep == 0) || (d.equals(endDate));
+                // Use a single space for unlabeled ticks instead of an empty string to prevent
+                // java.awt.font.TextLayout from throwing IllegalArgumentException for zero-length text.
+                String label = shouldLabel ? d.format(labelFmt) : " ";
+                labels.add(label);
+                revenues.add(rd.netRevenue().doubleValue());
+                profits.add(rd.grossProfit().doubleValue());
+            }
         }
 
         // Add series
-        chart.addSeries("Doanh thu thuần", dates, revenues.stream().map(BigDecimal::doubleValue).toList());
-        chart.addSeries("Lợi nhuận gộp", dates, profits.stream().map(BigDecimal::doubleValue).toList());
+        chart.addSeries("Doanh thu thuần", labels, revenues);
+        chart.addSeries("Lợi nhuận gộp", labels, profits);
 
-        // Styling
+        // Styling: rotate labels and set spacing hint to improve readability
         chart.getStyler().setLegendPosition(Styler.LegendPosition.OutsideS);
         chart.getStyler().setSeriesColors(new Color[]{AppColors.PRIMARY, AppColors.SUCCESS});
+        chart.getStyler().setXAxisLabelRotation(45);
+        chart.getStyler().setXAxisTickMarkSpacingHint(50);
 
         // Update panel
         pnlRevenueChart.removeAll();
@@ -1037,8 +1130,6 @@ public class TAB_Statistics extends JPanel {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
             if (value != null) {
-                String strValue = value.toString().replace(".", "").replace(",", "")
-                    .replace("₫", "").replace(" ", "").replace("-", "");
                 try {
                     // Check if original value starts with minus or is negative in model
                     String original = value.toString();
