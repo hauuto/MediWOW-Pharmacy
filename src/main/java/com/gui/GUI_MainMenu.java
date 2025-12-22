@@ -158,7 +158,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         pnlMain.add(invoiceMenu.pnlInvoiceMenu, "invoiceMenu");
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic, "statistic"); // Fixed: statistic extends JPanel, add directly
-        pnlMain.add(product.pProduct, "product");
+        pnlMain.add(product, "product");
         pnlMain.add(staffTab.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
 
