@@ -26,7 +26,6 @@ import java.util.List;
 public class TAB_Staff extends JFrame implements ActionListener {
     JPanel pnlStaff;
 
-
     private JTextField txtSearch;
     private JTextField txtStaffId;
     private JTextField txtFullName;
@@ -47,6 +46,24 @@ public class TAB_Staff extends JFrame implements ActionListener {
     private JButton btnRefresh;
     private JButton btnExport;
     private JButton btnClear;
+
+    // Guard to ensure we only attach the table selection listener once
+    private boolean tableSelectionListenerInstalled = false;
+
+    // Pagination
+    private int currentPage = 0;
+    private int itemsPerPage = 10;
+    private JButton btnPrevPage;
+    private JButton btnNextPage;
+    private JComboBox<Integer> cbPageSize;
+    private JLabel lblPageInfo;
+    private final List<Staff> allStaff = new ArrayList<>();
+    private final List<Staff> pageCache = new ArrayList<>();
+
+    // State management
+    private enum FormMode {NONE, VIEW, ADD, EDIT}
+
+    private FormMode formMode = FormMode.NONE;
 
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -113,6 +130,9 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         // Thêm listener cho các bộ lọc
         setupSearchAndFilterListeners();
+
+        setFormEditable(false);
+        setFormMode(FormMode.NONE);
     }
 
     private void setupSearchAndFilterListeners() {
@@ -286,15 +306,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
         tblStaff.setShowGrid(true);
         tblStaff.setCellEditor(null);
         tblStaff.setGridColor(AppColors.LIGHT);
-        tblStaff.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int row = tblStaff.getSelectedRow();
-                if (row >= 0) {
-                    fillFormRow(row);
-                }
-
-            }
-        });
+        // REMOVE: inline selection listener here, use setupTableListeners() with pageCache
 
         // Header styling
         JTableHeader header = tblStaff.getTableHeader();
@@ -335,20 +347,48 @@ public class TAB_Staff extends JFrame implements ActionListener {
         JScrollPane scrollPane = new JScrollPane(tblStaff);
         scrollPane.setBorder(BorderFactory.createLineBorder(AppColors.LIGHT, 1));
 
-        // Button panel
+        // Button panel (LEFT) - keep only Add
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         buttonPanel.setBackground(AppColors.WHITE);
 
         btnAdd = createStyledButton("Thêm mới", new Color(34, 139, 34));
-        btnUpdate = createStyledButton("Cập nhật", new Color(255, 165, 0));
-        btnClear = createStyledButton("Xóa trắng", AppColors.DARK);
 
         buttonPanel.add(btnAdd);
-        buttonPanel.add(btnUpdate);
-        buttonPanel.add(btnClear);
+
+        // Pagination bar (RIGHT)
+        JPanel pagination = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        pagination.setBackground(AppColors.WHITE);
+        btnPrevPage = createStyledButton("« Trang trước", AppColors.PRIMARY);
+        btnNextPage = createStyledButton("Trang tiếp »", AppColors.PRIMARY);
+        cbPageSize = new JComboBox<>(new Integer[]{5, 10, 20, 50});
+        cbPageSize.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        styleComboBox(cbPageSize);
+        lblPageInfo = new JLabel();
+        lblPageInfo.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblPageInfo.setForeground(AppColors.DARK);
+
+        btnPrevPage.addActionListener(e -> changePage(currentPage - 1));
+        btnNextPage.addActionListener(e -> changePage(currentPage + 1));
+        cbPageSize.addActionListener(e -> {
+            Integer selected = (Integer) cbPageSize.getSelectedItem();
+            if (selected != null) itemsPerPage = selected;
+            currentPage = 0;
+            applyCurrentFilterAndReload();
+        });
+
+        pagination.add(btnPrevPage);
+        pagination.add(btnNextPage);
+        pagination.add(new JLabel("Hiển thị:"));
+        pagination.add(cbPageSize);
+        pagination.add(lblPageInfo);
+
+        JPanel south = new JPanel(new BorderLayout());
+        south.setBackground(AppColors.WHITE);
+        south.add(buttonPanel, BorderLayout.WEST);
+        south.add(pagination, BorderLayout.EAST);
 
         panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
+        panel.add(south, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -480,7 +520,257 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
         panel.add(scrollPane, BorderLayout.CENTER);
 
+        // Right-side action buttons aligned to the right
+        JPanel actionBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        actionBar.setBackground(AppColors.WHITE);
+
+        btnUpdate = createStyledButton("Cập nhật", new Color(255, 165, 0));
+        btnUpdate.setToolTipText("Bấm 1 lần để cho phép sửa, bấm lần 2 để xác nhận cập nhật");
+
+        btnClear = createStyledButton("Hủy", AppColors.DARK);
+        btnClear.setToolTipText("Hủy thao tác hiện tại / bỏ chọn và xóa form");
+
+        actionBar.add(btnUpdate);
+        actionBar.add(btnClear);
+        panel.add(actionBar, BorderLayout.SOUTH);
+
         return panel;
+    }
+
+    private void setupTableListeners() {
+        tblStaff.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int row = tblStaff.getSelectedRow();
+                if (row >= 0 && row < pageCache.size()) {
+                    Staff selected = pageCache.get(row);
+                    fillFormStaff(selected);
+                    setFormMode(FormMode.VIEW);
+                    setFormEditable(false);
+                }
+            }
+        });
+    }
+
+    private void setFormEditable(boolean editable) {
+        if (txtFullName != null) txtFullName.setEditable(editable);
+        if (cboRole != null) cboRole.setEnabled(editable);
+        if (txtPhoneNumber != null) txtPhoneNumber.setEditable(editable);
+        if (txtEmail != null) txtEmail.setEditable(editable);
+        if (txtLicenseNumber != null) txtLicenseNumber.setEditable(editable);
+        if (spnHireDate != null) spnHireDate.setEnabled(editable);
+        if (chkIsActive != null) chkIsActive.setEnabled(editable);
+
+        Color bg = editable ? Color.WHITE : AppColors.BACKGROUND;
+        if (txtFullName != null) txtFullName.setBackground(bg);
+        if (txtPhoneNumber != null) txtPhoneNumber.setBackground(bg);
+        if (txtEmail != null) txtEmail.setBackground(bg);
+        if (txtLicenseNumber != null) txtLicenseNumber.setBackground(bg);
+    }
+
+    private void setFormMode(FormMode mode) {
+        this.formMode = mode;
+        if (btnUpdate == null || btnClear == null) return;
+
+        switch (mode) {
+            case NONE -> {
+                btnUpdate.setEnabled(false);
+                btnUpdate.setText("Cập nhật");
+                btnClear.setText("Hủy");
+            }
+            case VIEW -> {
+                btnUpdate.setEnabled(true);
+                btnUpdate.setText("Cập nhật");
+                btnClear.setText("Hủy");
+            }
+            case ADD -> {
+                btnUpdate.setEnabled(true);
+                btnUpdate.setText("Thêm mới");
+                btnClear.setText("Hủy");
+            }
+            case EDIT -> {
+                btnUpdate.setEnabled(true);
+                btnUpdate.setText("Xác nhận");
+                btnClear.setText("Hủy");
+            }
+        }
+    }
+
+    private void fillFormStaff(Staff staff) {
+        if (staff == null) return;
+        txtStaffId.setText(staff.getId() != null ? staff.getId() : "");
+        txtFullName.setText(staff.getFullName() != null ? staff.getFullName() : "");
+        txtUsername.setText(staff.getUsername() != null ? staff.getUsername() : "");
+        txtPhoneNumber.setText(staff.getPhoneNumber() != null ? staff.getPhoneNumber() : "");
+        txtEmail.setText(staff.getEmail() != null ? staff.getEmail() : "");
+        txtLicenseNumber.setText(staff.getLicenseNumber() != null ? staff.getLicenseNumber() : "");
+
+        // role
+        if (staff.getRole() != null) {
+            cboRole.setSelectedItem(new RoleItem(staff.getRole(), getRoleDisplayName(staff.getRole())));
+        }
+
+        // hire date
+        if (staff.getHireDate() != null) {
+            Date date = Date.from(staff.getHireDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+            spnHireDate.setValue(date);
+        }
+
+        chkIsActive.setSelected(staff.isActive());
+    }
+
+    private void clearFormAndSelection() {
+        txtStaffId.setText("");
+        txtFullName.setText("");
+        txtUsername.setText("");
+        txtPhoneNumber.setText("");
+        txtEmail.setText("");
+        txtLicenseNumber.setText("");
+        chkIsActive.setSelected(true);
+        if (tblStaff != null) tblStaff.clearSelection();
+        setFormEditable(false);
+        setFormMode(FormMode.NONE);
+    }
+
+    private void applyCurrentFilterAndReload() {
+        performSearch();
+    }
+
+    private void changePage(int newPage) {
+        int totalPages = (int) Math.ceil((double) allStaff.size() / itemsPerPage);
+        if (totalPages <= 0) totalPages = 1;
+        if (newPage < 0 || newPage >= totalPages) return;
+        currentPage = newPage;
+        renderCurrentPage();
+    }
+
+    private void updatePaginationInfo() {
+        int totalItems = allStaff.size();
+        int totalPages = (int) Math.ceil((double) totalItems / itemsPerPage);
+        if (totalPages <= 0) totalPages = 1;
+        if (lblPageInfo != null) {
+            lblPageInfo.setText("Trang " + (currentPage + 1) + " / " + totalPages + " (Tổng: " + totalItems + " NV)");
+        }
+        if (btnPrevPage != null) btnPrevPage.setEnabled(currentPage > 0);
+        if (btnNextPage != null) btnNextPage.setEnabled(currentPage < totalPages - 1);
+    }
+
+    private void renderCurrentPage() {
+        tableModel.setRowCount(0);
+        pageCache.clear();
+
+        int start = currentPage * itemsPerPage;
+        int end = Math.min(allStaff.size(), start + itemsPerPage);
+        for (int i = start; i < end; i++) {
+            Staff staff = allStaff.get(i);
+            pageCache.add(staff);
+            tableModel.addRow(new Object[]{
+                    staff.getId(),
+                    staff.getFullName(),
+                    getRoleDisplayName(staff.getRole()),
+                    staff.getPhoneNumber() != null ? staff.getPhoneNumber() : "",
+                    staff.getEmail() != null ? staff.getEmail() : "",
+                    staff.getHireDate() != null ? staff.getHireDate().format(dtf) : "",
+                    staff.isActive() ? "Hoạt động" : "Ngưng hoạt động"
+            });
+        }
+        updatePaginationInfo();
+    }
+
+    private void loadStaffTable() {
+        try {
+            staffCache = BUSStaff.getAllStaffs();
+            if (staffCache == null) staffCache = new ArrayList<>();
+            allStaff.clear();
+            allStaff.addAll(staffCache);
+            currentPage = 0;
+            renderCurrentPage();
+
+            // Wire selection listener once
+            if (!tableSelectionListenerInstalled) {
+                setupTableListeners();
+                tableSelectionListenerInstalled = true;
+            }
+
+            // reset mode
+            setFormEditable(false);
+            setFormMode(FormMode.NONE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Lỗi khi tải danh sách nhân viên: " + ex.getMessage(),
+                    "Lỗi",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void populateTable(List<Staff> staffList) {
+        allStaff.clear();
+        if (staffList != null) allStaff.addAll(staffList);
+        currentPage = 0;
+        renderCurrentPage();
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        Object o = e.getSource();
+        if (o == btnAdd) {
+            clearFormAndSelection();
+            setFormEditable(true);
+            setFormMode(FormMode.ADD);
+        } else if (o == btnUpdate) {
+            handlePrimaryAction();
+        } else if (o == btnClear) {
+            handleCancelAction();
+        } else if (o == btnRefresh) {
+            refreshData();
+            clearFormAndSelection();
+        } else if (o == btnExport) {
+            exportToExcel();
+        }
+    }
+
+    private void handlePrimaryAction() {
+        if (formMode == FormMode.ADD) {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Xác nhận thêm nhân viên mới?",
+                    "Xác nhận",
+                    JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                getStaffInfoFromGUI();
+                loadStaffTable();
+                clearFormAndSelection();
+            }
+            return;
+        }
+
+        if (formMode == FormMode.VIEW) {
+            setFormEditable(true);
+            setFormMode(FormMode.EDIT);
+            return;
+        }
+
+        if (formMode == FormMode.EDIT) {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Xác nhận cập nhật nhân viên này?",
+                    "Xác nhận",
+                    JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                updateStaffInfoFromGUI();
+                loadStaffTable();
+                setFormEditable(false);
+                setFormMode(FormMode.VIEW);
+            }
+        }
+    }
+
+    private void handleCancelAction() {
+        int row = tblStaff != null ? tblStaff.getSelectedRow() : -1;
+        if (row >= 0 && row < pageCache.size()) {
+            fillFormStaff(pageCache.get(row));
+            setFormEditable(false);
+            setFormMode(FormMode.VIEW);
+        } else {
+            clearFormAndSelection();
+        }
     }
 
     /**
@@ -533,23 +823,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
                 BorderFactory.createLineBorder(AppColors.LIGHT, 1),
                 new EmptyBorder(2, 5, 2, 5)
         ));
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        Object o = e.getSource();
-        if (o == btnAdd) {
-            getStaffInfoFromGUI();
-        } else if (o == btnUpdate) {
-            updateStaffInfoFromGUI();
-        } else if (o == btnClear) {
-            clearInput();
-        } else if (o == btnRefresh) {
-            refreshData();
-        } else if (o == btnExport) {
-            exportToExcel();
-        }
-
     }
 
     private void exportToExcel() {
@@ -715,30 +988,6 @@ public class TAB_Staff extends JFrame implements ActionListener {
 
     }
 
-    private void loadStaffTable() {
-        try {
-            staffCache = BUSStaff.getAllStaffs();
-            populateTable(staffCache);
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Không thể tải dữ liệu" + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void populateTable(List<Staff> ls) {
-        tableModel.setRowCount(0);
-        if (ls == null) return;
-        for (Staff s : ls) {
-            tableModel.addRow(new Object[]{
-                    s.getId(),
-                    s.getFullName(),
-                    getRoleDisplayName(s.getRole()),
-                    s.getPhoneNumber(),
-                    s.getEmail(),
-                    s.getHireDate().format(dtf),
-                    s.isActive() ? "Hoạt động" : "Đã nghỉ việc"
-            });
-        }
-    }
 
     private void fillFormRow(int row) {
         if (row < 0 || staffCache == null || staffCache.isEmpty()) return;

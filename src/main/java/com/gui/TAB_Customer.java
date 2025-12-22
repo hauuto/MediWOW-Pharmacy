@@ -36,6 +36,20 @@ public class TAB_Customer extends JFrame implements ActionListener {
     private JButton btnClear;
     private JLabel lblRecordCount;
 
+    // Pagination
+    private int currentPage = 0;
+    private int itemsPerPage = 10;
+    private JButton btnPrevPage;
+    private JButton btnNextPage;
+    private JComboBox<Integer> cbPageSize;
+    private JLabel lblPageInfo;
+    private final List<Customer> allCustomers = new ArrayList<>();
+    private final List<Customer> pageCache = new ArrayList<>();
+
+    // State management (similar to TAB_Product)
+    private enum FormMode { NONE, VIEW, ADD, EDIT }
+    private FormMode formMode = FormMode.NONE;
+
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private static final int LEFT_PANEL_MINIMAL_WIDTH = 800;
@@ -57,17 +71,36 @@ public class TAB_Customer extends JFrame implements ActionListener {
         loadCustomerTable();
         setupSearchListener();
         setupTableListeners();
+
+        setFormEditable(false);
+        setFormMode(FormMode.NONE);
     }
 
     private void setupTableListeners() {
-        // Double click to select row
+        // Single click select row -> view details (non-edit)
+        tblCustomer.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int row = tblCustomer.getSelectedRow();
+                if (row >= 0 && row < pageCache.size()) {
+                    Customer selected = pageCache.get(row);
+                    fillFormCustomer(selected);
+                    setFormMode(FormMode.VIEW);
+                    setFormEditable(false);
+                }
+            }
+        });
+
+        // Keep double click behavior but no extra logic
         tblCustomer.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     int row = tblCustomer.getSelectedRow();
-                    if (row >= 0) {
-                        fillFormRow(row);
+                    if (row >= 0 && row < pageCache.size()) {
+                        Customer selected = pageCache.get(row);
+                        fillFormCustomer(selected);
+                        setFormMode(FormMode.VIEW);
+                        setFormEditable(false);
                     }
                 }
             }
@@ -206,14 +239,6 @@ public class TAB_Customer extends JFrame implements ActionListener {
         tblCustomer.setShowGrid(true);
         tblCustomer.setCellEditor(null);
         tblCustomer.setGridColor(AppColors.LIGHT);
-        tblCustomer.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int row = tblCustomer.getSelectedRow();
-                if (row >= 0) {
-                    fillFormRow(row);
-                }
-            }
-        });
 
         // Header styling
         JTableHeader header = tblCustomer.getTableHeader();
@@ -240,25 +265,48 @@ public class TAB_Customer extends JFrame implements ActionListener {
         JScrollPane scrollPane = new JScrollPane(tblCustomer);
         scrollPane.setBorder(BorderFactory.createLineBorder(AppColors.LIGHT, 1));
 
-        // Button panel
+        // Button panel (LEFT) - keep only Add like TAB_Product top add
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         buttonPanel.setBackground(AppColors.WHITE);
 
         btnAdd = createStyledButton("Thêm mới", AppColors.SUCCESS);
         btnAdd.setToolTipText("Thêm khách hàng mới vào hệ thống");
 
-        btnUpdate = createStyledButton("Cập nhật", AppColors.WARNING);
-        btnUpdate.setToolTipText("Cập nhật thông tin khách hàng đã chọn");
-
-        btnClear = createStyledButton("Xóa trắng", AppColors.DARK);
-        btnClear.setToolTipText("Xóa các trường nhập liệu");
-
         buttonPanel.add(btnAdd);
-        buttonPanel.add(btnUpdate);
-        buttonPanel.add(btnClear);
+
+        // Pagination bar (RIGHT)
+        JPanel pagination = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        pagination.setBackground(AppColors.WHITE);
+        btnPrevPage = createStyledButton("« Trang trước", AppColors.PRIMARY);
+        btnNextPage = createStyledButton("Trang tiếp »", AppColors.PRIMARY);
+        cbPageSize = new JComboBox<>(new Integer[]{5, 10, 20, 50});
+        cbPageSize.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblPageInfo = new JLabel();
+        lblPageInfo.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblPageInfo.setForeground(AppColors.DARK);
+
+        btnPrevPage.addActionListener(e -> changePage(currentPage - 1));
+        btnNextPage.addActionListener(e -> changePage(currentPage + 1));
+        cbPageSize.addActionListener(e -> {
+            Integer selected = (Integer) cbPageSize.getSelectedItem();
+            if (selected != null) itemsPerPage = selected;
+            currentPage = 0;
+            applyCurrentFilterAndReload();
+        });
+
+        pagination.add(btnPrevPage);
+        pagination.add(btnNextPage);
+        pagination.add(new JLabel("Hiển thị:"));
+        pagination.add(cbPageSize);
+        pagination.add(lblPageInfo);
+
+        JPanel south = new JPanel(new BorderLayout());
+        south.setBackground(AppColors.WHITE);
+        south.add(buttonPanel, BorderLayout.WEST);
+        south.add(pagination, BorderLayout.EAST);
 
         panel.add(scrollPane, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
+        panel.add(south, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -356,6 +404,20 @@ public class TAB_Customer extends JFrame implements ActionListener {
 
         panel.add(formContent, BorderLayout.CENTER);
 
+        // Right-side action buttons (Update + Cancel/Clear) aligned to the right
+        JPanel actionBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        actionBar.setBackground(AppColors.WHITE);
+
+        btnUpdate = createStyledButton("Cập nhật", AppColors.WARNING);
+        btnUpdate.setToolTipText("Bấm 1 lần để cho phép sửa, bấm lần 2 để xác nhận cập nhật");
+
+        btnClear = createStyledButton("Hủy", AppColors.DARK);
+        btnClear.setToolTipText("Hủy thao tác hiện tại / bỏ chọn và xóa form");
+
+        actionBar.add(btnUpdate);
+        actionBar.add(btnClear);
+        panel.add(actionBar, BorderLayout.SOUTH);
+
         return panel;
     }
 
@@ -402,13 +464,119 @@ public class TAB_Customer extends JFrame implements ActionListener {
         return button;
     }
 
+    private void setFormEditable(boolean editable) {
+        if (txtCustomerName != null) txtCustomerName.setEditable(editable);
+        if (txtPhoneNumber != null) txtPhoneNumber.setEditable(editable);
+        if (txtAddress != null) txtAddress.setEditable(editable);
+
+        // Visual cue
+        Color bg = editable ? Color.WHITE : AppColors.BACKGROUND;
+        if (txtCustomerName != null) txtCustomerName.setBackground(bg);
+        if (txtPhoneNumber != null) txtPhoneNumber.setBackground(bg);
+        if (txtAddress != null) txtAddress.setBackground(bg);
+    }
+
+    private void setFormMode(FormMode mode) {
+        this.formMode = mode;
+        if (btnUpdate == null || btnClear == null) return;
+
+        switch (mode) {
+            case NONE -> {
+                btnUpdate.setEnabled(false);
+                btnUpdate.setText("Cập nhật");
+                btnClear.setText("Hủy");
+            }
+            case VIEW -> {
+                btnUpdate.setEnabled(true);
+                btnUpdate.setText("Cập nhật");
+                btnClear.setText("Hủy");
+            }
+            case ADD -> {
+                btnUpdate.setEnabled(true);
+                btnUpdate.setText("Thêm mới");
+                btnClear.setText("Hủy");
+            }
+            case EDIT -> {
+                btnUpdate.setEnabled(true);
+                btnUpdate.setText("Xác nhận");
+                btnClear.setText("Hủy");
+            }
+        }
+    }
+
+    private void fillFormCustomer(Customer customer) {
+        if (customer == null) return;
+        txtCustomerId.setText(customer.getId() != null ? customer.getId() : "");
+        txtCustomerName.setText(customer.getName() != null ? customer.getName() : "");
+        txtPhoneNumber.setText(customer.getPhoneNumber() != null ? customer.getPhoneNumber() : "");
+        txtAddress.setText(customer.getAddress() != null ? customer.getAddress() : "");
+    }
+
+    private void clearFormAndSelection() {
+        txtCustomerId.setText("");
+        txtCustomerName.setText("");
+        txtPhoneNumber.setText("");
+        txtAddress.setText("");
+        if (tblCustomer != null) tblCustomer.clearSelection();
+        setFormEditable(false);
+        setFormMode(FormMode.NONE);
+    }
+
+    private void applyCurrentFilterAndReload() {
+        // Currently only search keyword filter exists
+        performSearch();
+    }
+
+    private void changePage(int newPage) {
+        int totalPages = (int) Math.ceil((double) allCustomers.size() / itemsPerPage);
+        if (totalPages <= 0) totalPages = 1;
+        if (newPage < 0 || newPage >= totalPages) return;
+        currentPage = newPage;
+        renderCurrentPage();
+    }
+
+    private void updatePaginationInfo() {
+        int totalItems = allCustomers.size();
+        int totalPages = (int) Math.ceil((double) totalItems / itemsPerPage);
+        if (totalPages <= 0) totalPages = 1;
+        if (lblPageInfo != null) {
+            lblPageInfo.setText("Trang " + (currentPage + 1) + " / " + totalPages + " (Tổng: " + totalItems + " KH)");
+        }
+        if (btnPrevPage != null) btnPrevPage.setEnabled(currentPage > 0);
+        if (btnNextPage != null) btnNextPage.setEnabled(currentPage < totalPages - 1);
+        updateRecordCount(totalItems);
+    }
+
+    private void renderCurrentPage() {
+        tableModel.setRowCount(0);
+        pageCache.clear();
+
+        int start = currentPage * itemsPerPage;
+        int end = Math.min(allCustomers.size(), start + itemsPerPage);
+        for (int i = start; i < end; i++) {
+            Customer customer = allCustomers.get(i);
+            pageCache.add(customer);
+            Object[] row = {
+                    customer.getId(),
+                    customer.getName(),
+                    customer.getPhoneNumber() != null ? customer.getPhoneNumber() : "",
+                    customer.getAddress() != null ? customer.getAddress() : "",
+                    customer.getCreationDate() != null ? customer.getCreationDate().format(dtf) : ""
+            };
+            tableModel.addRow(row);
+        }
+        updatePaginationInfo();
+    }
+
     private void loadCustomerTable() {
         try {
             List<Customer> customers = busCustomer.getAllCustomers();
-            if (customers != null) {
-                customerCache = customers;
-                populateTable(customers);
-            }
+            customerCache = customers != null ? customers : new ArrayList<>();
+            // base dataset
+            allCustomers.clear();
+            allCustomers.addAll(customerCache);
+            currentPage = 0;
+            renderCurrentPage();
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(this,
@@ -419,22 +587,11 @@ public class TAB_Customer extends JFrame implements ActionListener {
     }
 
     private void populateTable(List<Customer> customers) {
-        tableModel.setRowCount(0);
-        if (customers != null) {
-            for (Customer customer : customers) {
-                Object[] row = {
-                        customer.getId(),
-                        customer.getName(),
-                        customer.getPhoneNumber() != null ? customer.getPhoneNumber() : "",
-                        customer.getAddress() != null ? customer.getAddress() : "",
-                        customer.getCreationDate() != null ? customer.getCreationDate().format(dtf) : ""
-                };
-                tableModel.addRow(row);
-            }
-            updateRecordCount(customers.size());
-        } else {
-            updateRecordCount(0);
-        }
+        // This method now drives pagination instead of dumping full list
+        allCustomers.clear();
+        if (customers != null) allCustomers.addAll(customers);
+        currentPage = 0;
+        renderCurrentPage();
     }
 
     private void updateRecordCount(int count) {
@@ -444,35 +601,81 @@ public class TAB_Customer extends JFrame implements ActionListener {
     }
 
     private void fillFormRow(int row) {
-        txtCustomerId.setText(tableModel.getValueAt(row, 0).toString());
-        txtCustomerName.setText(tableModel.getValueAt(row, 1).toString());
-        txtPhoneNumber.setText(tableModel.getValueAt(row, 2).toString());
-        txtAddress.setText(tableModel.getValueAt(row, 3).toString());
+        // Legacy: keep for compatibility, but now route through pageCache
+        if (row < 0 || row >= pageCache.size()) return;
+        fillFormCustomer(pageCache.get(row));
     }
 
     private void clearForm() {
-        txtCustomerId.setText("");
-        txtCustomerName.setText("");
-        txtPhoneNumber.setText("");
-        txtAddress.setText("");
-        tblCustomer.clearSelection();
+        clearFormAndSelection();
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == btnAdd) {
-            handleAdd();
+            // Enter add mode
+            clearFormAndSelection();
+            setFormEditable(true);
+            setFormMode(FormMode.ADD);
         } else if (e.getSource() == btnUpdate) {
-            handleUpdate();
+            handlePrimaryAction();
         } else if (e.getSource() == btnClear) {
-            clearForm();
+            handleCancelAction();
         } else if (e.getSource() == btnRefresh) {
             loadCustomerTable();
-            clearForm();
+            clearFormAndSelection();
             txtSearch.setText("");
             performSearch();
         } else if (e.getSource() == btnExport) {
             handleExport();
+        }
+    }
+
+    private void handlePrimaryAction() {
+        if (formMode == FormMode.ADD) {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Xác nhận thêm khách hàng mới?",
+                    "Xác nhận",
+                    JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                handleAdd();
+                // after add, reload and return to view/none
+                loadCustomerTable();
+                clearFormAndSelection();
+            }
+            return;
+        }
+
+        if (formMode == FormMode.VIEW) {
+            // first click update => enable edit
+            setFormEditable(true);
+            setFormMode(FormMode.EDIT);
+            return;
+        }
+
+        if (formMode == FormMode.EDIT) {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Xác nhận cập nhật khách hàng này?",
+                    "Xác nhận",
+                    JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                handleUpdate();
+                loadCustomerTable();
+                setFormEditable(false);
+                setFormMode(FormMode.VIEW);
+            }
+        }
+    }
+
+    private void handleCancelAction() {
+        // Cancel should return to view (if a row is selected) or none
+        int selectedRow = tblCustomer != null ? tblCustomer.getSelectedRow() : -1;
+        if (selectedRow >= 0 && selectedRow < pageCache.size()) {
+            fillFormCustomer(pageCache.get(selectedRow));
+            setFormEditable(false);
+            setFormMode(FormMode.VIEW);
+        } else {
+            clearFormAndSelection();
         }
     }
 
