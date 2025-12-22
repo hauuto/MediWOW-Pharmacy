@@ -14,12 +14,13 @@ INSERT INTO dbo.Staff (username, password, fullName, licenseNumber, phoneNumber,
 VALUES
     (N'admin', N'$2a$12$vVXxXrKyAGhRge.lO0ihZ.0Nl7PghqZLqSpRwvpoDnC8qe3uZC1TK', N'Administrator', NULL, NULL, NULL, N'2024-01-01', 1, N'MANAGER', 0, 0),
     (N'nhanvien250001', N'$2a$12$jdwZLPjlfqJxBT5NBI4hBuyoAeDUHGe7qGlAx13GoDjJBFN18iO/i', N'Tô Thanh Hậu', N'05495/CCHN-D-SYT-HNO', N'0868182546', N'thanhhau670@gmail.com', N'2024-06-01', 1, N'PHARMACIST', 0, 0),
-    (N'nhanvien250002', N'$2a$12$Rvqmwr26PRsqdRPoQpC4fOH6rR8ygi.KAIx4Lj6gFSSpJsU2TyPye', N'Bùi Quốc Trụ', N'02495/CCHN-D-SYT-HNO', N'0912345678', N'nguyenvanan@gmail.com', N'2024-06-15', 1, N'PHARMACIST', 0, 0),
-    (N'quanly250001', N'$2a$12$Rvqmwr26PRsqdRPoQpC4fOH6rR8ygi.KAIx4Lj6gFSSpJsU2TyPye', N'Trần Thị Mai', N'08765/CCHN-D-SYT-HNO', N'0987654321', N'tranthimai@gmail.com', N'2024-05-01', 1, N'MANAGER', 0, 0),
+    (N'nhanvien250002', N'$2a$12$jdwZLPjlfqJxBT5NBI4hBuyoAeDUHGe7qGlAx13GoDjJBFN18iO/i', N'Bùi Quốc Trụ', N'02495/CCHN-D-SYT-HNO', N'0912345678', N'nguyenvanan@gmail.com', N'2024-06-15', 1, N'PHARMACIST', 0, 0),
+    (N'quanly250001', N'$2a$12$jdwZLPjlfqJxBT5NBI4hBuyoAeDUHGe7qGlAx13GoDjJBFN18iO/i', N'Trần Thị Mai', N'08765/CCHN-D-SYT-HNO', N'0987654321', N'tranthimai@gmail.com', N'2024-05-01', 1, N'MANAGER', 0, 0),
     -- New staff for 2025
-    (N'nhanvien250003', N'$2a$12$Rvqmwr26PRsqdRPoQpC4fOH6rR8ygi.KAIx4Lj6gFSSpJsU2TyPye', N'Nguyễn Thanh Khôi', N'03456/CCHN-D-SYT-HNO', N'0923456789', N'lethihoa@gmail.com', N'2025-01-15', 1, N'PHARMACIST', 0, 0),
+    (N'nhanvien250003', N'$2a$12$jdwZLPjlfqJxBT5NBI4hBuyoAeDUHGe7qGlAx13GoDjJBFN18iO/i', N'Nguyễn Thanh Khôi', N'03456/CCHN-D-SYT-HNO', N'0923456789', N'lethihoa@gmail.com', N'2025-01-15', 1, N'PHARMACIST', 0, 0),
     (N'nhanvien250004', N'$2a$12$Rvqmwr26PRsqdRPoQpC4fOH6rR8ygi.KAIx4Lj6gFSSpJsU2TyPye', N'Phạm Văn Minh', N'04567/CCHN-D-SYT-HNO', N'0934567890', N'phamvanminh@gmail.com', N'2025-03-01', 1, N'PHARMACIST', 0, 0),
     (N'quanly250002', N'$2a$12$Rvqmwr26PRsqdRPoQpC4fOH6rR8ygi.KAIx4Lj6gFSSpJsU2TyPye', N'Hoàng Thị Lan', N'09876/CCHN-D-SYT-HNO', N'0945678901', N'hoangthilan@gmail.com', N'2025-02-01', 1, N'MANAGER', 0, 0);
+
 
 -- ========================================
 -- 2. CUSTOMERS DATA (100 customers)
@@ -129,6 +130,7 @@ VALUES
     (N'CUS2025-0068', N'Hiền Thị UUUU', N'0998901237', N'789 Quốc Lộ 22, Q.12, TP.HCM', N'2025-12-10'),
     (N'CUS2025-0069', N'Hùng Văn VVVV', N'0999012348', N'890 Tô Ký, Q.12, TP.HCM', N'2025-12-15'),
     (N'CUS2025-0070', N'Thủy Thị WWWW', N'0991123456', N'901 Thạnh Xuân, Q.12, TP.HCM', N'2025-12-20');
+GO -- Ngắt batch
 
 -- ========================================
 -- 3. PRODUCTS DATA (30 common medicines)
@@ -170,12 +172,14 @@ VALUES
     (N'8936079260286', N'ETC', N'LIQUID_DOSAGE', N'Insulin Glargine', N'Insulin', N'Sanofi', N'Insulin Glargine', 5.00, N'100IU/ml', N'Điều trị đái tháo đường', N'Lọ', N'2024-06-01'),
     (N'8936079260293', N'ETC', N'SOLID', N'Levothyroxine 100mcg', N'Levo 100', N'Pymepharco', N'Levothyroxine', 5.00, N'100mcg', N'Điều trị suy giáp', N'Viên', N'2024-06-01'),
     (N'8936079260309', N'ETC', N'SOLID', N'Prednisone 5mg', N'Pred 5', N'Traphaco', N'Prednisone', 5.00, N'5mg', N'Corticosteroid', N'Viên', N'2024-06-01');
+GO -- Ngắt batch
 
 -- ========================================
 -- 4. MEASUREMENT NAMES
 -- ========================================
 INSERT INTO dbo.MeasurementName (name) VALUES
                                            (N'Viên'), (N'Vỉ'), (N'Hộp'), (N'Chai'), (N'Lọ'), (N'Tuýp'), (N'Gói'), (N'Ống');
+GO -- Ngắt batch
 
 -- ========================================
 -- 5. UNIT OF MEASURE (Complete pricing)
@@ -185,85 +189,86 @@ SELECT p.id, m.id, price, rate
 FROM dbo.Product p, dbo.MeasurementName m,
      (VALUES
           (N'Vitamin C 1000mg', N'Viên', 3000, 1),
-          (N'Vitamin C 1000mg', N'Vỉ', 28000, 10),
-          (N'Vitamin C 1000mg', N'Hộp', 260000, 100),
+          (N'Vitamin C 1000mg', N'Vỉ', 28000, 0.1),
+          (N'Vitamin C 1000mg', N'Hộp', 260000, 0.01),
           (N'Calcium + Vitamin D3', N'Viên', 2500, 1),
-          (N'Calcium + Vitamin D3', N'Vỉ', 24000, 10),
-          (N'Calcium + Vitamin D3', N'Hộp', 230000, 100),
+          (N'Calcium + Vitamin D3', N'Vỉ', 24000, 0.1),
+          (N'Calcium + Vitamin D3', N'Hộp', 230000, 0.01),
           (N'Omega 3 Fish Oil', N'Viên', 5000, 1),
-          (N'Omega 3 Fish Oil', N'Hộp', 450000, 100),
+          (N'Omega 3 Fish Oil', N'Hộp', 450000, 0.01),
           (N'Multivitamin', N'Viên', 4000, 1),
-          (N'Multivitamin', N'Hộp', 360000, 100),
+          (N'Multivitamin', N'Hộp', 360000, 0.01),
           (N'Siro tăng sức đề kháng', N'Chai', 85000, 1),
-          (N'Siro tăng sức đề kháng', N'Hộp', 160000, 2),
+          (N'Siro tăng sức đề kháng', N'Hộp', 160000, 2), -- Lưu ý: Giá trị 2 giữ nguyên (không phải 10 hay 100)
           (N'Paracetamol 500mg', N'Viên', 500, 1),
-          (N'Paracetamol 500mg', N'Vỉ', 4500, 10),
-          (N'Paracetamol 500mg', N'Hộp', 42000, 100),
+          (N'Paracetamol 500mg', N'Vỉ', 4500, 0.1),
+          (N'Paracetamol 500mg', N'Hộp', 42000, 0.01),
           (N'Ibuprofen 400mg', N'Viên', 800, 1),
-          (N'Ibuprofen 400mg', N'Vỉ', 7500, 10),
-          (N'Ibuprofen 400mg', N'Hộp', 72000, 100),
+          (N'Ibuprofen 400mg', N'Vỉ', 7500, 0.1),
+          (N'Ibuprofen 400mg', N'Hộp', 72000, 0.01),
           (N'Cetirizine 10mg', N'Viên', 700, 1),
-          (N'Cetirizine 10mg', N'Vỉ', 6500, 10),
-          (N'Cetirizine 10mg', N'Hộp', 62000, 100),
+          (N'Cetirizine 10mg', N'Vỉ', 6500, 0.1),
+          (N'Cetirizine 10mg', N'Hộp', 62000, 0.01),
           (N'Loratadine 10mg', N'Viên', 900, 1),
-          (N'Loratadine 10mg', N'Vỉ', 8500, 10),
-          (N'Loratadine 10mg', N'Hộp', 82000, 100),
+          (N'Loratadine 10mg', N'Vỉ', 8500, 0.1),
+          (N'Loratadine 10mg', N'Hộp', 82000, 0.01),
           (N'Siro ho Prospan', N'Chai', 95000, 1),
           (N'Vitamin B Complex', N'Viên', 600, 1),
-          (N'Vitamin B Complex', N'Vỉ', 5500, 10),
-          (N'Vitamin B Complex', N'Hộp', 52000, 100),
+          (N'Vitamin B Complex', N'Vỉ', 5500, 0.1),
+          (N'Vitamin B Complex', N'Hộp', 52000, 0.01),
           (N'Dung dịch súc miệng', N'Chai', 65000, 1),
           (N'Viên ngậm ho', N'Viên', 1200, 1),
-          (N'Viên ngậm ho', N'Vỉ', 11000, 10),
+          (N'Viên ngậm ho', N'Vỉ', 11000, 0.1),
           (N'Dầu gió', N'Chai', 25000, 1),
           (N'Amoxicillin 500mg', N'Viên', 1500, 1),
-          (N'Amoxicillin 500mg', N'Vỉ', 14000, 10),
-          (N'Amoxicillin 500mg', N'Hộp', 135000, 100),
+          (N'Amoxicillin 500mg', N'Vỉ', 14000, 0.1),
+          (N'Amoxicillin 500mg', N'Hộp', 135000, 0.01),
           (N'Cefixime 200mg', N'Viên', 3500, 1),
-          (N'Cefixime 200mg', N'Vỉ', 33000, 10),
-          (N'Cefixime 200mg', N'Hộp', 320000, 100),
+          (N'Cefixime 200mg', N'Vỉ', 33000, 0.1),
+          (N'Cefixime 200mg', N'Hộp', 320000, 0.01),
           (N'Azithromycin 250mg', N'Viên', 4000, 1),
-          (N'Azithromycin 250mg', N'Vỉ', 38000, 10),
-          (N'Azithromycin 250mg', N'Hộp', 360000, 100),
+          (N'Azithromycin 250mg', N'Vỉ', 38000, 0.1),
+          (N'Azithromycin 250mg', N'Hộp', 360000, 0.01),
           (N'Metformin 500mg', N'Viên', 800, 1),
-          (N'Metformin 500mg', N'Vỉ', 7500, 10),
-          (N'Metformin 500mg', N'Hộp', 72000, 100),
+          (N'Metformin 500mg', N'Vỉ', 7500, 0.1),
+          (N'Metformin 500mg', N'Hộp', 72000, 0.01),
           (N'Amlodipine 5mg', N'Viên', 1200, 1),
-          (N'Amlodipine 5mg', N'Vỉ', 11000, 10),
-          (N'Amlodipine 5mg', N'Hộp', 105000, 100),
+          (N'Amlodipine 5mg', N'Vỉ', 11000, 0.1),
+          (N'Amlodipine 5mg', N'Hộp', 105000, 0.01),
           (N'Atorvastatin 10mg', N'Viên', 2500, 1),
-          (N'Atorvastatin 10mg', N'Vỉ', 24000, 10),
-          (N'Atorvastatin 10mg', N'Hộp', 230000, 100),
+          (N'Atorvastatin 10mg', N'Vỉ', 24000, 0.1),
+          (N'Atorvastatin 10mg', N'Hộp', 230000, 0.01),
           (N'Omeprazole 20mg', N'Viên', 1500, 1),
-          (N'Omeprazole 20mg', N'Vỉ', 14000, 10),
-          (N'Omeprazole 20mg', N'Hộp', 135000, 100),
+          (N'Omeprazole 20mg', N'Vỉ', 14000, 0.1),
+          (N'Omeprazole 20mg', N'Hộp', 135000, 0.01),
           (N'Esomeprazole 40mg', N'Viên', 3000, 1),
-          (N'Esomeprazole 40mg', N'Vỉ', 28000, 10),
-          (N'Esomeprazole 40mg', N'Hộp', 270000, 100),
+          (N'Esomeprazole 40mg', N'Vỉ', 28000, 0.1),
+          (N'Esomeprazole 40mg', N'Hộp', 270000, 0.01),
           (N'Losartan 50mg', N'Viên', 1800, 1),
-          (N'Losartan 50mg', N'Vỉ', 17000, 10),
-          (N'Losartan 50mg', N'Hộp', 165000, 100),
+          (N'Losartan 50mg', N'Vỉ', 17000, 0.1),
+          (N'Losartan 50mg', N'Hộp', 165000, 0.01),
           (N'Bisoprolol 5mg', N'Viên', 2000, 1),
-          (N'Bisoprolol 5mg', N'Vỉ', 19000, 10),
-          (N'Bisoprolol 5mg', N'Hộp', 185000, 100),
+          (N'Bisoprolol 5mg', N'Vỉ', 19000, 0.1),
+          (N'Bisoprolol 5mg', N'Hộp', 185000, 0.01),
           (N'Clopidogrel 75mg', N'Viên', 3500, 1),
-          (N'Clopidogrel 75mg', N'Vỉ', 33000, 10),
-          (N'Clopidogrel 75mg', N'Hộp', 320000, 100),
+          (N'Clopidogrel 75mg', N'Vỉ', 33000, 0.1),
+          (N'Clopidogrel 75mg', N'Hộp', 320000, 0.01),
           (N'Glimepiride 2mg', N'Viên', 1600, 1),
-          (N'Glimepiride 2mg', N'Vỉ', 15000, 10),
-          (N'Glimepiride 2mg', N'Hộp', 145000, 100),
+          (N'Glimepiride 2mg', N'Vỉ', 15000, 0.1),
+          (N'Glimepiride 2mg', N'Hộp', 145000, 0.01),
           (N'Gliclazide 80mg', N'Viên', 1400, 1),
-          (N'Gliclazide 80mg', N'Vỉ', 13000, 10),
-          (N'Gliclazide 80mg', N'Hộp', 125000, 100),
+          (N'Gliclazide 80mg', N'Vỉ', 13000, 0.1),
+          (N'Gliclazide 80mg', N'Hộp', 125000, 0.01),
           (N'Insulin Glargine', N'Lọ', 450000, 1),
           (N'Levothyroxine 100mcg', N'Viên', 1100, 1),
-          (N'Levothyroxine 100mcg', N'Vỉ', 10500, 10),
-          (N'Levothyroxine 100mcg', N'Hộp', 100000, 100),
+          (N'Levothyroxine 100mcg', N'Vỉ', 10500, 0.1),
+          (N'Levothyroxine 100mcg', N'Hộp', 100000, 0.01),
           (N'Prednisone 5mg', N'Viên', 900, 1),
-          (N'Prednisone 5mg', N'Vỉ', 8500, 10),
-          (N'Prednisone 5mg', N'Hộp', 82000, 100)
+          (N'Prednisone 5mg', N'Vỉ', 8500, 0.1),
+          (N'Prednisone 5mg', N'Hộp', 82000, 0.01)
      ) AS v(prod, unit, price, rate)
 WHERE p.name = v.prod AND m.name = v.unit;
+GO -- Ngắt batch
 
 -- ========================================
 -- 6. LOTS DATA (2024 + 2025 inventory)
@@ -371,10 +376,10 @@ FROM dbo.Product p,
           (N'PRE003-2025', N'Prednisone 5mg', 3400, 570, N'2025-12-31', N'AVAILABLE')
      ) AS v(batch, prod, qty, cost, expiry, status)
 WHERE p.name = v.prod;
+GO -- Ngắt batch
 
 -- ========================================
 -- 7. PROMOTIONS DATA (2024-2025)
--- (Giữ nguyên phần này vì không liên quan đến Enum logic)
 -- ========================================
 INSERT INTO dbo.Promotion (name, description, creationDate, effectiveDate, endDate, isActive)
 VALUES
@@ -395,6 +400,7 @@ VALUES
     (N'Black Friday 2025', N'Giảm 18% đơn hàng trên 1.2 triệu', N'2025-11-20', N'2025-11-25', N'2025-11-30', 0),
     (N'Giáng sinh 2025', N'Giảm 15% toàn bộ sản phẩm', N'2025-12-15', N'2025-12-20', N'2025-12-26', 1),
     (N'Chào năm mới 2026', N'Giảm 22% cho hóa đơn từ 2 triệu', N'2025-12-20', N'2025-12-28', N'2026-01-10', 1);
+GO -- Ngắt batch
 
 -- ========================================
 -- 8. PROMOTION CONDITIONS & ACTIONS (UPDATED ENUMS)
@@ -489,6 +495,7 @@ FROM dbo.Promotion p WHERE p.name = N'Chào năm mới 2026';
 INSERT INTO dbo.PromotionAction (promotion, actionOrder, type, target, value, product, unitOfMeasure)
 SELECT p.id, 1, N'PERCENT_DISCOUNT', N'ORDER_SUBTOTAL', 22, NULL, NULL
 FROM dbo.Promotion p WHERE p.name = N'Chào năm mới 2026';
+GO -- Ngắt batch
 
 -- ========================================
 -- 9. SHIFTS DATA (June 2024 - December 2025)
@@ -539,6 +546,7 @@ WHILE @ShiftDate <= @EndDate
 
         SET @ShiftDate = DATEADD(DAY, 1, @ShiftDate);
     END;
+GO -- Ngắt batch quan trọng (Fix lỗi biến @ShiftDate)
 
 -- ========================================
 -- 10. SAMPLE INVOICES WITH LINES & LOT ALLOCATIONS
@@ -546,101 +554,110 @@ WHILE @ShiftDate <= @EndDate
 -- ========================================
 
 -- Helper: Get first available staff and shift
-DECLARE @SampleStaff NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Staff WHERE role = 'PHARMACIST');
-DECLARE @SampleShift NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Shift WHERE status = 'CLOSED');
-DECLARE @SampleCustomer NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Customer);
-DECLARE @SampleProduct NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Product WHERE name = N'Paracetamol 500mg');
-DECLARE @SampleUOM INT = (SELECT TOP 1 id FROM dbo.MeasurementName WHERE name = N'Vỉ');
-DECLARE @SampleLot NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Lot WHERE product = @SampleProduct AND status = 'AVAILABLE');
+PRINT N'Generating new realistic invoices...';
 
--- Sample Invoice 1: Simple OTC purchase (June 2024)
-INSERT INTO dbo.Invoice (type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES (N'SALES', N'2024-06-10 09:30:00', @SampleStaff, @SampleCustomer, NULL, NULL, NULL, N'CASH', N'Mua thuốc hạ sốt', @SampleShift);
+DECLARE @CurrentShiftID NVARCHAR(50);
+DECLARE @ShiftDate DATE;
+DECLARE @ShiftStaff NVARCHAR(50);
+DECLARE @InvoiceCount INT;
+DECLARE @i INT;
+DECLARE @j INT;
+DECLARE @NumProducts INT;
 
-DECLARE @Invoice1 NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Invoice ORDER BY creationDate DESC);
+-- Cursor duyệt qua tất cả các ca làm việc đã đóng
+DECLARE shift_cursor CURSOR FOR
+    SELECT id, CAST(startTime AS DATE), staff
+    FROM dbo.Shift
+    WHERE status = 'CLOSED'
+    ORDER BY startTime;
 
-INSERT INTO dbo.InvoiceLine (invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES (@Invoice1, @SampleProduct, @SampleUOM, 2, 4500, N'SALE');
+OPEN shift_cursor;
+FETCH NEXT FROM shift_cursor INTO @CurrentShiftID, @ShiftDate, @ShiftStaff;
 
-DECLARE @InvoiceLine1 NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.InvoiceLine ORDER BY id DESC);
+WHILE @@FETCH_STATUS = 0
+    BEGIN
+        -- Random số lượng hóa đơn trong ca (3 - 8 hóa đơn)
+        SET @InvoiceCount = 3 + (ABS(CHECKSUM(NEWID())) % 6);
+        SET @i = 0;
 
-INSERT INTO dbo.LotAllocation (invoiceLine, lot, quantity)
-VALUES (@InvoiceLine1, @SampleLot, 20); -- 2 vỉ x 10 viên = 20 viên
+        WHILE @i < @InvoiceCount
+            BEGIN
+                DECLARE @NewInvoiceID NVARCHAR(50) = NEWID();
+                DECLARE @CusID NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Customer ORDER BY NEWID());
 
--- Sample Invoice 2: Prescription medicine (July 2024)
-DECLARE @PrescProduct NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Product WHERE name = N'Amoxicillin 500mg');
-DECLARE @PrescUOM INT = (SELECT TOP 1 id FROM dbo.MeasurementName WHERE name = N'Hộp');
-DECLARE @PrescLot NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Lot WHERE product = @PrescProduct AND status = 'AVAILABLE');
+                -- Random thời gian tạo hóa đơn trong khung giờ ca làm việc
+                DECLARE @CreationTime DATETIME = DATEADD(MINUTE, 30 + (ABS(CHECKSUM(NEWID())) % 400), CAST(@ShiftDate AS DATETIME));
 
-INSERT INTO dbo.Invoice (type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES (N'SALES', N'2024-07-15 14:20:00', @SampleStaff,
-        (SELECT TOP 1 id FROM dbo.Customer WHERE id LIKE 'CUS2024-0005'),
-        N'RX-2024-00123', NULL, NULL, N'CASH', N'Kê đơn kháng sinh', @SampleShift);
+                -- Tạo Hóa đơn (Chỉ các cột cơ bản, bỏ totalAmount/finalAmount/discountAmount)
+                INSERT INTO dbo.Invoice (id, type, creationDate, creator, customer, paymentMethod, notes, shift)
+                VALUES (@NewInvoiceID, N'SALES', @CreationTime, @ShiftStaff, @CusID, N'CASH', N'Khách lẻ', @CurrentShiftID);
 
-DECLARE @Invoice2 NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Invoice ORDER BY creationDate DESC);
+                -- Random số lượng sản phẩm trong hóa đơn (1 - 4 sản phẩm)
+                SET @NumProducts = 1 + (ABS(CHECKSUM(NEWID())) % 4);
+                SET @j = 0;
 
-INSERT INTO dbo.InvoiceLine (invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES (@Invoice2, @PrescProduct, @PrescUOM, 1, 135000, N'SALE');
+                WHILE @j < @NumProducts
+                    BEGIN
+                        DECLARE @ProdID NVARCHAR(50);
+                        DECLARE @UOMID INT;
+                        DECLARE @UnitPrice DECIMAL(18, 2);
+                        DECLARE @BaseRate FLOAT;
 
-DECLARE @InvoiceLine2 NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.InvoiceLine ORDER BY id DESC);
+                        -- Lấy ngẫu nhiên 1 sản phẩm và đơn vị tính
+                        SELECT TOP 1
+                            @ProdID = p.id,
+                            @UOMID = u.measurementId,
+                            @UnitPrice = u.price,
+                            @BaseRate = u.baseUnitConversionRate
+                        FROM dbo.Product p
+                                 JOIN dbo.UnitOfMeasure u ON p.id = u.product
+                        ORDER BY NEWID();
 
-INSERT INTO dbo.LotAllocation (invoiceLine, lot, quantity)
-VALUES (@InvoiceLine2, @PrescLot, 100); -- 1 hộp = 100 viên
+                        DECLARE @BuyQty INT = 1 + (ABS(CHECKSUM(NEWID())) % 2); -- Mua 1 hoặc 2 đơn vị
+                        DECLARE @LineID NVARCHAR(50) = NEWID();
 
--- Sample Invoice 3: Multiple products (August 2024)
-INSERT INTO dbo.Invoice (type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES (N'SALES', N'2024-08-20 11:45:00', @SampleStaff,
-        (SELECT TOP 1 id FROM dbo.Customer WHERE id LIKE 'CUS2024-0010'),
-        NULL, NULL, NULL, N'BANK_TRANSFER', N'Mua nhiều sản phẩm', @SampleShift);
+                        -- Tạo dòng chi tiết hóa đơn
+                        INSERT INTO dbo.InvoiceLine (id, invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
+                        VALUES (@LineID, @NewInvoiceID, @ProdID, @UOMID, @BuyQty, @UnitPrice, N'SALE');
 
-DECLARE @Invoice3 NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Invoice ORDER BY creationDate DESC);
+                        -- Xử lý Lot Allocation (Trừ kho lô hàng)
+                        DECLARE @LotID NVARCHAR(50);
+                        SELECT TOP 1 @LotID = batchNumber
+                        FROM dbo.Lot
+                        WHERE product = @ProdID AND status = 'AVAILABLE'
+                        ORDER BY expiryDate DESC; -- Lấy lô hạn xa nhất
 
--- Add Vitamin C
-DECLARE @VitC NVARCHAR(50) = (SELECT id FROM dbo.Product WHERE name = N'Vitamin C 1000mg');
-DECLARE @VitCUOM INT = (SELECT id FROM dbo.MeasurementName WHERE name = N'Hộp');
-DECLARE @VitCLot NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Lot WHERE product = @VitC AND status = 'AVAILABLE');
+                        IF @LotID IS NOT NULL
+                            BEGIN
+                                -- Tính số lượng quy đổi ra đơn vị cơ bản (Base Unit)
+                                DECLARE @BaseQty INT;
 
-INSERT INTO dbo.InvoiceLine (invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES (@Invoice3, @VitC, @VitCUOM, 1, 260000, N'SALE');
+                                -- Logic xử lý rate: Nếu rate < 1 (ví dụ Vỉ = 0.1) thì chia, ngược lại thì nhân
+                                -- (Hoặc tùy thuộc vào logic hệ thống của bạn, đây là logic phổ biến)
+                                IF @BaseRate < 1 AND @BaseRate > 0
+                                    SET @BaseQty = @BuyQty / @BaseRate; -- Ví dụ: 1 Vỉ (rate 0.1) -> 10 viên
+                                ELSE
+                                    SET @BaseQty = @BuyQty * @BaseRate; -- Ví dụ: 1 Hộp (rate 10 - nếu có) -> 10 viên, hoặc rate 1 -> 1
 
-DECLARE @InvoiceLine3a NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.InvoiceLine ORDER BY id DESC);
+                                -- Tạo allocation
+                                INSERT INTO dbo.LotAllocation (invoiceLine, lot, quantity)
+                                VALUES (@LineID, @LotID, @BaseQty);
+                            END
 
-INSERT INTO dbo.LotAllocation (invoiceLine, lot, quantity)
-VALUES (@InvoiceLine3a, @VitCLot, 100);
+                        SET @j = @j + 1;
+                    END
 
--- Add Omega 3
-DECLARE @Omega NVARCHAR(50) = (SELECT id FROM dbo.Product WHERE name = N'Omega 3 Fish Oil');
-DECLARE @OmegaUOM INT = (SELECT id FROM dbo.MeasurementName WHERE name = N'Hộp');
-DECLARE @OmegaLot NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Lot WHERE product = @Omega AND status = 'AVAILABLE');
+                SET @i = @i + 1;
+            END
 
-INSERT INTO dbo.InvoiceLine (invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES (@Invoice3, @Omega, @OmegaUOM, 1, 450000, N'SALE');
+        FETCH NEXT FROM shift_cursor INTO @CurrentShiftID, @ShiftDate, @ShiftStaff;
+    END
 
-DECLARE @InvoiceLine3b NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.InvoiceLine ORDER BY id DESC);
+CLOSE shift_cursor;
+DEALLOCATE shift_cursor;
 
-INSERT INTO dbo.LotAllocation (invoiceLine, lot, quantity)
-VALUES (@InvoiceLine3b, @OmegaLot, 100);
-
--- Sample Invoice 4: 2025 Sales with promotion
-INSERT INTO dbo.Invoice (type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES (N'SALES', N'2025-01-25 10:15:00', @SampleStaff,
-        (SELECT TOP 1 id FROM dbo.Customer WHERE id LIKE 'CUS2025-0005'),
-        NULL, NULL,
-        (SELECT id FROM dbo.Promotion WHERE name = N'Tết Nguyên Đán 2025'),
-        N'CASH', N'Mua Tết có khuyến mãi',
-        (SELECT TOP 1 id FROM dbo.Shift WHERE startTime >= '2025-01-25' AND status = 'CLOSED'));
-
--- Sample Return Invoice (February 2025)
-DECLARE @OriginalInvoice NVARCHAR(50) = @Invoice1;
-
-INSERT INTO dbo.Invoice (type, creationDate, creator, customer, prescriptionCode, referencedInvoice, promotion, paymentMethod, notes, shift)
-VALUES (N'RETURN', N'2025-02-10 15:30:00', @SampleStaff, @SampleCustomer, NULL, @OriginalInvoice, NULL, N'CASH', N'Trả hàng lỗi',
-        (SELECT TOP 1 id FROM dbo.Shift WHERE startTime >= '2025-02-10' AND status = 'CLOSED'));
-
-DECLARE @ReturnInvoice NVARCHAR(50) = (SELECT TOP 1 id FROM dbo.Invoice ORDER BY creationDate DESC);
-
-INSERT INTO dbo.InvoiceLine (invoice, product, unitOfMeasure, quantity, unitPrice, lineType)
-VALUES (@ReturnInvoice, @SampleProduct, @SampleUOM, 1, 4500, N'RETURN');
+PRINT N'Database updated successfully (Calculated columns removed)!';
+GO
 
 -- ========================================
 -- COMPLETION MESSAGE
@@ -666,11 +683,4 @@ UNION ALL SELECT 'Shifts', COUNT(*) FROM dbo.Shift
 UNION ALL SELECT 'Invoices', COUNT(*) FROM dbo.Invoice
 UNION ALL SELECT 'Invoice Lines', COUNT(*) FROM dbo.InvoiceLine
 UNION ALL SELECT 'Lot Allocations', COUNT(*) FROM dbo.LotAllocation;
-
-PRINT N'';
-PRINT N'========================================';
-PRINT N'NOTE: Sample invoices included for demonstration.';
-PRINT N'For comprehensive sales data generation,';
-PRINT N'run additional invoice generation scripts.';
-PRINT N'========================================';
 GO
