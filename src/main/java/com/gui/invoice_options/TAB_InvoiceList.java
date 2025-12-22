@@ -411,7 +411,7 @@ public class TAB_InvoiceList extends JPanel {
                     line.getId(),
                     line.getProduct() != null ? line.getProduct().getId() : "",
                     line.getProduct() != null ? line.getProduct().getName() : "",
-                    line.getUnitOfMeasure(),
+                    line.getUnitOfMeasure() != null ? line.getUnitOfMeasure().getName() : "",
                     qty,
                     unitPrice,
                     lineTotal,
