@@ -14,6 +14,7 @@ import java.awt.*;
 import java.text.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.List;
@@ -32,6 +33,10 @@ public class TAB_InvoiceList extends JPanel {
     private List<Invoice> invoices = new ArrayList<>();
     private DefaultTableModel mdlInvoice, mdlInvoiceLine, mdlLotAllocation;
     private JTable tblInvoice, tblInvoiceLine, tblLotAllocation;
+    // Card view components for invoice list
+    private JPanel pnlInvoiceCards;
+    private JScrollPane scrInvoiceCards;
+    private JPanel selectedCardPanel;
     private Invoice selectedInvoice;
     private InvoiceLine selectedInvoiceLine;
 
@@ -56,6 +61,9 @@ public class TAB_InvoiceList extends JPanel {
     };
 
     private JComboBox<String> cbDatePreset;
+
+    // Formatter for display of creation date/time on invoice cards
+    private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     // Constructor now requires current staff (can be null for backward compatibility)
     public TAB_InvoiceList(Staff currentStaff) {
@@ -264,28 +272,132 @@ public class TAB_InvoiceList extends JPanel {
 
     // helper to fill table from invoices list
     private void populateInvoiceTable(List<Invoice> list) {
+        // Convert the invoice list into vertical cards instead of table rows
         if (list == null) list = new ArrayList<>();
-        mdlInvoice.setRowCount(0);
+        // Ensure card panel exists
+        if (pnlInvoiceCards == null) createInvoiceTable();
+        pnlInvoiceCards.removeAll();
+        pnlInvoiceCards.setLayout(new BoxLayout(pnlInvoiceCards, BoxLayout.Y_AXIS));
+
+        DecimalFormat currencyFmt = createCurrencyFormat();
+
         for (Invoice inv : list) {
-            mdlInvoice.addRow(new Object[]{
-                inv.getId(),
-                inv.getType() != null ? inv.getType().toString() : "",
-                inv.getCreationDate() != null ? inv.getCreationDate().toString() : "",
-                inv.getCreator() != null ? inv.getCreator().getFullName() : "",
-                inv.getPaymentMethod() != null ? inv.getPaymentMethod().toString() : "",
-                inv.getPrescriptionCode() != null ? inv.getPrescriptionCode() : "",
-                inv.getPromotion() != null ? inv.getPromotion().getName() : ""
+            // Use vertical BoxLayout for predictable, compact vertical spacing
+            JPanel card = new JPanel();
+            card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+            // Fix card size: width based on LEFT_MIN minus margins, height fixed
+            int fixedWidth = Math.max(200, LEFT_MIN - 40); // ensure reasonable minimum
+            int fixedHeight = 84; // compact fixed height for each card
+            Dimension fixedSize = new Dimension(fixedWidth, fixedHeight);
+            card.setPreferredSize(fixedSize);
+            card.setMaximumSize(fixedSize);
+            card.setMinimumSize(fixedSize);
+            card.setAlignmentX(Component.LEFT_ALIGNMENT);
+             // Light border + inner padding for a card look
+             card.setBorder(BorderFactory.createCompoundBorder(
+                     BorderFactory.createLineBorder(new Color(220, 220, 220)),
+                     // reduce bottom padding from 8 -> 4 to make card bottom tighter
+                     BorderFactory.createEmptyBorder(8, 12, 4, 12)
+             ));
+             card.setBackground(AppColors.WHITE);
+             card.setOpaque(true);
+
+            // Header: ID (left, bold) + Creation date (right, small gray)
+            JPanel header = new JPanel(new BorderLayout());
+            header.setOpaque(false);
+            JLabel lblId = new JLabel(inv.getId() != null ? inv.getId() : "");
+            lblId.setFont(new Font("Arial", Font.BOLD, 14));
+            header.add(lblId, BorderLayout.WEST);
+            // Format creation date/time to a friendly format
+            String formattedDate = "";
+            try {
+                Object cd = inv.getCreationDate();
+                if (cd instanceof java.time.LocalDateTime ldt) formattedDate = ldt.format(DATE_TIME_FMT);
+                else if (cd instanceof java.util.Date d) formattedDate = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(d);
+                else formattedDate = cd != null ? cd.toString() : "";
+            } catch (Exception ignored) {}
+            JLabel lblDate = new JLabel(formattedDate);
+            lblDate.setFont(new Font("Arial", Font.PLAIN, 12));
+            lblDate.setForeground(Color.GRAY);
+            header.add(lblDate, BorderLayout.EAST);
+            // Make header occupy a fixed height slice
+            int headerH = Math.max(18, fixedHeight / 3); // allocate roughly a third
+            header.setPreferredSize(new Dimension(fixedWidth, headerH));
+            header.setMaximumSize(new Dimension(Integer.MAX_VALUE, headerH));
+            card.add(header);
+            // Small gap between header and body (reduced to 2 for tighter layout)
+            card.add(Box.createVerticalStrut(2));
+
+            // Body: Creator/Staff with small icon
+            JPanel body = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+            body.setOpaque(false);
+            JLabel lblCreator = new JLabel();
+            lblCreator.setText((inv.getCreator() != null ? inv.getCreator().getFullName() : "(Không xác định)"));
+            lblCreator.setFont(new Font("Arial", Font.PLAIN, 13));
+            lblCreator.setIconTextGap(6);
+            lblCreator.setIcon(new JLabel("\uD83D\uDC64").getIcon());
+            body.add(lblCreator);
+            body.setMaximumSize(new Dimension(Integer.MAX_VALUE, body.getPreferredSize().height));
+            card.add(body);
+            // Small gap between body and footer (reduced to match header->body)
+            card.add(Box.createVerticalStrut(2));
+
+            // Footer: Type + Total (highlight)
+            JPanel footer = new JPanel(new BorderLayout());
+            footer.setOpaque(false);
+            JLabel lblType = new JLabel(inv.getType() != null ? inv.getType().toString() : "");
+            lblType.setFont(new Font("Arial", Font.PLAIN, 13));
+            footer.add(lblType, BorderLayout.WEST);
+            String totalText = "";
+            try {
+                java.math.BigDecimal total = inv.calculateTotal();
+                if (total != null) totalText = currencyFmt.format(total);
+            } catch (Exception ignored) {}
+            JLabel lblTotal = new JLabel(totalText);
+            lblTotal.setFont(new Font("Arial", Font.BOLD, 14));
+            lblTotal.setForeground(AppColors.PRIMARY);
+            footer.add(lblTotal, BorderLayout.EAST);
+            footer.setMaximumSize(new Dimension(Integer.MAX_VALUE, footer.getPreferredSize().height));
+            card.add(footer);
+
+            // Card mouse behavior: selection and highlighting
+            card.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            card.addMouseListener(new java.awt.event.MouseAdapter() {
+                public void mouseClicked(java.awt.event.MouseEvent e) {
+                    // Deselect previous
+                    if (selectedCardPanel != null) selectedCardPanel.setBackground(AppColors.WHITE);
+                    // Select this
+                    card.setBackground(new Color(220, 240, 255));
+                    selectedCardPanel = card;
+                    selectedInvoice = inv;
+                    // load details into right panel
+                    loadInvoiceLines(selectedInvoice);
+                }
             });
-        }
-        mdlInvoiceLine.setRowCount(0);
-        mdlLotAllocation.setRowCount(0);
+
+            // Add wrapper with small spacing and lock wrapper size to card size
+            JPanel wrapper = new JPanel(new BorderLayout());
+            wrapper.setOpaque(false);
+            wrapper.setPreferredSize(new Dimension(fixedWidth + 4, fixedHeight + 4));
+            wrapper.setMaximumSize(new Dimension(fixedWidth + 4, fixedHeight + 4));
+            wrapper.add(card, BorderLayout.CENTER);
+             wrapper.add(Box.createVerticalStrut(2), BorderLayout.SOUTH);
+             pnlInvoiceCards.add(wrapper);
+         }
+
+        // Clear detail tables and selection
+        if (mdlInvoiceLine != null) mdlInvoiceLine.setRowCount(0);
+        if (mdlLotAllocation != null) mdlLotAllocation.setRowCount(0);
         selectedInvoice = null;
         selectedInvoiceLine = null;
+
+        pnlInvoiceCards.revalidate();
+        pnlInvoiceCards.repaint();
     }
 
     private void loadInvoiceLines(Invoice invoice) {
-        mdlInvoiceLine.setRowCount(0);
-        mdlLotAllocation.setRowCount(0);
+        if (mdlInvoiceLine != null) mdlInvoiceLine.setRowCount(0);
+        if (mdlLotAllocation != null) mdlLotAllocation.setRowCount(0);
         selectedInvoiceLine = null;
         if (invoice == null || invoice.getInvoiceLineList() == null) return;
         for (InvoiceLine line : invoice.getInvoiceLineList()) {
@@ -295,30 +407,30 @@ public class TAB_InvoiceList extends JPanel {
                     ? unitPrice.multiply(java.math.BigDecimal.valueOf(qty))
                     : java.math.BigDecimal.ZERO;
 
-            mdlInvoiceLine.addRow(new Object[]{
-                line.getId(),
-                line.getProduct() != null ? line.getProduct().getId() : "",
-                line.getProduct() != null ? line.getProduct().getName() : "",
-                line.getUnitOfMeasure(),
-                qty,
-                unitPrice,
-                lineTotal,
-                line.getLineType() != null ? line.getLineType().toString() : ""
+            if (mdlInvoiceLine != null) mdlInvoiceLine.addRow(new Object[]{
+                    line.getId(),
+                    line.getProduct() != null ? line.getProduct().getId() : "",
+                    line.getProduct() != null ? line.getProduct().getName() : "",
+                    line.getUnitOfMeasure(),
+                    qty,
+                    unitPrice,
+                    lineTotal,
+                    line.getLineType() != null ? line.getLineType().toString() : ""
             });
         }
     }
 
     private void loadLotAllocations(InvoiceLine invoiceLine) {
-        mdlLotAllocation.setRowCount(0);
+        if (mdlLotAllocation != null) mdlLotAllocation.setRowCount(0);
         if (invoiceLine == null || invoiceLine.getLotAllocations() == null) return;
         for (LotAllocation alloc : invoiceLine.getLotAllocations()) {
-            mdlLotAllocation.addRow(new Object[]{
-                alloc.getId(),
-                alloc.getLot() != null ? alloc.getLot().getId() : "",
-                alloc.getLot() != null ? alloc.getLot().getBatchNumber() : "",
-                alloc.getQuantity(),
-                alloc.getLot() != null && alloc.getLot().getExpiryDate() != null ? alloc.getLot().getExpiryDate().toString() : "",
-                alloc.getLot() != null && alloc.getLot().getStatus() != null ? alloc.getLot().getStatus().toString() : ""
+            if (mdlLotAllocation != null) mdlLotAllocation.addRow(new Object[]{
+                    alloc.getId(),
+                    alloc.getLot() != null ? alloc.getLot().getId() : "",
+                    alloc.getLot() != null ? alloc.getLot().getBatchNumber() : "",
+                    alloc.getQuantity(),
+                    alloc.getLot() != null && alloc.getLot().getExpiryDate() != null ? alloc.getLot().getExpiryDate().toString() : "",
+                    alloc.getLot() != null && alloc.getLot().getStatus() != null ? alloc.getLot().getStatus().toString() : ""
             });
         }
     }
@@ -458,12 +570,6 @@ public class TAB_InvoiceList extends JPanel {
         actionsPanel.setOpaque(false);
         if (btnView != null) actionsPanel.add(btnView);
         // For cashier show refresh on actions panel
-        if (btnView == null) {
-            // No manager buttons created (cashier), create refresh here
-            JButton btnRefreshSmall = new JButton("Làm mới");
-            btnRefreshSmall.addActionListener(e -> refreshForCashier());
-            actionsPanel.add(btnRefreshSmall);
-        }
 
         titleH.add(Box.createHorizontalGlue()); titleH.add(title); titleH.add(Box.createHorizontalStrut(12)); titleH.add(actionsPanel); titleH.add(Box.createHorizontalGlue());
         titleBox.add(Box.createVerticalStrut(20)); titleBox.add(titleH); titleBox.add(Box.createVerticalStrut(20));
@@ -475,7 +581,8 @@ public class TAB_InvoiceList extends JPanel {
         left.add(top, BorderLayout.NORTH);
 
         createInvoiceTable();
-        left.add(new JScrollPane(tblInvoice), BorderLayout.CENTER);
+        // Add the card scroll pane (created in createInvoiceTable) instead of the old table
+        left.add(scrInvoiceCards != null ? scrInvoiceCards : new JScrollPane(), BorderLayout.CENTER);
         return left;
     }
 
@@ -524,20 +631,12 @@ public class TAB_InvoiceList extends JPanel {
     }
 
     private void createInvoiceTable() {
-        mdlInvoice = new DefaultTableModel(new String[]{"Mã hóa đơn", "Loại", "Ngày tạo", "Người tạo", "Thanh toán", "Mã đơn thuốc", "Khuyến mãi"}, 0) {
-            public boolean isCellEditable(int r, int c) { return false; }
-        };
-        tblInvoice = new JTable(mdlInvoice);
-        styleTable(tblInvoice);
-        tblInvoice.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && tblInvoice.getSelectedRow() >= 0) {
-                int row = tblInvoice.getSelectedRow();
-                if (row >= 0 && row < invoices.size()) {
-                    selectedInvoice = invoices.get(row);
-                    loadInvoiceLines(selectedInvoice);
-                }
-            }
-        });
+        // Create a vertical panel to hold invoice cards instead of a table
+        pnlInvoiceCards = new JPanel();
+        pnlInvoiceCards.setBackground(AppColors.WHITE);
+        pnlInvoiceCards.setLayout(new BoxLayout(pnlInvoiceCards, BoxLayout.Y_AXIS));
+        scrInvoiceCards = new JScrollPane(pnlInvoiceCards);
+        scrInvoiceCards.getVerticalScrollBar().setUnitIncrement(16);
     }
 
     private void createInvoiceLineTable() {

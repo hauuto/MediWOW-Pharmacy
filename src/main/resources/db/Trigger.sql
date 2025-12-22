@@ -1,6 +1,8 @@
 -- Trigger to auto-generate Staff ID based on role --
 -- Author: To Thanh Hau--
 -- SEQUENCE to prevent ID conflicts among different roles, using when there are many inserts staff on one time --
+USE MediWOW
+
 CREATE SEQUENCE dbo.ManagerSeg AS INT START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE dbo.PharmacistSeg AS INT START WITH 1 INCREMENT BY 1;
 GO
