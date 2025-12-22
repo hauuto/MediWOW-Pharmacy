@@ -27,6 +27,73 @@ public class DAO_Customer implements ICustomer {
         try {
             session = sessionFactory.openSession();
             transaction = session.beginTransaction();
+
+            // If id is not provided, generate one using DB sequence, but keep it in sync with existing data
+            if (customer.getId() == null || customer.getId().trim().isEmpty()) {
+                java.time.Year currentYear = java.time.Year.now();
+                String yearStr = currentYear.toString();
+
+                // Find max existing numeric suffix for this year (e.g., from 'CUS2025-0005' get 5)
+                String pattern = "CUS" + yearStr + "-%";
+                String maxIdSql = "SELECT MAX(id) FROM Customer WHERE id LIKE :pattern";
+                String maxId = session.createNativeQuery(maxIdSql, String.class)
+                        .setParameter("pattern", pattern)
+                        .uniqueResult();
+                int maxExisting = 0;
+                if (maxId != null && maxId.contains("-")) {
+                    String suffix = maxId.substring(maxId.lastIndexOf('-') + 1);
+                    try {
+                        maxExisting = Integer.parseInt(suffix);
+                    } catch (NumberFormatException nfe) {
+                        maxExisting = 0;
+                    }
+                }
+
+                Long seqVal = null;
+                boolean sequenceAvailable = true;
+                try {
+                    Object seqObj = session.createNativeQuery("SELECT NEXT VALUE FOR dbo.CustomerSeg").uniqueResult();
+                    if (seqObj instanceof Number) {
+                        seqVal = ((Number) seqObj).longValue();
+                    } else if (seqObj != null) {
+                        seqVal = Long.parseLong(seqObj.toString());
+                    }
+                } catch (Exception ex) {
+                    // sequence not available or permission issue
+                    sequenceAvailable = false;
+                    seqVal = null;
+                }
+
+                if (sequenceAvailable && seqVal != null) {
+                    if (seqVal <= maxExisting) {
+                        // advance sequence to maxExisting + 1
+                        long restartWith = (long) maxExisting + 1L;
+                        try {
+                            session.createNativeQuery("ALTER SEQUENCE dbo.CustomerSeg RESTART WITH " + restartWith).executeUpdate();
+                            // fetch next value after restart
+                            Object seqObj2 = session.createNativeQuery("SELECT NEXT VALUE FOR dbo.CustomerSeg").uniqueResult();
+                            if (seqObj2 instanceof Number) {
+                                seqVal = ((Number) seqObj2).longValue();
+                            } else if (seqObj2 != null) {
+                                seqVal = Long.parseLong(seqObj2.toString());
+                            }
+                        } catch (Exception ex) {
+                            // If altering sequence fails, fallback to using maxExisting+1 without touching sequence
+                            seqVal = (long) maxExisting + 1L;
+                            sequenceAvailable = false; // mark as not fully synced
+                        }
+                    }
+                } else {
+                    // sequence not available: fallback to using maxExisting+1
+                    seqVal = (long) maxExisting + 1L;
+                }
+
+                // Build ID and set
+                String generatedId = String.format("CUS%s-%04d", yearStr, seqVal != null ? seqVal : (maxExisting + 1));
+                customer.setId(generatedId);
+            }
+
+            // Persist the customer (id is set)
             session.persist(customer);
             transaction.commit();
             return true;
