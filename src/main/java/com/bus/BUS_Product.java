@@ -28,19 +28,22 @@ public class BUS_Product implements IProduct {
 
     @Override
     public UnitOfMeasure getUnitOfMeasureById(String productId, Integer measurementId) {
-        return null;
+        if (productId == null || productId.trim().isEmpty() || measurementId == null) return null;
+        return dao.getUnitOfMeasureById(productId, measurementId);
     }
 
     @Override
     public Lot getLotById(String id) {
-        return null;
+        if (id == null || id.trim().isEmpty()) return null;
+        return dao.getLotById(id);
     }
 
     @Override public List<Lot> getAllLots() { return dao.getAllLots(); }
 
     @Override
     public UnitOfMeasure getUnitOfMeasureById(String productId, String name) {
-        return null;
+        if (productId == null || productId.trim().isEmpty() || name == null || name.trim().isEmpty()) return null;
+        return dao.getUnitOfMeasureById(productId, name);
     }
 
     @Override public List<UnitOfMeasure> getAllUnitOfMeasures() { return dao.getAllUnitOfMeasures(); }
@@ -139,6 +142,17 @@ public class BUS_Product implements IProduct {
         if (vat.compareTo(java.math.BigDecimal.ZERO) < 0 || vat.compareTo(java.math.BigDecimal.valueOf(100)) > 0)
             throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
 
+        // Validate UOMs: Tên ĐV và Quy đổi về ĐV gốc không được null
+        if (p.getUnitOfMeasureSet() != null) {
+            for (UnitOfMeasure u : p.getUnitOfMeasureSet()) {
+                if (u == null) continue;
+                if (u.getMeasurement() == null || u.getMeasurement().getName() == null || u.getMeasurement().getName().trim().isEmpty())
+                    throw new IllegalArgumentException("Đơn vị đo lường (Tên ĐV) không được để trống");
+                if (u.getBaseUnitConversionRate() == null || u.getBaseUnitConversionRate().compareTo(java.math.BigDecimal.ONE) < 0)
+                    throw new IllegalArgumentException("Quy đổi về ĐV gốc phải là số nguyên dương");
+            }
+        }
+
         // Lot: khi thêm mới, yêu cầu >= 1 dòng (theo UI validate)
         if (p.getLotSet() == null || p.getLotSet().isEmpty())
             throw new IllegalArgumentException("Sản phẩm mới cần có ít nhất 1 lô hàng");
@@ -146,33 +160,13 @@ public class BUS_Product implements IProduct {
             if (lot == null) continue;
             if (lot.getBatchNumber() == null || lot.getBatchNumber().trim().isEmpty())
                 throw new IllegalArgumentException("Mã lô không được để trống");
+            if (lot.getExpiryDate() == null)
+                throw new IllegalArgumentException("Hạn sử dụng của lô không được để trống");
             if (lot.getQuantity() < 0) throw new IllegalArgumentException("Số lượng lô phải ≥ 0");
 
             java.math.BigDecimal rawPrice = lot.getRawPrice();
             if (rawPrice != null && rawPrice.compareTo(java.math.BigDecimal.ZERO) < 0)
                 throw new IllegalArgumentException("Giá lô phải ≥ 0");
-
-            if (lot.getExpiryDate() == null) throw new IllegalArgumentException("Lô phải có hạn sử dụng");
-        }
-    }
-
-    private void checkDuplicates(Product p) {
-        if (p.getBarcode() != null && !p.getBarcode().trim().isEmpty()) {
-            if (existsByBarcode(p.getBarcode()))
-                throw new IllegalArgumentException("Mã vạch '" + p.getBarcode() + "' đã tồn tại trong hệ thống");
-        }
-        if (p.getName() != null && p.getManufacturer() != null
-                && !p.getName().trim().isEmpty() && !p.getManufacturer().trim().isEmpty()) {
-            if (existsByNameAndManufacturer(p.getName(), p.getManufacturer()))
-                throw new IllegalArgumentException("Sản phẩm '" + p.getName() + "' của hãng '" + p.getManufacturer() + "' đã tồn tại");
-        }
-        if (p.getLotSet() != null) {
-            for (Lot lot : p.getLotSet()) {
-                if (lot != null && lot.getBatchNumber() != null && !lot.getBatchNumber().trim().isEmpty()) {
-                    if (existsLotByBatchNumber(lot.getBatchNumber()))
-                        throw new IllegalArgumentException("Mã lô '" + lot.getBatchNumber() + "' đã tồn tại");
-                }
-            }
         }
     }
 
@@ -199,7 +193,53 @@ public class BUS_Product implements IProduct {
             throw new IllegalArgumentException("VAT phải nằm trong khoảng 0–100%");
         }
 
+        // Validate UOMs for update as well
+        if (p.getUnitOfMeasureSet() != null) {
+            for (UnitOfMeasure u : p.getUnitOfMeasureSet()) {
+                if (u == null) continue;
+                if (u.getMeasurement() == null || u.getMeasurement().getName() == null || u.getMeasurement().getName().trim().isEmpty())
+                    throw new IllegalArgumentException("Đơn vị đo lường (Tên ĐV) không được để trống");
+                if (u.getBaseUnitConversionRate() == null || u.getBaseUnitConversionRate().compareTo(java.math.BigDecimal.ONE) < 0)
+                    throw new IllegalArgumentException("Quy đổi về ĐV gốc phải là số nguyên dương");
+            }
+        }
+
+        // Validate Lots: Lô và Hạn sử dụng không được null
+        if (p.getLotSet() != null) {
+            for (Lot lot : p.getLotSet()) {
+                if (lot == null) continue;
+                if (lot.getBatchNumber() == null || lot.getBatchNumber().trim().isEmpty())
+                    throw new IllegalArgumentException("Mã lô không được để trống");
+                if (lot.getExpiryDate() == null)
+                    throw new IllegalArgumentException("Hạn sử dụng của lô không được để trống");
+                if (lot.getQuantity() < 0) throw new IllegalArgumentException("Số lượng lô phải ≥ 0");
+                java.math.BigDecimal rawPrice = lot.getRawPrice();
+                if (rawPrice != null && rawPrice.compareTo(java.math.BigDecimal.ZERO) < 0)
+                    throw new IllegalArgumentException("Giá lô phải ≥ 0");
+            }
+        }
     }
+
+    private void checkDuplicates(Product p) {
+        if (p.getBarcode() != null && !p.getBarcode().trim().isEmpty()) {
+            if (existsByBarcode(p.getBarcode()))
+                throw new IllegalArgumentException("Mã vạch '" + p.getBarcode() + "' đã tồn tại trong hệ thống");
+        }
+        if (p.getName() != null && p.getManufacturer() != null
+                && !p.getName().trim().isEmpty() && !p.getManufacturer().trim().isEmpty()) {
+            if (existsByNameAndManufacturer(p.getName(), p.getManufacturer()))
+                throw new IllegalArgumentException("Sản phẩm '" + p.getName() + "' của hãng '" + p.getManufacturer() + "' đã tồn tại");
+        }
+        if (p.getLotSet() != null) {
+            for (Lot lot : p.getLotSet()) {
+                if (lot != null && lot.getBatchNumber() != null && !lot.getBatchNumber().trim().isEmpty()) {
+                    if (existsLotByBatchNumber(lot.getBatchNumber()))
+                        throw new IllegalArgumentException("Mã lô '" + lot.getBatchNumber() + "' đã tồn tại");
+                }
+            }
+        }
+    }
+
 
     private void checkDuplicatesForUpdate(Product p) {
         if (p.getBarcode() != null && !p.getBarcode().trim().isEmpty()) {
