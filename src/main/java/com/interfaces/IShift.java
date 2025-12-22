@@ -48,4 +48,9 @@ public interface IShift {
                     String closeReason);
 
     BigDecimal calculateSystemCashForShift(String shiftId);
-}
+
+    /**
+     * List shifts opened on a specific day (00:00..23:59:59.999).
+     */
+    java.util.List<com.entities.Shift> listShiftsOpenedOn(java.time.LocalDate day);
+ }
