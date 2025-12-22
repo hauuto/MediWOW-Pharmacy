@@ -78,6 +78,9 @@ public class TAB_Dashboard_Manager extends JPanel implements DataChangeListener 
     private final NumberFormat currency = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"));
     private final DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
+    // Estimated cost ratio for Hướng B (70% of list price)
+    private static final BigDecimal ESTIMATED_COST_RATIO = BigDecimal.valueOf(0.7);
+
     public TAB_Dashboard_Manager() {
         this(null);
     }
@@ -677,7 +680,9 @@ public class TAB_Dashboard_Manager extends JPanel implements DataChangeListener 
                 if (allocation == null || allocation.getLot() == null) continue;
                 BigDecimal raw = allocation.getLot().getRawPrice();
                 if (raw == null) continue;
-                totalCost = totalCost.add(raw.multiply(BigDecimal.valueOf(allocation.getQuantity())));
+                // Use estimated cost per unit = Lot.rawPrice * ESTIMATED_COST_RATIO
+                BigDecimal estimatedUnitCost = raw.multiply(ESTIMATED_COST_RATIO);
+                totalCost = totalCost.add(estimatedUnitCost.multiply(BigDecimal.valueOf(allocation.getQuantity())));
             }
         }
         return totalCost;

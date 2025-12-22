@@ -28,6 +28,9 @@ import java.util.Map;
 public class DAO_Statistic {
     private final SessionFactory sessionFactory;
 
+    // Estimated cost ratio used for "Giá vốn ước tính" (Hướng B)
+    private static final BigDecimal ESTIMATED_COST_RATIO = BigDecimal.valueOf(0.7);
+
     public DAO_Statistic() {
         this.sessionFactory = HibernateUtil.getSessionFactory();
     }
@@ -42,7 +45,7 @@ public class DAO_Statistic {
      * SQL Logic:
      * - Gross Revenue: SUM(InvoiceLine.unitPrice * quantity) WHERE type = 'SALE'
      * - Return Amount: SUM(InvoiceLine.unitPrice * quantity) WHERE type = 'RETURN'
-     * - COGS: SUM(LotAllocation.quantity * Lot.rawPrice)
+     * - COGS: SUM(LotAllocation.quantity * Lot.rawPrice * ESTIMATED_COST_RATIO) (ước tính theo Hướng B)
      * - Gross Profit: Net Revenue - COGS
      */
     public List<IStatistic.RevenueData> getRevenueData(LocalDate fromDate, LocalDate toDate) {
@@ -614,8 +617,9 @@ public class DAO_Statistic {
             if (line == null || line.getLotAllocations() == null) continue;
             for (LotAllocation allocation : line.getLotAllocations()) {
                 if (allocation != null && allocation.getLot() != null && allocation.getLot().getRawPrice() != null) {
-                    total = total.add(allocation.getLot().getRawPrice()
-                        .multiply(BigDecimal.valueOf(allocation.getQuantity())));
+                    // Use estimated cost = rawPrice * ESTIMATED_COST_RATIO per unit
+                    BigDecimal estimatedUnitCost = allocation.getLot().getRawPrice().multiply(ESTIMATED_COST_RATIO);
+                    total = total.add(estimatedUnitCost.multiply(BigDecimal.valueOf(allocation.getQuantity())));
                 }
             }
         }
@@ -625,7 +629,7 @@ public class DAO_Statistic {
     private BigDecimal getProductCOGS(Session session, String productId, LocalDate fromDate, LocalDate toDate) {
         try {
             Object result = session.createQuery(
-                "SELECT SUM(la.quantity * la.lot.rawPrice) " +
+                "SELECT SUM(la.quantity * la.lot.rawPrice * :ratio) " +
                 "FROM LotAllocation la " +
                 "JOIN la.invoiceLine il " +
                 "JOIN il.invoice i " +
@@ -638,6 +642,7 @@ public class DAO_Statistic {
             .setParameter("saleType", InvoiceType.SALES)
             .setParameter("startDate", fromDate.atStartOfDay())
             .setParameter("endDate", toDate.plusDays(1).atStartOfDay())
+            .setParameter("ratio", ESTIMATED_COST_RATIO)
             .uniqueResult();
 
             return result != null ? (BigDecimal) result : BigDecimal.ZERO;
