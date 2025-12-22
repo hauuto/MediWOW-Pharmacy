@@ -23,6 +23,34 @@ public class BUS_Customer implements ICustomer {
         return daoCustomer.addCustomer(customer);
     }
 
+    /**
+     * Add a new customer using only phone number.
+     * If customer with this phone already exists, returns that customer.
+     * Otherwise creates a new customer with default name "Khách hàng".
+     * @param phoneNumber The customer's phone number
+     * @return The existing or newly created Customer
+     */
+    public Customer getOrCreateCustomerByPhone(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return null;
+        }
+
+        // Check if customer with this phone number already exists
+        Customer existingCustomer = daoCustomer.getCustomerByPhoneNumber(phoneNumber.trim());
+        if (existingCustomer != null) {
+            return existingCustomer;
+        }
+
+        // Create new customer with phone number
+        Customer newCustomer = new Customer(phoneNumber.trim(), true);
+        boolean success = daoCustomer.addCustomer(newCustomer);
+        if (success) {
+            // Fetch the customer again to get the generated ID
+            return daoCustomer.getCustomerByPhoneNumber(phoneNumber.trim());
+        }
+        return null;
+    }
+
     @Override
     public boolean updateCustomer(Customer customer) {
         if (customer == null || customer.getId() == null || customer.getId().trim().isEmpty()) {

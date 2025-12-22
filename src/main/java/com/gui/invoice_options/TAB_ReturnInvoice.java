@@ -52,8 +52,9 @@ public class TAB_ReturnInvoice extends JFrame implements ActionListener, MouseLi
     // UI components
     private JButton btnProcessPayment;
     private boolean isUpdatingInvoiceLine = false;
-    private JTextField txtOriginalTotal, txtRefundAmount, txtShiftId, txtCustomerName, txtInvoiceSearch;
+    private JTextField txtOriginalTotal, txtRefundAmount, txtShiftId, txtPhoneNumber, txtInvoiceSearch;
     private Window parentWindow;
+    private static final String PHONE_NUMBER_PATTERN = "^0\\d{9}$";
 
     public TAB_ReturnInvoice(Staff creator, ShiftChangeListener shiftChangeListener) {
         this(creator, shiftChangeListener, null);
@@ -103,7 +104,7 @@ public class TAB_ReturnInvoice extends JFrame implements ActionListener, MouseLi
     }
 
     private void setFieldsEnabled(boolean enabled) {
-        if (txtCustomerName != null) { txtCustomerName.setEnabled(enabled); txtCustomerName.setFocusable(enabled); }
+        if (txtPhoneNumber != null) { txtPhoneNumber.setEnabled(enabled); txtPhoneNumber.setFocusable(enabled); }
         if (tblOriginalInvoiceLine != null) tblOriginalInvoiceLine.setEnabled(enabled);
         updateProcessPaymentButton();
     }
@@ -315,8 +316,8 @@ public class TAB_ReturnInvoice extends JFrame implements ActionListener, MouseLi
         pv.add(generateLabelAndTextField(new JLabel("Mã ca:"), txtShiftId, "", "Mã ca làm việc", 112));
         pv.add(Box.createVerticalStrut(10));
 
-        txtCustomerName = new JTextField(); txtCustomerName.setName("txtCustomerName");
-        pv.add(generateLabelAndTextField(new JLabel("Tên khách hàng:"), txtCustomerName, "Điền tên khách hàng (nếu có)...", "Điền tên khách hàng", 46));
+        txtPhoneNumber = new JTextField(); txtPhoneNumber.setName("txtPhoneNumber");
+        pv.add(generateLabelAndTextField(new JLabel("SĐT khách hàng:"), txtPhoneNumber, "Nhập SĐT (VD: 0912345678)...", "Nhập số điện thoại khách hàng", 40));
         pv.add(Box.createVerticalStrut(10));
 
         // Refund Information
@@ -328,11 +329,11 @@ public class TAB_ReturnInvoice extends JFrame implements ActionListener, MouseLi
         Box payv = Box.createVerticalBox(); pay.add(payv);
 
         txtOriginalTotal = new JTextField(); txtOriginalTotal.setEditable(false); txtOriginalTotal.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ gốc:"), txtOriginalTotal, "", "Tổng tiền hóa đơn gốc", 54));
+        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ gốc:"), txtOriginalTotal, "", "Tổng tiền hóa đơn gốc", 63));
         payv.add(Box.createVerticalStrut(10));
 
         txtRefundAmount = new JTextField(); txtRefundAmount.setEditable(false); txtRefundAmount.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("Tiền hoàn trả:"), txtRefundAmount, "", "Số tiền cần hoàn trả cho khách", 50));
+        payv.add(generateLabelAndTextField(new JLabel("Tiền hoàn trả:"), txtRefundAmount, "", "Số tiền cần hoàn trả cho khách", 65));
         payv.add(Box.createVerticalStrut(10));
 
         v.add(Box.createVerticalStrut(20));
@@ -436,17 +437,37 @@ public class TAB_ReturnInvoice extends JFrame implements ActionListener, MouseLi
         }
     }
 
-    private String getCustomerNameValue() {
-        if (txtCustomerName == null) return null;
-        String text = txtCustomerName.getText().trim();
-        if (text.isEmpty() || text.equals("Điền tên khách hàng (nếu có)...") ||
-            txtCustomerName.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
+    private String getPhoneNumberValue() {
+        if (txtPhoneNumber == null) return null;
+        String text = txtPhoneNumber.getText().trim();
+        if (text.isEmpty() || text.equals("Nhập SĐT (VD: 0912345678)...") ||
+            txtPhoneNumber.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             return null;
         }
         return text;
     }
 
+    /**
+     * Validate phone number format: 0XXXXXXXXX (10 digits starting with 0)
+     */
+    private boolean validatePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
+            return true; // Empty is valid (optional)
+        }
+        return phoneNumber.matches(PHONE_NUMBER_PATTERN);
+    }
+
     private void processPayment() {
+        // Validate phone number format first
+        String phoneNumber = getPhoneNumberValue();
+        if (phoneNumber != null && !validatePhoneNumber(phoneNumber)) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Số điện thoại không hợp lệ!\n\nĐịnh dạng đúng: 0XXXXXXXXX\n(10 chữ số, bắt đầu bằng 0)",
+                "Lỗi định dạng", JOptionPane.WARNING_MESSAGE);
+            txtPhoneNumber.requestFocusInWindow();
+            return;
+        }
+
         if (selectedOriginalInvoice != null && selectedOriginalInvoice.getInvoiceLineList() != null) {
             selectedOriginalInvoice.getInvoiceLineList().removeIf(line -> line.getQuantity() == 0);
         }
@@ -481,12 +502,13 @@ public class TAB_ReturnInvoice extends JFrame implements ActionListener, MouseLi
                     }
                 }
             }
-            String customerName = getCustomerNameValue();
+            String customerName = getPhoneNumberValue();
             if (customerName != null && !customerName.isEmpty()) {
                 try {
-                    Customer customer = new Customer(customerName);
-                    busCustomer.addCustomer(customer);
-                    returnInvoice.setCustomer(customer);
+                    Customer customer = busCustomer.getOrCreateCustomerByPhone(customerName);
+                    if (customer != null) {
+                        returnInvoice.setCustomer(customer);
+                    }
                 } catch (Exception e) {
                     System.err.println("Warning: Could not save customer: " + e.getMessage());
                 }
@@ -532,9 +554,9 @@ public class TAB_ReturnInvoice extends JFrame implements ActionListener, MouseLi
         originalMaxQuantityMap.clear();
         selectedOriginalInvoice = null;
         returnInvoice = null;
-        if (txtCustomerName != null) {
-            txtCustomerName.setText("Điền tên khách hàng (nếu có)...");
-            txtCustomerName.setForeground(AppColors.PLACEHOLDER_TEXT);
+        if (txtPhoneNumber != null) {
+            txtPhoneNumber.setText("Nhập SĐT (VD: 0912345678)...");
+            txtPhoneNumber.setForeground(AppColors.PLACEHOLDER_TEXT);
         }
         if (txtOriginalTotal != null) txtOriginalTotal.setText("");
         if (txtRefundAmount != null) txtRefundAmount.setText("");
