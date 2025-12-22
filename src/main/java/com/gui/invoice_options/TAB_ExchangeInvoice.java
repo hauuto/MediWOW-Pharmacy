@@ -71,7 +71,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private JWindow barcodeScanOverlay;
     private boolean barcodeScanningEnabled = false;
     private boolean isUpdatingInvoiceLine = false;
-    private JTextField txtSubtotal, txtVat, txtTotal, txtShiftId, txtCustomerName, txtInvoiceSearch, txtProductSearch;
+    private JTextField txtOriginalTotal, txtExchangeTotal, txtVat, txtTotal, txtShiftId, txtCustomerName, txtInvoiceSearch, txtProductSearch;
     private JFormattedTextField txtCustomerPayment;
     private Window parentWindow;
 
@@ -811,17 +811,24 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         v.add(pay);
         Box payv = Box.createVerticalBox(); pay.add(payv);
 
-        // Subtotal of exchange items
-        txtSubtotal = new JTextField(); txtSubtotal.setEditable(false); txtSubtotal.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("Tiền hàng đổi:"), txtSubtotal, "", "Tiền hàng đổi", 61));
+        // Total of original invoice lines (Subtotal + VAT)
+        txtOriginalTotal = new JTextField(); txtOriginalTotal.setEditable(false); txtOriginalTotal.setFocusable(false);
+        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ gốc:"), txtOriginalTotal, "", "Tổng tiền hóa đơn gốc (bao gồm VAT)", 54));
         payv.add(Box.createVerticalStrut(10));
 
+        // Total of exchange invoice lines (Subtotal + VAT)
+        txtExchangeTotal = new JTextField(); txtExchangeTotal.setEditable(false); txtExchangeTotal.setFocusable(false);
+        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ đổi:"), txtExchangeTotal, "", "Tổng tiền hóa đơn đổi (bao gồm VAT)", 56));
+        payv.add(Box.createVerticalStrut(10));
+
+        // VAT for exchange invoice only
         txtVat = new JTextField(); txtVat.setEditable(false); txtVat.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("VAT:"), txtVat, "", "Thuế hóa đơn", 124));
+        payv.add(generateLabelAndTextField(new JLabel("VAT (hàng đổi):"), txtVat, "", "Thuế VAT của hàng đổi", 35));
         payv.add(Box.createVerticalStrut(10));
 
+        // Difference = Exchange Total - Original Total
         txtTotal = new JTextField(); txtTotal.setEditable(false); txtTotal.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("Chênh lệch:"), txtTotal, "", "Tiền chênh lệch (phải trả thêm hoặc hoàn lại)", 78));
+        payv.add(generateLabelAndTextField(new JLabel("Chênh lệch:"), txtTotal, "", "Tiền chênh lệch (phải trả thêm hoặc hoàn lại)", 63));
         payv.add(Box.createVerticalStrut(10));
 
         NumberFormatter fmt = new NumberFormatter(createCurrencyFormat());
@@ -866,7 +873,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         if (pnlCashOptions == null || exchangeInvoice == null) return;
         pnlCashOptions.removeAll();
 
-        BigDecimal total = exchangeInvoice.calculateExchangeTotal();
+        BigDecimal total = calculateDifference();
         // Only show cash buttons if total > 0 (customer needs to pay)
         if (total.compareTo(BigDecimal.ZERO) <= 0) {
             pnlCashOptions.revalidate();
@@ -1003,9 +1010,9 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         pnlCashOptions.setVisible(false); pnlCashOptions.getParent().revalidate(); pnlCashOptions.getParent().repaint();
         if (txtCustomerPayment != null && exchangeInvoice != null) {
             txtCustomerPayment.setEnabled(false); txtCustomerPayment.setEditable(false);
-            BigDecimal exchangeTotal = exchangeInvoice.calculateExchangeTotal();
-            if (exchangeTotal.compareTo(BigDecimal.ZERO) > 0) {
-                txtCustomerPayment.setValue(exchangeTotal.longValue());
+            BigDecimal difference = calculateDifference();
+            if (difference.compareTo(BigDecimal.ZERO) > 0) {
+                txtCustomerPayment.setValue(difference.longValue());
             }
         }
         if (exchangeInvoice != null) exchangeInvoice.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
@@ -1013,20 +1020,26 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     private void updatePaymentOptionsVisibility() {
         if (exchangeInvoice == null || pnlCashOptions == null) return;
-        BigDecimal exchangeTotal = exchangeInvoice.calculateExchangeTotal();
-        boolean needsPayment = exchangeTotal.compareTo(BigDecimal.ZERO) > 0;
+
+        // Calculate the actual difference: Exchange OUT total - Original Invoice total
+        BigDecimal difference = calculateDifference();
+        boolean needsPayment = difference.compareTo(BigDecimal.ZERO) > 0;
         boolean hasExchangeLines = mdlExchangeInvoiceLine != null && mdlExchangeInvoiceLine.getRowCount() > 0;
 
         // Cash options only visible if: cash is selected, needs payment, and has exchange lines
         boolean showCashOptions = rdoCash != null && rdoCash.isSelected() && needsPayment && hasExchangeLines;
         pnlCashOptions.setVisible(showCashOptions);
 
-        // If exchange total <= 0, disable payment selection
+        // If difference <= 0 (refund or break-even), disable payment selection
         if (rdoCash != null) rdoCash.setEnabled(needsPayment);
         if (rdoBank != null) rdoBank.setEnabled(needsPayment);
         if (txtCustomerPayment != null) {
             txtCustomerPayment.setEnabled(needsPayment && rdoCash != null && rdoCash.isSelected());
             txtCustomerPayment.setEditable(needsPayment && rdoCash != null && rdoCash.isSelected());
+            // Reset payment value when no payment is needed
+            if (!needsPayment) {
+                txtCustomerPayment.setValue(0L);
+            }
         }
         if (pnlCashOptions != null) {
             pnlCashOptions.getParent().revalidate();
@@ -1034,23 +1047,71 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         }
     }
 
+    /**
+     * Calculate the difference between exchange out total and original invoice total.
+     * Positive = customer needs to pay more
+     * Negative = customer gets refund
+     * Zero = break-even
+     */
+    private BigDecimal calculateDifference() {
+        BigDecimal exchangeOutTotal = BigDecimal.ZERO;
+        BigDecimal originalTotal = BigDecimal.ZERO;
+
+        if (exchangeInvoice != null) {
+            exchangeOutTotal = exchangeInvoice.calculateExchangeOutSubtotalWithVat();
+        }
+        if (selectedOriginalInvoice != null) {
+            originalTotal = selectedOriginalInvoice.calculateTotal();
+        }
+
+        return exchangeOutTotal.subtract(originalTotal);
+    }
+
     private void updateSubtotalDisplay() {
-        if (txtSubtotal != null && exchangeInvoice != null) {
-            txtSubtotal.setText(createCurrencyFormat().format(exchangeInvoice.calculateSubtotal()));
+        // Update Original Invoice Total (Subtotal + VAT)
+        if (txtOriginalTotal != null && selectedOriginalInvoice != null) {
+            BigDecimal originalTotal = selectedOriginalInvoice.calculateTotal();
+            txtOriginalTotal.setText(createCurrencyFormat().format(originalTotal));
+        } else if (txtOriginalTotal != null) {
+            txtOriginalTotal.setText("");
+        }
+
+        // Update Exchange Invoice Total (Subtotal + VAT for EXCHANGE_OUT lines only)
+        if (txtExchangeTotal != null && exchangeInvoice != null) {
+            BigDecimal exchangeTotal = exchangeInvoice.calculateExchangeOutSubtotalWithVat();
+            txtExchangeTotal.setText(createCurrencyFormat().format(exchangeTotal));
+        } else if (txtExchangeTotal != null) {
+            txtExchangeTotal.setText("");
         }
     }
 
     private void updateVatDisplay() {
-        if (txtVat != null && exchangeInvoice != null) {
-            txtVat.setText(createCurrencyFormat().format(exchangeInvoice.calculateVatAmount()));
+        // VAT is only for exchange invoice lines (EXCHANGE_OUT)
+        if (txtVat != null) {
+            if (exchangeInvoice != null && exchangeInvoice.getInvoiceLineList() != null && !exchangeInvoice.getInvoiceLineList().isEmpty()) {
+                txtVat.setText(createCurrencyFormat().format(exchangeInvoice.calculateExchangeOutVatAmount()));
+            } else {
+                txtVat.setText("0 Đ");
+            }
         }
     }
 
     private void updateTotalDisplay() {
-        if (txtTotal != null && exchangeInvoice != null) {
-            BigDecimal exchangeTotal = exchangeInvoice.calculateExchangeTotal();
-            String prefix = exchangeTotal.compareTo(BigDecimal.ZERO) >= 0 ? "" : "-";
-            txtTotal.setText(prefix + createCurrencyFormat().format(exchangeTotal.abs()));
+        // Chênh lệch = Exchange Total - Original Total
+        if (txtTotal != null) {
+            BigDecimal exchangeTotal = BigDecimal.ZERO;
+            BigDecimal originalTotal = BigDecimal.ZERO;
+
+            if (exchangeInvoice != null) {
+                exchangeTotal = exchangeInvoice.calculateExchangeOutSubtotalWithVat();
+            }
+            if (selectedOriginalInvoice != null) {
+                originalTotal = selectedOriginalInvoice.calculateTotal();
+            }
+
+            BigDecimal difference = exchangeTotal.subtract(originalTotal);
+            String prefix = difference.compareTo(BigDecimal.ZERO) >= 0 ? "" : "-";
+            txtTotal.setText(prefix + createCurrencyFormat().format(difference.abs()));
         }
         updateCashButtons();
         updatePaymentOptionsVisibility();
@@ -1112,14 +1173,15 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             }
         }
 
-        BigDecimal exchangeTotal = exchangeInvoice.calculateExchangeTotal();
+        // Use the difference calculated before adding EXCHANGE_IN lines
+        BigDecimal difference = calculateDifference();
 
-        // If customer needs to pay (exchange total > 0)
-        if (exchangeTotal.compareTo(BigDecimal.ZERO) > 0) {
+        // If customer needs to pay (difference > 0)
+        if (difference.compareTo(BigDecimal.ZERO) > 0) {
             if (exchangeInvoice.getPaymentMethod() == PaymentMethod.CASH) {
                 if (txtCustomerPayment != null) {
                     long pay = txtCustomerPayment.getValue() instanceof Number ? ((Number) txtCustomerPayment.getValue()).longValue() : 0;
-                    if (pay < exchangeTotal.longValue()) {
+                    if (pay < difference.longValue()) {
                         JOptionPane.showMessageDialog(parentWindow, "Số tiền không đủ!", "Không thể thanh toán", JOptionPane.WARNING_MESSAGE);
                         return;
                     }
@@ -1128,7 +1190,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             } else if (exchangeInvoice.getPaymentMethod() == PaymentMethod.BANK_TRANSFER) {
                 String orderInfo = "Thanh toán hóa đơn đổi hàng MediWOW Pharmacy";
                 Window owner = SwingUtilities.getWindowAncestor(pnlExchangeInvoice);
-                boolean paymentSuccess = DIALOG_MomoQRCode.showAndPay(owner, exchangeTotal.longValue(), orderInfo);
+                boolean paymentSuccess = DIALOG_MomoQRCode.showAndPay(owner, difference.longValue(), orderInfo);
                 if (paymentSuccess) {
                     completeExchangeAndGenerateInvoice();
                 } else {
@@ -1269,7 +1331,8 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
             txtCustomerName.setForeground(AppColors.PLACEHOLDER_TEXT);
         }
         if (txtCustomerPayment != null) txtCustomerPayment.setValue(0L);
-        if (txtSubtotal != null) txtSubtotal.setText("");
+        if (txtOriginalTotal != null) txtOriginalTotal.setText("");
+        if (txtExchangeTotal != null) txtExchangeTotal.setText("");
         if (txtVat != null) txtVat.setText("");
         if (txtTotal != null) txtTotal.setText("");
 
@@ -1352,6 +1415,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if (isUpdatingInvoiceLine) return; // Guard against re-entry
         if ("tableCellEditor".equals(evt.getPropertyName()) && evt.getOldValue() != null && evt.getNewValue() == null) {
             // Handle exchange invoice table
             if (evt.getSource() == tblExchangeInvoiceLine) {
@@ -1370,6 +1434,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
     @Override
     public void tableChanged(TableModelEvent e) {
+        if (isUpdatingInvoiceLine) return; // Guard against re-entry
         if (e.getSource() == mdlExchangeInvoiceLine && e.getType() == TableModelEvent.UPDATE && e.getFirstRow() >= 0 && (e.getColumn() == 2 || e.getColumn() == 3)) {
             updateExchangeInvoiceLineFromTable(e.getFirstRow());
         }
