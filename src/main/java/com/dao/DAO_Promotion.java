@@ -174,20 +174,26 @@ public class DAO_Promotion implements IPromotion {
                 for (PromotionCondition cond : p.getConditions()) {
                     if (cond.getProductUOM() != null) {
                         Hibernate.initialize(cond.getProductUOM());
-                        if (cond.getProductUOM().getProduct() != null)
+                        if (cond.getProductUOM().getProduct() != null) {
                             Hibernate.initialize(cond.getProductUOM().getProduct());
+                            Hibernate.initialize(cond.getProductUOM().getProduct().getLotSet());
+                            Hibernate.initialize(cond.getProductUOM().getProduct().getUnitOfMeasureSet());
+                        }
                         if (cond.getProductUOM().getMeasurement() != null)
-                            Hibernate.initialize(cond.getProductUOM().getMeasurement()); // 🔥 thêm dòng này
+                            Hibernate.initialize(cond.getProductUOM().getMeasurement());
                     }
                 }
 
                 for (PromotionAction act : p.getActions()) {
                     if (act.getProductUOM() != null) {
                         Hibernate.initialize(act.getProductUOM());
-                        if (act.getProductUOM().getProduct() != null)
+                        if (act.getProductUOM().getProduct() != null) {
                             Hibernate.initialize(act.getProductUOM().getProduct());
+                            Hibernate.initialize(act.getProductUOM().getProduct().getLotSet());
+                            Hibernate.initialize(act.getProductUOM().getProduct().getUnitOfMeasureSet());
+                        }
                         if (act.getProductUOM().getMeasurement() != null)
-                            Hibernate.initialize(act.getProductUOM().getMeasurement()); // 🔥 thêm dòng này
+                            Hibernate.initialize(act.getProductUOM().getMeasurement());
                     }
                 }
             }

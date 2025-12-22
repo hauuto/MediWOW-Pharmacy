@@ -10,6 +10,8 @@ import com.utils.*;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.*;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.plaf.basic.*;
 import javax.swing.table.*;
 import javax.swing.text.*;
@@ -42,18 +44,20 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     private JTable tblInvoiceLine;
     private JScrollPane scrInvoiceLine;
     private JButton btnBarcodeScan, btnProcessPayment;
-    private JTextField txtSearchInput, txtPrescriptionCode, txtVat, txtPromotionSearch, txtTotal, txtShiftId, txtPhoneNumber;
+    private JTextField txtSearchInput, txtPrescriptionCode, txtVat, txtDiscount, txtTotal, txtShiftId, txtPhoneNumber;
     private static final String PHONE_NUMBER_PATTERN = "^0\\d{9}$";
     private JFormattedTextField txtCustomerPayment;
     private JPanel pnlCashOptions;
     private boolean barcodeScanningEnabled = false;
     private boolean isValidatingPrescriptionCode = false;
     private boolean isUpdatingInvoiceLine = false;
-    private JWindow searchWindow, promotionSearchWindow, barcodeScanOverlay;
-    private JList<String> searchResultsList, promotionSearchResultsList;
-    private DefaultListModel<String> searchResultsModel, promotionSearchResultsModel;
+    private JWindow searchWindow, barcodeScanOverlay;
+    private JList<String> searchResultsList;
+    private DefaultListModel<String> searchResultsModel;
     private List<Product> currentSearchResults = new ArrayList<>();
-    private List<Promotion> currentPromotionSearchResults = new ArrayList<>();
+    private JComboBox<Promotion> cbxPromotion;
+    private DefaultComboBoxModel<Promotion> cbxPromotionModel;
+    private List<InvoiceLine> currentGiftLines = new ArrayList<>();
     private static final String PRESCRIPTION_PATTERN = "^[a-zA-Z0-9]{5}[a-zA-Z0-9]{7}-[NHCnhc]$";
     private Window parentWindow;
     private Shift currentShift;
@@ -76,6 +80,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         products = busProduct.getAllProducts();
         previousPrescriptionCodes = busInvoice.getAllPrescriptionCodes();
         promotions = busPromotion.getAllPromotions().stream().filter(Promotion::getIsActive).toList();
+        cbxPromotionModel = new DefaultComboBoxModel<>();
         createSplitPane();
     }
 
@@ -185,51 +190,114 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         searchWindow.setVisible(false);
     }
 
-    private void setupPromotionSearchAutocomplete(JTextField txt) {
-        promotionSearchResultsModel = new DefaultListModel<>();
-        promotionSearchResultsList = new JList<>(promotionSearchResultsModel);
-        promotionSearchResultsList.setFont(new Font("Arial", Font.PLAIN, 16));
-        promotionSearchResultsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        promotionSearchResultsList.setName("promotionSearchResultsList");
-        promotionSearchWindow = new JWindow(SwingUtilities.getWindowAncestor(pnlSalesInvoice));
-        promotionSearchWindow.add(new JScrollPane(promotionSearchResultsList));
-        promotionSearchWindow.setFocusableWindowState(false);
-        txt.getDocument().addDocumentListener(this);
-        txt.addKeyListener(this); txt.addFocusListener(this);
-        promotionSearchResultsList.addMouseListener(this);
+    // ==================== PROMOTION METHODS ====================
+
+    private String formatPromotionDisplay(Promotion p) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(p.getId()).append(" - ").append(p.getName());
+        try {
+            BigDecimal discount = calculateDiscountForPromotion(p);
+            List<String> gifts = describeGiftActions(p);
+            if (discount != null && discount.compareTo(BigDecimal.ZERO) > 0) {
+                sb.append(" (Giảm ").append(createCurrencyFormat().format(discount)).append(")");
+            }
+            if (!gifts.isEmpty()) {
+                sb.append(" (Quà: ").append(String.join(", ", gifts)).append(")");
+            }
+        } catch (Exception ignored) {}
+        return sb.toString();
     }
 
-    private void performPromotionSearch() {
-        String search = txtPromotionSearch.getText().trim().toLowerCase();
-        if (search.isEmpty() || txtPromotionSearch.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
-            promotionSearchWindow.setVisible(false); return;
+    private BigDecimal calculateDiscountForPromotion(Promotion promo) {
+        try {
+            java.lang.reflect.Method m = Invoice.class.getDeclaredMethod("calculatePromotion", Promotion.class);
+            m.setAccessible(true);
+            return (BigDecimal) m.invoke(invoice, promo);
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
         }
-        promotionSearchResultsModel.clear(); currentPromotionSearchResults.clear();
-        for (Promotion p : promotions) {
-            if ((p.getId() != null && p.getId().toLowerCase().contains(search)) ||
-                (p.getName() != null && p.getName().toLowerCase().contains(search))) {
-                currentPromotionSearchResults.add(p);
-                promotionSearchResultsModel.addElement(p.getId() + " - " + p.getName());
+    }
+
+    private List<String> describeGiftActions(Promotion promo) {
+        List<String> gifts = new ArrayList<>();
+        if (promo.getActions() != null) {
+            for (PromotionAction act : promo.getActions()) {
+                if (act != null && act.getTarget() == PromotionEnum.Target.PRODUCT &&
+                    act.getType() == PromotionEnum.ActionType.PRODUCT_GIFT) {
+                    UnitOfMeasure uom = act.getProductUOM();
+                    int qty = act.getValue() != null ? act.getValue().intValue() : 0;
+                    if (uom != null && uom.getProduct() != null && qty > 0) {
+                        gifts.add(qty + " " + uom.getName() + " " + uom.getProduct().getShortName());
+                    }
+                }
             }
         }
-        if (!currentPromotionSearchResults.isEmpty()) {
-            Point loc = txtPromotionSearch.getLocationOnScreen();
-            int h = Math.min(currentPromotionSearchResults.size(), 5) * 25 + 4;
-            promotionSearchWindow.setLocation(loc.x, loc.y + txtPromotionSearch.getHeight());
-            promotionSearchWindow.setSize(txtPromotionSearch.getWidth(), h);
-            promotionSearchWindow.setVisible(true);
-            if (promotionSearchResultsModel.getSize() > 0) promotionSearchResultsList.setSelectedIndex(0);
-        } else promotionSearchWindow.setVisible(false);
+        return gifts;
     }
 
-    private void selectPromotion(int idx) {
-        if (idx < 0 || idx >= currentPromotionSearchResults.size()) return;
-        Promotion p = currentPromotionSearchResults.get(idx);
-        invoice.setPromotion(p);
-        txtPromotionSearch.setText(p.getId() + " - " + p.getName());
-        txtPromotionSearch.setForeground(AppColors.TEXT);
-        promotionSearchWindow.setVisible(false);
+    private void populateApplicablePromotions() {
+        cbxPromotionModel.removeAllElements();
+        Invoice.ApplyPromotionResult res = invoice.applyPromotion(promotions);
+        for (Promotion p : res.getValidPromotions()) {
+            cbxPromotionModel.addElement(p);
+        }
     }
+
+    private void removeCurrentGiftLines() {
+        if (currentGiftLines.isEmpty()) return;
+        for (InvoiceLine giftLine : new ArrayList<>(currentGiftLines)) {
+            Product prod = giftLine.getProduct();
+            String uomName = giftLine.getUnitOfMeasure().getName();
+            invoice.removeInvoiceLine(prod.getId(), uomName);
+            for (int r = mdlInvoiceLine.getRowCount() - 1; r >= 0; r--) {
+                String pid = (String) mdlInvoiceLine.getValueAt(r, 0);
+                String u = (String) mdlInvoiceLine.getValueAt(r, 2);
+                BigDecimal price = (mdlInvoiceLine.getValueAt(r, 4) instanceof BigDecimal)
+                        ? (BigDecimal) mdlInvoiceLine.getValueAt(r, 4)
+                        : parseCurrencyValue(String.valueOf(mdlInvoiceLine.getValueAt(r, 4)));
+                if (pid.equals(prod.getId()) && u.equals(uomName) && price.compareTo(BigDecimal.ZERO) == 0) {
+                    mdlInvoiceLine.removeRow(r);
+                }
+            }
+        }
+        currentGiftLines.clear();
+    }
+
+    private void addGiftLinesForPromotion(Promotion promo) {
+        if (promo == null || invoice == null) return;
+        List<InvoiceLine> giftLines = invoice.getGiftLinesForPromotion(promo);
+        if (giftLines == null || giftLines.isEmpty()) return;
+        for (InvoiceLine giftLine : giftLines) {
+            if (giftLine == null) continue;
+            Product p = giftLine.getProduct();
+            UnitOfMeasure uom = giftLine.getUnitOfMeasure();
+            int qty = giftLine.getQuantity();
+            if (p == null || uom == null || qty <= 0) continue;
+            invoice.addInvoiceLine(giftLine);
+            currentGiftLines.add(giftLine);
+            mdlInvoiceLine.addRow(new Object[]{p.getId(), p.getName(), uom.getName(), qty, BigDecimal.ZERO, BigDecimal.ZERO});
+            productMap.putIfAbsent(p.getId(), p);
+        }
+    }
+
+    private void applySelectedPromotion(Promotion promo) {
+        removeCurrentGiftLines();
+        invoice.setPromotion(promo);
+        addGiftLinesForPromotion(promo);
+        populateApplicablePromotions();
+        updateDiscountDisplay();
+        updateVatDisplay();
+        updateTotalDisplay();
+        validatePrescriptionCodeForInvoice();
+    }
+
+    private void updateDiscountDisplay() {
+        if (txtDiscount != null && invoice != null) {
+            txtDiscount.setText(createCurrencyFormat().format(invoice.calculatePromotion()));
+        }
+    }
+
+    // ==================== PRODUCT METHODS ====================
 
     private void addProductToInvoice(Product product) {
         if (product.getCategory() == ProductCategory.ETC && !isValidPrescriptionCode()) {
@@ -659,22 +727,48 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         pv.add(generateLabelAndTextField(new JLabel("SĐT khách hàng:"), txtPhoneNumber, "Nhập SĐT (VD: 0912345678)...", "Nhập số điện thoại khách hàng", 40));
         pv.add(Box.createVerticalStrut(10));
 
+        // Promotion combobox
+        Box promoBox = Box.createHorizontalBox();
+        JLabel lblPromotion = new JLabel("Khuyến mãi:"); lblPromotion.setFont(new Font("Arial", Font.PLAIN, 16));
+        promoBox.add(lblPromotion); promoBox.add(Box.createHorizontalStrut(63));
+        cbxPromotion = new JComboBox<>(cbxPromotionModel);
+        cbxPromotion.setFont(new Font("Arial", Font.PLAIN, 16));
+        cbxPromotion.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Promotion p) {
+                    setText(formatPromotionDisplay(p));
+                } else if (value == null) {
+                    setText("Không có khuyến mãi");
+                }
+                return this;
+            }
+        });
+        cbxPromotion.addPopupMenuListener(new PopupMenuListener() {
+            @Override public void popupMenuWillBecomeVisible(PopupMenuEvent e) { populateApplicablePromotions(); }
+            @Override public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {}
+            @Override public void popupMenuCanceled(PopupMenuEvent e) {}
+        });
+        cbxPromotion.addActionListener(ev -> {
+            Promotion selected = (Promotion) cbxPromotion.getSelectedItem();
+            if (selected != null) applySelectedPromotion(selected);
+        });
+        promoBox.add(cbxPromotion);
+        pv.add(promoBox);
+        pv.add(Box.createVerticalStrut(10));
+
         Box pay = Box.createHorizontalBox();
         TitledBorder payb = BorderFactory.createTitledBorder("Thông tin thanh toán");
         payb.setTitleFont(new Font("Arial", Font.BOLD, 16)); payb.setTitleColor(AppColors.PRIMARY);
         pay.setBorder(payb);
         v.add(pay);
         Box payv = Box.createVerticalBox(); pay.add(payv);
-        txtPromotionSearch = new JTextField();
-        payv.add(generateLabelAndTextField(new JLabel("Tìm kiếm khuyến mãi:"), txtPromotionSearch, "Điền mã hoặc tên khuyến mãi...", "Điền mã hoặc tên khuyến mãi", 8));
-        setupPromotionSearchAutocomplete(txtPromotionSearch);
-        payv.add(Box.createVerticalStrut(10));
-
         txtVat = new JTextField(); txtVat.setEditable(false); txtVat.setFocusable(false);
         payv.add(generateLabelAndTextField(new JLabel("VAT:"), txtVat, "", "Thuế hóa đơn", 122));
         payv.add(Box.createVerticalStrut(10));
 
-        JTextField txtDiscount = new JTextField(); txtDiscount.setEditable(false); txtDiscount.setFocusable(false);
+        txtDiscount = new JTextField(); txtDiscount.setEditable(false); txtDiscount.setFocusable(false);
         payv.add(generateLabelAndTextField(new JLabel("Tiền giảm giá:"), txtDiscount, "", "Tiền giảm giá", 58));
         payv.add(Box.createVerticalStrut(10));
 
@@ -938,6 +1032,7 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             txtTotal.setText(createCurrencyFormat().format(invoice.calculateTotal()));
             updateCashButtons();
             updateBankPaymentAmount();
+            updateDiscountDisplay();
         }
     }
 
@@ -969,7 +1064,6 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     @Override public void mouseClicked(MouseEvent e) {
         if (e.getSource() == searchResultsList && searchResultsList.getSelectedIndex() != -1) selectProduct(searchResultsList.getSelectedIndex(), txtSearchInput);
-        else if (e.getSource() == promotionSearchResultsList && promotionSearchResultsList.getSelectedIndex() != -1) selectPromotion(promotionSearchResultsList.getSelectedIndex());
     }
 
     @Override public void mousePressed(MouseEvent e) {}
@@ -989,7 +1083,6 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     @Override public void focusLost(FocusEvent e) {
         Object src = e.getSource();
         if (src == txtPrescriptionCode) validatePrescriptionCode();
-        else if (src == txtPromotionSearch) new javax.swing.Timer(150, evt -> promotionSearchWindow.setVisible(false)) {{ setRepeats(false); start(); }};
         else if (src instanceof JTextField) {
             JTextField t = (JTextField) src;
             if (t.getName() != null && t.getName().startsWith("placeholder_") && t.getText().isEmpty()) { t.setText(t.getToolTipText()); t.setForeground(AppColors.PLACEHOLDER_TEXT); }
@@ -999,8 +1092,8 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
     @Override public void keyPressed(KeyEvent e) {
         if (e.getSource() == txtSearchInput) {
             if (e.getKeyCode() == KeyEvent.VK_ENTER && barcodeScanningEnabled) { processBarcodeInput(); e.consume(); }
-            else if (searchWindow.isVisible()) handleNav(e, searchResultsList, searchResultsModel, true);
-        } else if (e.getSource() == txtPromotionSearch && promotionSearchWindow.isVisible()) handleNav(e, promotionSearchResultsList, promotionSearchResultsModel, false);
+            else if (searchWindow.isVisible()) handleNav(e, searchResultsList, searchResultsModel);
+        }
     }
 
     @Override public void keyReleased(KeyEvent e) {}
@@ -1011,7 +1104,6 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
 
     private void handleDoc(DocumentEvent e) {
         if (e.getDocument() == txtSearchInput.getDocument()) SwingUtilities.invokeLater(() -> performSearch(txtSearchInput));
-        else if (e.getDocument() == txtPromotionSearch.getDocument()) SwingUtilities.invokeLater(this::performPromotionSearch);
     }
 
     @Override public void propertyChange(PropertyChangeEvent evt) {
@@ -1027,13 +1119,13 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
             updateInvoiceLineFromTable(e.getFirstRow());
     }
 
-    private void handleNav(KeyEvent e, JList<String> l, DefaultListModel<String> m, boolean isProd) {
+    private void handleNav(KeyEvent e, JList<String> l, DefaultListModel<String> m) {
         int i = l.getSelectedIndex();
         switch (e.getKeyCode()) {
             case KeyEvent.VK_DOWN: l.setSelectedIndex((i + 1) % m.getSize()); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
             case KeyEvent.VK_UP: l.setSelectedIndex((i + m.getSize() - 1) % m.getSize()); l.ensureIndexIsVisible(l.getSelectedIndex()); e.consume(); break;
-            case KeyEvent.VK_ENTER: if (i != -1) { if (isProd) selectProduct(i, txtSearchInput); else selectPromotion(i); } e.consume(); break;
-            case KeyEvent.VK_ESCAPE: (isProd ? searchWindow : promotionSearchWindow).setVisible(false); e.consume(); break;
+            case KeyEvent.VK_ENTER: if (i != -1) selectProduct(i, txtSearchInput); e.consume(); break;
+            case KeyEvent.VK_ESCAPE: searchWindow.setVisible(false); e.consume(); break;
         }
     }
 
@@ -1160,11 +1252,11 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
                 printReceiptDirectly(generatedInvoiceId, customerPayment);
             }
 
-            // Refresh products list to get updated lot quantities
+            // Refresh products to update lot quantities
             products.clear();
             products.addAll(busProduct.getAllProducts());
 
-            // Reset the form for new invoice
+            // Reset form for new invoice
             resetInvoiceForm();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(parentWindow, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -1235,9 +1327,9 @@ public class TAB_SalesInvoice extends JFrame implements ActionListener, MouseLis
         invoice.setCustomer(null);
 
         // Reset promotion
-        txtPromotionSearch.setText("Điền mã hoặc tên khuyến mãi...");
-        txtPromotionSearch.setForeground(AppColors.PLACEHOLDER_TEXT);
+        cbxPromotionModel.removeAllElements();
         invoice.setPromotion(null);
+        removeCurrentGiftLines();
 
         // Reset payment
         txtCustomerPayment.setValue(0L);
