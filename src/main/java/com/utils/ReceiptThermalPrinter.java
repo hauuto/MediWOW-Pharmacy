@@ -148,9 +148,6 @@ public class ReceiptThermalPrinter {
             BigDecimal discount = invoice.calculatePromotion();
             if (discount != null && discount.compareTo(BigDecimal.ZERO) > 0) {
                 String discountLabel = "Giam gia:";
-                if (invoice.getPromotion() != null) {
-                    discountLabel = "Giam gia (" + truncateText(removeAccents(invoice.getPromotion().getName()), 10) + "):";
-                }
                 escpos.writeLF(normalLeft, LEFT_PADDING + formatTotalLine(discountLabel, "-" + formatCurrency(discount)));
             }
 
