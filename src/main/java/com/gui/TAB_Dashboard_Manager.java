@@ -932,10 +932,13 @@ public class TAB_Dashboard_Manager extends JPanel implements DataChangeListener 
             lblTrend.setText(t);
 
             // Màu trend theo hướng (xanh tăng, đỏ giảm) - ngoại trừ KPI rủi ro sẽ setTone bên ngoài.
-            if (pct.compareTo(BigDecimal.ZERO) >= 0) {
-                lblTrend.setForeground(AppColors.SUCCESS);
+            // For RISK tone (e.g. cash mismatch), trend coloring is handled by setTone/applyToneColor;
+            // avoid coloring trend red/green here to prevent a zero current value from showing red
+            // due to a negative percent change. Use neutral text color for RISK KPIs.
+            if (this.tone == KpiTone.RISK) {
+                lblTrend.setForeground(AppColors.TEXT);
             } else {
-                lblTrend.setForeground(AppColors.DANGER);
+                lblTrend.setForeground(pct.compareTo(BigDecimal.ZERO) >= 0 ? AppColors.SUCCESS : AppColors.DANGER);
             }
         }
 
@@ -1138,23 +1141,23 @@ public class TAB_Dashboard_Manager extends JPanel implements DataChangeListener 
         if (k == null) return;
 
         cardNetRevenue.setValue(currency.format(k.getNetRevenue().getCurrent()));
-        cardNetRevenue.setTrend(k.getNetRevenue().getPercentChange(), k.getNetRevenue().getDelta());
         cardNetRevenue.setTone(KpiTone.POSITIVE);
+        cardNetRevenue.setTrend(k.getNetRevenue().getPercentChange(), k.getNetRevenue().getDelta());
 
         // Lợi nhuận: xanh nếu dương, đỏ nếu âm
         BigDecimal profit = k.getProfit().getCurrent();
         cardProfit.setValue(currency.format(profit));
-        cardProfit.setTrend(k.getProfit().getPercentChange(), k.getProfit().getDelta());
         cardProfit.setTone(profit.compareTo(BigDecimal.ZERO) >= 0 ? KpiTone.POSITIVE : KpiTone.RISK);
+        cardProfit.setTrend(k.getProfit().getPercentChange(), k.getProfit().getDelta());
 
         cardReturns.setValue(formatInt(k.getTotalReturnOrders().getCurrent()));
-        cardReturns.setTrend(k.getTotalReturnOrders().getPercentChange(), k.getTotalReturnOrders().getDelta());
         cardReturns.setTone(KpiTone.WARNING);
+        cardReturns.setTrend(k.getTotalReturnOrders().getPercentChange(), k.getTotalReturnOrders().getDelta());
 
         BigDecimal mismatch = k.getCashMismatch().getCurrent();
         cardCashMismatch.setValue(currency.format(mismatch));
-        cardCashMismatch.setTrend(k.getCashMismatch().getPercentChange(), k.getCashMismatch().getDelta());
         cardCashMismatch.setTone(mismatch.compareTo(BigDecimal.ZERO) == 0 ? KpiTone.POSITIVE : KpiTone.RISK);
+        cardCashMismatch.setTrend(k.getCashMismatch().getPercentChange(), k.getCashMismatch().getDelta());
     }
 
     private void renderChart(List<TimePoint> points) {

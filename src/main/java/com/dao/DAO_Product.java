@@ -90,7 +90,11 @@ public class DAO_Product implements IProduct {
         Session session = null;
         try {
             session = sessionFactory.openSession();
-            return session.createQuery("FROM Lot", Lot.class).list();
+            // Fetch lots together with their Product to avoid LazyInitializationException
+            return session.createQuery(
+                    "SELECT DISTINCT l FROM Lot l LEFT JOIN FETCH l.product p",
+                    Lot.class
+            ).list();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
