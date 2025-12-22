@@ -351,6 +351,22 @@ public class BUS_Product implements IProduct {
         return dao.updateLotQuantity(lotId, newQuantity);
     }
 
+    /**
+     * Add a specific quantity to a lot (for exchange returns)
+     * @param lotId The ID of the lot
+     * @param quantityToAdd The quantity to add
+     * @return true if successful, false otherwise
+     */
+    public boolean addLotQuantity(String lotId, int quantityToAdd) {
+        if (lotId == null || lotId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Lot ID cannot be null or empty");
+        }
+        if (quantityToAdd <= 0) {
+            throw new IllegalArgumentException("Quantity to add must be positive");
+        }
+        return dao.addLotQuantity(lotId, quantityToAdd);
+    }
+
     /* Get all MeasurementName entities from database
      */
     public List<MeasurementName> getAllMeasurementNames() {

@@ -177,6 +177,172 @@ public class ReceiptThermalPrinter {
     }
 
     /**
+     * Print exchange receipt directly to thermal printer.
+     * Shows original invoice lines (with negative values) and exchange invoice lines.
+     *
+     * @param exchangeInvoice   The exchange invoice to print
+     * @param invoiceId         The generated invoice ID
+     * @param customerPayment   Amount customer paid
+     * @param printerName       Name of the printer (null for default)
+     * @throws IOException if printing fails
+     */
+    public static void printExchangeReceipt(Invoice exchangeInvoice, String invoiceId, BigDecimal customerPayment, String printerName) throws IOException {
+        PrintService printService = findPrinter(printerName);
+        if (printService == null) {
+            throw new IOException("Không tìm thấy máy in: " + (printerName != null ? printerName : "default"));
+        }
+
+        Invoice originalInvoice = exchangeInvoice.getReferencedInvoice();
+
+        try (PrinterOutputStream printerStream = new PrinterOutputStream(printService);
+             EscPos escpos = new EscPos(printerStream)) {
+
+            Style titleStyle = new Style()
+                    .setFontSize(Style.FontSize._2, Style.FontSize._2)
+                    .setBold(true)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style headerStyle = new Style()
+                    .setFontSize(Style.FontSize._2, Style.FontSize._2)
+                    .setBold(true)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style normalCenter = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style normalLeft = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1);
+
+            Style boldLeft = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setBold(true);
+
+            Style tableHeader = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setBold(true);
+
+            // === HEADER ===
+            escpos.writeLF(titleStyle, "NHA THUOC MEDIWOW");
+            escpos.writeLF(normalCenter, "12 Nguyen Van Bao, P.4, Go Vap, TP.HCM");
+            escpos.writeLF(normalCenter, "DT: (028) 3894 2345");
+            escpos.feed(1);
+
+            escpos.writeLF(headerStyle, "HOA DON DOI HANG");
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === INVOICE INFO ===
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+
+            String infoLine1 = padRight(LEFT_PADDING + "Ma HD: " + (invoiceId != null ? invoiceId : "N/A"), LINE_WIDTH / 2) +
+                              padLeft("NV: " + truncateText(removeAccents(exchangeInvoice.getCreator().getFullName()), 15), LINE_WIDTH / 2);
+            escpos.writeLF(normalLeft, infoLine1);
+
+            String infoLine2 = padRight(LEFT_PADDING + "Ngay: " + dateFormat.format(new Date()), LINE_WIDTH / 2) +
+                              padLeft("TT: " + getPaymentMethodText(exchangeInvoice.getPaymentMethod()), LINE_WIDTH / 2);
+            escpos.writeLF(normalLeft, infoLine2);
+
+            if (exchangeInvoice.getShift() != null && exchangeInvoice.getShift().getId() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Ma ca: " + exchangeInvoice.getShift().getId());
+            }
+
+            if (originalInvoice != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "HD goc: " + originalInvoice.getId());
+            }
+
+            if (exchangeInvoice.getCustomer() != null && exchangeInvoice.getCustomer().getName() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Khach hang: " + truncateText(removeAccents(exchangeInvoice.getCustomer().getName()), 30));
+            }
+
+            if (exchangeInvoice.getPrescriptionCode() != null && !exchangeInvoice.getPrescriptionCode().isEmpty()) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Ma don thuoc: " + exchangeInvoice.getPrescriptionCode());
+            }
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === ORIGINAL INVOICE TABLE (NEGATIVE VALUES) ===
+            escpos.writeLF(boldLeft, LEFT_PADDING + "** HANG TRA LAI (HD GOC) **");
+            escpos.writeLF(tableHeader, LEFT_PADDING + formatTableRow("Ten SP", "DV", "SL", "T.Tien"));
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            BigDecimal originalSubtotal = BigDecimal.ZERO;
+            if (originalInvoice != null) {
+                for (InvoiceLine line : originalInvoice.getInvoiceLineList()) {
+                    String productName = line.getProduct().getShortName();
+                    if (productName == null || productName.isEmpty()) {
+                        productName = line.getProduct().getName();
+                    }
+                    productName = truncateText(removeAccents(productName), MAX_PRODUCT_NAME_LENGTH);
+
+                    String uom = truncateText(removeAccents(line.getUnitOfMeasure().getName()), 6);
+                    String qty = "-" + line.getQuantity(); // Negative quantity
+                    BigDecimal lineSubtotal = line.calculateSubtotal();
+                    originalSubtotal = originalSubtotal.add(lineSubtotal);
+                    String subtotal = "-" + formatCurrency(lineSubtotal); // Negative value
+
+                    escpos.writeLF(normalLeft, LEFT_PADDING + formatTableRow(productName, uom, qty, subtotal));
+                }
+            }
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === EXCHANGE INVOICE TABLE (POSITIVE VALUES) ===
+            escpos.writeLF(boldLeft, LEFT_PADDING + "** HANG DOI MOI **");
+            escpos.writeLF(tableHeader, LEFT_PADDING + formatTableRow("Ten SP", "DV", "SL", "T.Tien"));
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            BigDecimal exchangeSubtotal = BigDecimal.ZERO;
+            for (InvoiceLine line : exchangeInvoice.getInvoiceLineList()) {
+                String productName = line.getProduct().getShortName();
+                if (productName == null || productName.isEmpty()) {
+                    productName = line.getProduct().getName();
+                }
+                productName = truncateText(removeAccents(productName), MAX_PRODUCT_NAME_LENGTH);
+
+                String uom = truncateText(removeAccents(line.getUnitOfMeasure().getName()), 6);
+                String qty = String.valueOf(line.getQuantity());
+                BigDecimal lineSubtotal = line.calculateSubtotal();
+                exchangeSubtotal = exchangeSubtotal.add(lineSubtotal);
+                String subtotal = formatCurrency(lineSubtotal);
+
+                escpos.writeLF(normalLeft, LEFT_PADDING + formatTableRow(productName, uom, qty, subtotal));
+            }
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === TOTALS ===
+            BigDecimal originalTotal = originalInvoice != null ? originalInvoice.calculateTotal() : BigDecimal.ZERO;
+            BigDecimal exchangeTotal = exchangeInvoice.calculateTotal();
+            BigDecimal netTotal = exchangeInvoice.calculateExchangeTotal();
+
+            escpos.writeLF(normalLeft, LEFT_PADDING + formatTotalLine("Tien hang tra:", "-" + formatCurrency(originalTotal)));
+            escpos.writeLF(normalLeft, LEFT_PADDING + formatTotalLine("Tien hang doi:", formatCurrency(exchangeTotal)));
+            escpos.writeLF(normalLeft, LEFT_PADDING + formatTotalLine("VAT hang doi:", formatCurrency(exchangeInvoice.calculateVatAmount())));
+
+            String netLabel = netTotal.compareTo(BigDecimal.ZERO) >= 0 ? "TONG PHAI TRA:" : "TONG HOAN LAI:";
+            escpos.writeLF(boldLeft, LEFT_PADDING + formatTotalLine(netLabel, formatCurrency(netTotal.abs())));
+
+            if (netTotal.compareTo(BigDecimal.ZERO) > 0) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + formatTotalLine("Tien khach dua:", formatCurrency(customerPayment)));
+                BigDecimal change = customerPayment.subtract(netTotal);
+                String changeLabel = change.compareTo(BigDecimal.ZERO) >= 0 ? "Tien thua:" : "Con thieu:";
+                escpos.writeLF(normalLeft, LEFT_PADDING + formatTotalLine(changeLabel, formatCurrency(change.abs())));
+            }
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === FOOTER ===
+            escpos.feed(1);
+            escpos.writeLF(headerStyle, "Cam on quy khach!");
+            escpos.feed(1);
+            escpos.writeLF(normalCenter, "Giu hoa don de doi tra trong 7 ngay");
+            escpos.feed(3);
+
+            escpos.cut(EscPos.CutMode.PART);
+        }
+    }
+
+    /**
      * Get list of available printers
      */
     public static String[] getAvailablePrinters() {
@@ -231,6 +397,125 @@ public class ReceiptThermalPrinter {
     private static String formatCurrency(BigDecimal amount) {
         if (amount == null) amount = BigDecimal.ZERO;
         return CURRENCY_FORMAT.format(amount) + " D";
+    }
+
+    /**
+     * Print return invoice receipt directly to thermal printer
+     *
+     * @param returnInvoice   The return invoice to print
+     * @param invoiceId       The generated invoice ID
+     * @param refundAmount    Amount to refund to customer
+     * @param printerName     Name of the printer (null for default)
+     * @throws IOException if printing fails
+     */
+    public static void printReturnReceipt(Invoice returnInvoice, String invoiceId, BigDecimal refundAmount, String printerName) throws IOException {
+        PrintService printService = findPrinter(printerName);
+        if (printService == null) {
+            throw new IOException("Không tìm thấy máy in: " + (printerName != null ? printerName : "default"));
+        }
+
+        Invoice originalInvoice = returnInvoice.getReferencedInvoice();
+
+        try (PrinterOutputStream printerStream = new PrinterOutputStream(printService);
+             EscPos escpos = new EscPos(printerStream)) {
+
+            Style titleStyle = new Style()
+                    .setFontSize(Style.FontSize._2, Style.FontSize._2)
+                    .setBold(true)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style headerStyle = new Style()
+                    .setFontSize(Style.FontSize._2, Style.FontSize._2)
+                    .setBold(true)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style normalCenter = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style normalLeft = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1);
+
+            Style boldLeft = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setBold(true);
+
+            Style tableHeader = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setBold(true);
+
+            // === HEADER ===
+            escpos.writeLF(titleStyle, "NHA THUOC MEDIWOW");
+            escpos.writeLF(normalCenter, "12 Nguyen Van Bao, P.4, Go Vap, TP.HCM");
+            escpos.writeLF(normalCenter, "DT: (028) 3894 2345");
+            escpos.feed(1);
+
+            escpos.writeLF(headerStyle, "HOA DON TRA HANG");
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === INVOICE INFO ===
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+
+            String infoLine1 = padRight(LEFT_PADDING + "Ma HD: " + (invoiceId != null ? invoiceId : "N/A"), LINE_WIDTH / 2) +
+                              padLeft("NV: " + truncateText(removeAccents(returnInvoice.getCreator().getFullName()), 15), LINE_WIDTH / 2);
+            escpos.writeLF(normalLeft, infoLine1);
+
+            String infoLine2 = padRight(LEFT_PADDING + "Ngay: " + dateFormat.format(new Date()), LINE_WIDTH / 2) +
+                              padLeft("TT: Tien mat", LINE_WIDTH / 2);
+            escpos.writeLF(normalLeft, infoLine2);
+
+            if (returnInvoice.getShift() != null && returnInvoice.getShift().getId() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Ma ca: " + returnInvoice.getShift().getId());
+            }
+
+            if (originalInvoice != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "HD goc: " + originalInvoice.getId());
+            }
+
+            if (returnInvoice.getCustomer() != null && returnInvoice.getCustomer().getName() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Khach hang: " + truncateText(removeAccents(returnInvoice.getCustomer().getName()), 30));
+            }
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === RETURNED ITEMS TABLE ===
+            escpos.writeLF(boldLeft, LEFT_PADDING + "** HANG TRA LAI **");
+            escpos.writeLF(tableHeader, LEFT_PADDING + formatTableRow("Ten SP", "DV", "SL", "T.Tien"));
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            BigDecimal totalReturn = BigDecimal.ZERO;
+            for (InvoiceLine line : returnInvoice.getInvoiceLineList()) {
+                String productName = line.getProduct().getShortName();
+                if (productName == null || productName.isEmpty()) {
+                    productName = line.getProduct().getName();
+                }
+                productName = truncateText(removeAccents(productName), MAX_PRODUCT_NAME_LENGTH);
+
+                String uom = truncateText(removeAccents(line.getUnitOfMeasure().getName()), 6);
+                String qty = String.valueOf(line.getQuantity());
+                BigDecimal lineSubtotal = line.calculateSubtotal();
+                totalReturn = totalReturn.add(lineSubtotal);
+                String subtotal = formatCurrency(lineSubtotal);
+
+                escpos.writeLF(normalLeft, LEFT_PADDING + formatTableRow(productName, uom, qty, subtotal));
+            }
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === TOTALS ===
+            escpos.writeLF(boldLeft, LEFT_PADDING + padRight("Tong tien hang tra:", 28) + padLeft(formatCurrency(totalReturn), 14));
+            escpos.writeLF(boldLeft, LEFT_PADDING + padRight("TIEN HOAN TRA:", 28) + padLeft(formatCurrency(refundAmount), 14));
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === FOOTER ===
+            escpos.feed(1);
+            escpos.writeLF(normalCenter, "Cam on quy khach!");
+            escpos.writeLF(normalCenter, "Hen gap lai!");
+            escpos.feed(3);
+
+            escpos.cut(EscPos.CutMode.PART);
+        }
     }
 
     private static String getPaymentMethodText(com.enums.PaymentMethod method) {
