@@ -6,6 +6,7 @@ import com.entities.Shift;
 import com.entities.Staff;
 import com.gui.invoice_options.TAB_ExchangeInvoice;
 import com.gui.invoice_options.TAB_InvoiceList;
+import com.gui.invoice_options.TAB_ReturnInvoice;
 import com.gui.invoice_options.TAB_SalesInvoice;
 import com.interfaces.DataChangeListener;
 import com.interfaces.ShiftChangeListener;
@@ -22,9 +23,11 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
     private Staff currentStaff;
     private TAB_SalesInvoice tabSelling;
     private TAB_ExchangeInvoice tabExchange;
+    private TAB_ReturnInvoice tabReturn;
     private TAB_InvoiceList tabInvoiceList;
     private boolean salesInvoiceInitialized = false;
     private boolean exchangeInvoiceInitialized = false;
+    private boolean returnInvoiceInitialized = false;
     private ShiftChangeListener shiftChangeListener;
     private DataChangeListener dataChangeListener;
     private BUS_Shift busShift;
@@ -71,6 +74,7 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
         // Reset initialization flags
         salesInvoiceInitialized = false;
         exchangeInvoiceInitialized = false;
+        returnInvoiceInitialized = false;
 
         // Rebuild the entire menu
         pnlInvoiceMenu.removeAll();
@@ -118,9 +122,13 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
         pnlExchangePlaceholder.add(lblExchangePlaceholder, BorderLayout.CENTER);
         pnlContent.add(pnlExchangePlaceholder, "exchange");
 
-        JPanel pnlReturn = new JPanel();
-        pnlReturn.setBackground(AppColors.WHITE);
-        pnlContent.add(pnlReturn, "return");
+        JPanel pnlReturnPlaceholder = new JPanel(new BorderLayout());
+        pnlReturnPlaceholder.setBackground(AppColors.WHITE);
+        JLabel lblReturnPlaceholder = new JLabel("Vui lòng chờ...", SwingConstants.CENTER);
+        lblReturnPlaceholder.setFont(new Font("Segoe UI", Font.PLAIN, 18));
+        lblReturnPlaceholder.setForeground(AppColors.TEXT);
+        pnlReturnPlaceholder.add(lblReturnPlaceholder, BorderLayout.CENTER);
+        pnlContent.add(pnlReturnPlaceholder, "return");
         tabInvoiceList = new TAB_InvoiceList(currentStaff);
         pnlContent.add(tabInvoiceList.pnlInvoiceList, "invoicelist");
         cardLayout.show(pnlContent, "selling");
@@ -147,6 +155,19 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
                 tabExchange = new TAB_ExchangeInvoice(currentStaff);
                 pnlContent.add(tabExchange.pnlExchangeInvoice, "exchange");
                 exchangeInvoiceInitialized = true;
+            } catch (IllegalStateException e) {
+                // User cancelled shift opening - this is OK
+                // Keep the placeholder panel
+            }
+        }
+    }
+
+    private void initializeReturnInvoice() {
+        if (!returnInvoiceInitialized) {
+            try {
+                tabReturn = new TAB_ReturnInvoice(currentStaff);
+                pnlContent.add(tabReturn.pnlReturnInvoice, "return");
+                returnInvoiceInitialized = true;
             } catch (IllegalStateException e) {
                 // User cancelled shift opening - this is OK
                 // Keep the placeholder panel
@@ -225,8 +246,11 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
                 cardLayout.show(pnlContent, "exchange");
             }
         } else if (src == btnReturnInvoice) {
-            setActiveButton(btnReturnInvoice);
-            cardLayout.show(pnlContent, "return");
+            initializeReturnInvoice();
+            if (returnInvoiceInitialized) {
+                setActiveButton(btnReturnInvoice);
+                cardLayout.show(pnlContent, "return");
+            }
         }
     }
 

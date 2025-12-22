@@ -399,6 +399,125 @@ public class ReceiptThermalPrinter {
         return CURRENCY_FORMAT.format(amount) + " D";
     }
 
+    /**
+     * Print return invoice receipt directly to thermal printer
+     *
+     * @param returnInvoice   The return invoice to print
+     * @param invoiceId       The generated invoice ID
+     * @param refundAmount    Amount to refund to customer
+     * @param printerName     Name of the printer (null for default)
+     * @throws IOException if printing fails
+     */
+    public static void printReturnReceipt(Invoice returnInvoice, String invoiceId, BigDecimal refundAmount, String printerName) throws IOException {
+        PrintService printService = findPrinter(printerName);
+        if (printService == null) {
+            throw new IOException("Không tìm thấy máy in: " + (printerName != null ? printerName : "default"));
+        }
+
+        Invoice originalInvoice = returnInvoice.getReferencedInvoice();
+
+        try (PrinterOutputStream printerStream = new PrinterOutputStream(printService);
+             EscPos escpos = new EscPos(printerStream)) {
+
+            Style titleStyle = new Style()
+                    .setFontSize(Style.FontSize._2, Style.FontSize._2)
+                    .setBold(true)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style headerStyle = new Style()
+                    .setFontSize(Style.FontSize._2, Style.FontSize._2)
+                    .setBold(true)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style normalCenter = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setJustification(EscPosConst.Justification.Center);
+
+            Style normalLeft = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1);
+
+            Style boldLeft = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setBold(true);
+
+            Style tableHeader = new Style()
+                    .setFontSize(Style.FontSize._1, Style.FontSize._1)
+                    .setBold(true);
+
+            // === HEADER ===
+            escpos.writeLF(titleStyle, "NHA THUOC MEDIWOW");
+            escpos.writeLF(normalCenter, "12 Nguyen Van Bao, P.4, Go Vap, TP.HCM");
+            escpos.writeLF(normalCenter, "DT: (028) 3894 2345");
+            escpos.feed(1);
+
+            escpos.writeLF(headerStyle, "HOA DON TRA HANG");
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === INVOICE INFO ===
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+
+            String infoLine1 = padRight(LEFT_PADDING + "Ma HD: " + (invoiceId != null ? invoiceId : "N/A"), LINE_WIDTH / 2) +
+                              padLeft("NV: " + truncateText(removeAccents(returnInvoice.getCreator().getFullName()), 15), LINE_WIDTH / 2);
+            escpos.writeLF(normalLeft, infoLine1);
+
+            String infoLine2 = padRight(LEFT_PADDING + "Ngay: " + dateFormat.format(new Date()), LINE_WIDTH / 2) +
+                              padLeft("TT: Tien mat", LINE_WIDTH / 2);
+            escpos.writeLF(normalLeft, infoLine2);
+
+            if (returnInvoice.getShift() != null && returnInvoice.getShift().getId() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Ma ca: " + returnInvoice.getShift().getId());
+            }
+
+            if (originalInvoice != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "HD goc: " + originalInvoice.getId());
+            }
+
+            if (returnInvoice.getCustomer() != null && returnInvoice.getCustomer().getName() != null) {
+                escpos.writeLF(normalLeft, LEFT_PADDING + "Khach hang: " + truncateText(removeAccents(returnInvoice.getCustomer().getName()), 30));
+            }
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === RETURNED ITEMS TABLE ===
+            escpos.writeLF(boldLeft, LEFT_PADDING + "** HANG TRA LAI **");
+            escpos.writeLF(tableHeader, LEFT_PADDING + formatTableRow("Ten SP", "DV", "SL", "T.Tien"));
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            BigDecimal totalReturn = BigDecimal.ZERO;
+            for (InvoiceLine line : returnInvoice.getInvoiceLineList()) {
+                String productName = line.getProduct().getShortName();
+                if (productName == null || productName.isEmpty()) {
+                    productName = line.getProduct().getName();
+                }
+                productName = truncateText(removeAccents(productName), MAX_PRODUCT_NAME_LENGTH);
+
+                String uom = truncateText(removeAccents(line.getUnitOfMeasure().getName()), 6);
+                String qty = String.valueOf(line.getQuantity());
+                BigDecimal lineSubtotal = line.calculateSubtotal();
+                totalReturn = totalReturn.add(lineSubtotal);
+                String subtotal = formatCurrency(lineSubtotal);
+
+                escpos.writeLF(normalLeft, LEFT_PADDING + formatTableRow(productName, uom, qty, subtotal));
+            }
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === TOTALS ===
+            escpos.writeLF(boldLeft, LEFT_PADDING + padRight("Tong tien hang tra:", 28) + padLeft(formatCurrency(totalReturn), 14));
+            escpos.writeLF(boldLeft, LEFT_PADDING + padRight("TIEN HOAN TRA:", 28) + padLeft(formatCurrency(refundAmount), 14));
+
+            escpos.writeLF(normalCenter, repeat("-", LINE_WIDTH));
+
+            // === FOOTER ===
+            escpos.feed(1);
+            escpos.writeLF(normalCenter, "Cam on quy khach!");
+            escpos.writeLF(normalCenter, "Hen gap lai!");
+            escpos.feed(3);
+
+            escpos.cut(EscPos.CutMode.PART);
+        }
+    }
+
     private static String getPaymentMethodText(com.enums.PaymentMethod method) {
         if (method == null) return "N/A";
         return switch (method) {
