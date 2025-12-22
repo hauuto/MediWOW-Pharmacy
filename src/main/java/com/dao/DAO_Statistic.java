@@ -28,6 +28,9 @@ import java.util.Map;
 public class DAO_Statistic {
     private final SessionFactory sessionFactory;
 
+    // Estimated cost ratio used for "Giá vốn ước tính" (Hướng B)
+    private static final BigDecimal ESTIMATED_COST_RATIO = BigDecimal.valueOf(0.7);
+
     public DAO_Statistic() {
         this.sessionFactory = HibernateUtil.getSessionFactory();
     }
@@ -42,7 +45,7 @@ public class DAO_Statistic {
      * SQL Logic:
      * - Gross Revenue: SUM(InvoiceLine.unitPrice * quantity) WHERE type = 'SALE'
      * - Return Amount: SUM(InvoiceLine.unitPrice * quantity) WHERE type = 'RETURN'
-     * - COGS: SUM(LotAllocation.quantity * Lot.rawPrice)
+     * - COGS: SUM(LotAllocation.quantity * Lot.rawPrice * ESTIMATED_COST_RATIO) (ước tính theo Hướng B)
      * - Gross Profit: Net Revenue - COGS
      */
     public List<IStatistic.RevenueData> getRevenueData(LocalDate fromDate, LocalDate toDate) {
@@ -168,7 +171,14 @@ public class DAO_Statistic {
                 String productName = (String) row[1];
                 String category = row[2] != null ? row[2].toString() : "";
                 int quantitySold = ((Number) row[3]).intValue();
-                BigDecimal revenue = row[4] != null ? (BigDecimal) row[4] : BigDecimal.ZERO;
+                BigDecimal revenue = BigDecimal.ZERO;
+                if (row[4] != null) {
+                    try {
+                        revenue = new BigDecimal(row[4].toString());
+                    } catch (Exception ex) {
+                        revenue = BigDecimal.ZERO;
+                    }
+                }
 
                 // Get COGS for this product
                 BigDecimal cogs = getProductCOGS(session, productId, fromDate, toDate);
@@ -316,7 +326,14 @@ public class DAO_Statistic {
 
             for (Object[] row : avg7Results) {
                 String productId = (String) row[0];
-                BigDecimal avg = row[1] != null ? new BigDecimal(row[1].toString()) : BigDecimal.ZERO;
+                BigDecimal avg = BigDecimal.ZERO;
+                if (row[1] != null) {
+                    try {
+                        avg = new BigDecimal(row[1].toString());
+                    } catch (Exception ex) {
+                        avg = BigDecimal.ZERO;
+                    }
+                }
                 avgRevenue7Days.put(productId, avg);
             }
 
@@ -326,7 +343,14 @@ public class DAO_Statistic {
                 String productId = entry.getKey();
                 Object[] row = entry.getValue();
 
-                BigDecimal revenueToday = row[4] != null ? (BigDecimal) row[4] : BigDecimal.ZERO;
+                BigDecimal revenueToday = BigDecimal.ZERO;
+                if (row[4] != null) {
+                    try {
+                        revenueToday = new BigDecimal(row[4].toString());
+                    } catch (Exception ex) {
+                        revenueToday = BigDecimal.ZERO;
+                    }
+                }
                 BigDecimal avg7 = avgRevenue7Days.getOrDefault(productId, BigDecimal.ZERO);
 
                 if (avg7.compareTo(BigDecimal.ZERO) > 0) {
@@ -511,7 +535,10 @@ public class DAO_Statistic {
                 String staffName = (String) row[1];
                 String role = row[2] != null ? row[2].toString() : "";
                 int invoiceCount = ((Number) row[3]).intValue();
-                BigDecimal totalRevenue = row[4] != null ? (BigDecimal) row[4] : BigDecimal.ZERO;
+                BigDecimal totalRevenue = BigDecimal.ZERO;
+                if (row[4] != null) {
+                    try { totalRevenue = new BigDecimal(row[4].toString()); } catch (Exception ex) { totalRevenue = BigDecimal.ZERO; }
+                }
                 BigDecimal avgValue = invoiceCount > 0
                     ? totalRevenue.divide(BigDecimal.valueOf(invoiceCount), 2, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO;
@@ -567,7 +594,10 @@ public class DAO_Statistic {
                 LocalDate effectiveDate = (LocalDate) row[2];
                 LocalDate endDate = (LocalDate) row[3];
                 int usageCount = ((Number) row[4]).intValue();
-                BigDecimal revenue = row[5] != null ? (BigDecimal) row[5] : BigDecimal.ZERO;
+                BigDecimal revenue = BigDecimal.ZERO;
+                if (row[5] != null) {
+                    try { revenue = new BigDecimal(row[5].toString()); } catch (Exception ex) { revenue = BigDecimal.ZERO; }
+                }
 
                 // Calculate total discount (simplified - actual discount calculation may be more complex)
                 BigDecimal totalDiscount = calculatePromotionDiscount(session, promoId, fromDate, toDate);
@@ -614,8 +644,9 @@ public class DAO_Statistic {
             if (line == null || line.getLotAllocations() == null) continue;
             for (LotAllocation allocation : line.getLotAllocations()) {
                 if (allocation != null && allocation.getLot() != null && allocation.getLot().getRawPrice() != null) {
-                    total = total.add(allocation.getLot().getRawPrice()
-                        .multiply(BigDecimal.valueOf(allocation.getQuantity())));
+                    // Use estimated cost = rawPrice * ESTIMATED_COST_RATIO per unit
+                    BigDecimal estimatedUnitCost = allocation.getLot().getRawPrice().multiply(ESTIMATED_COST_RATIO);
+                    total = total.add(estimatedUnitCost.multiply(BigDecimal.valueOf(allocation.getQuantity())));
                 }
             }
         }
@@ -625,7 +656,7 @@ public class DAO_Statistic {
     private BigDecimal getProductCOGS(Session session, String productId, LocalDate fromDate, LocalDate toDate) {
         try {
             Object result = session.createQuery(
-                "SELECT SUM(la.quantity * la.lot.rawPrice) " +
+                "SELECT SUM(la.quantity * la.lot.rawPrice * :ratio) " +
                 "FROM LotAllocation la " +
                 "JOIN la.invoiceLine il " +
                 "JOIN il.invoice i " +
@@ -638,6 +669,7 @@ public class DAO_Statistic {
             .setParameter("saleType", InvoiceType.SALES)
             .setParameter("startDate", fromDate.atStartOfDay())
             .setParameter("endDate", toDate.plusDays(1).atStartOfDay())
+            .setParameter("ratio", ESTIMATED_COST_RATIO)
             .uniqueResult();
 
             return result != null ? (BigDecimal) result : BigDecimal.ZERO;
