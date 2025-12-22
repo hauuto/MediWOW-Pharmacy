@@ -56,6 +56,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     private GUI_InvoiceMenu invoiceMenu;
     private ShiftChangeListener shiftChangeListener;
     private TAB_Dashboard dashboard;
+    private TAB_Product productTab;
     // Buses for omni-search
     private final BUS_Product productBUS = new BUS_Product();
     private final BUS_Customer customerBUS = new BUS_Customer();
@@ -155,7 +156,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistics statistic = new TAB_Statistics(currentStaff);
-        TAB_Product product = new TAB_Product();
+        productTab = new TAB_Product();
         TAB_Staff staffTab = new TAB_Staff();
         TAB_Customer customer = new TAB_Customer();
 
@@ -163,7 +164,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         pnlMain.add(invoiceMenu.pnlInvoiceMenu, "invoiceMenu");
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic, "statistic"); // Fixed: statistic extends JPanel, add directly
-        pnlMain.add(product, "product");
+        pnlMain.add(productTab, "product");
         pnlMain.add(staffTab.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
 
@@ -606,10 +607,10 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                                 try {
                                     setActiveButton(btnProduct);
                                     cardLayout.show(pnlMain, "product");
+                                    if (productTab != null && lot.getProduct() != null && lot.getProduct().getId() != null) {
+                                        productTab.selectProductByIdAndBatch(lot.getProduct().getId(), lot.getBatchNumber());
+                                    }
                                 } catch (Exception ex) { /* ignore */ }
-                                String info = "Lô: " + lot.getBatchNumber() + (prodName != null && !prodName.isEmpty() ? "\nSản phẩm: " + prodName : "")
-                                        + "\nSố lượng: " + lot.getQuantity();
-                                JOptionPane.showMessageDialog(pnlMainMenu, info, "Lô hàng", JOptionPane.INFORMATION_MESSAGE);
                             });
                         });
                         searchPopup.add(item);

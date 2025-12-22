@@ -928,6 +928,66 @@ public class TAB_Product extends JPanel {
         cl.show(detailCards, CARD_DETAIL);
     }
 
+    /**
+     * Select a product by its ID in the list panel and open its detail card.
+     * This will load the full product list, navigate to the page containing the product,
+     * select the row and ensure details are shown.
+     */
+    public void selectProductById(String productId) {
+        if (productId == null || productId.trim().isEmpty()) return;
+        // Ensure we have up-to-date list
+        java.util.List<Product> list = productBUS.getAllProducts();
+        allProducts.clear();
+        if (list != null) allProducts.addAll(list);
+
+        int idx = -1;
+        for (int i = 0; i < allProducts.size(); i++) {
+            Product p = allProducts.get(i);
+            if (p != null && productId.equals(p.getId())) { idx = i; break; }
+        }
+        if (idx == -1) return; // not found
+
+        // Compute page containing the product and reload
+        currentPage = idx / itemsPerPage;
+        loadProducts(); // repopulates pageCache and the table
+
+        // Find row index within current page
+        int rowInPage = -1;
+        for (int i = 0; i < pageCache.size(); i++) if (pageCache.get(i).getId().equals(productId)) { rowInPage = i; break; }
+        if (rowInPage >= 0) {
+            final int r = rowInPage;
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    table.setRowSelectionInterval(r, r);
+                    table.scrollRectToVisible(table.getCellRect(r, 0, true));
+                } catch (Exception ignored) {}
+            });
+        }
+    }
+
+    /**
+     * Select product by id and then select a specific lot (by batch number) in the lot table.
+     */
+    public void selectProductByIdAndBatch(String productId, String batchNumber) {
+        if (productId == null || productId.trim().isEmpty()) return;
+        selectProductById(productId);
+        if (batchNumber == null || batchNumber.trim().isEmpty()) return;
+        final String bn = batchNumber.trim();
+        // Defer to allow showProductDetails to populate lotModel
+        SwingUtilities.invokeLater(() -> {
+            try {
+                for (int r = 0; r < lotModel.getRowCount(); r++) {
+                    Object val = lotModel.getValueAt(r, LOT_COL_ID);
+                    if (val != null && bn.equals(String.valueOf(val).trim())) {
+                        tblLot.setRowSelectionInterval(r, r);
+                        tblLot.scrollRectToVisible(tblLot.getCellRect(r, 0, true));
+                        break;
+                    }
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
     private void setFormEditable(boolean editable) {
         boolean enable = editable;
         txtName.setEnabled(enable);
