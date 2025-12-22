@@ -5,6 +5,7 @@ import com.entities.Invoice;
 import com.entities.InvoiceLine;
 import com.interfaces.IInvoice;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class BUS_Invoice  implements IInvoice {
@@ -42,6 +43,26 @@ public class BUS_Invoice  implements IInvoice {
     @Override
     public List<String> getAllPrescriptionCodes() {
         return daoInvoice.getAllPrescriptionCodes();
+    }
+
+    @Override
+    public List<Invoice> getInvoicesByDateRange(LocalDateTime from, LocalDateTime to) {
+        try {
+            return daoInvoice.getInvoicesByDateRange(from, to);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    @Override
+    public List<Invoice> getInvoicesByShiftId(String shiftId) {
+        try {
+            return daoInvoice.getInvoicesByShiftId(shiftId);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        }
     }
 
     /**

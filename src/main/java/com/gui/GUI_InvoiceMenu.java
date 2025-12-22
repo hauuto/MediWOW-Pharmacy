@@ -1,6 +1,7 @@
 package com.gui;
 
 import com.bus.BUS_Shift;
+import com.enums.Role;
 import com.entities.Shift;
 import com.entities.Staff;
 import com.gui.invoice_options.TAB_ExchangeInvoice;
@@ -96,36 +97,9 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
         pnlContent = new JPanel(cardLayout);
         pnlContent.setBackground(AppColors.WHITE);
 
-        // If no active shift, show warning message
-        if (!hasActiveShift) {
-            JPanel pnlNoShift = new JPanel(new BorderLayout());
-            pnlNoShift.setBackground(AppColors.WHITE);
-
-            JPanel messagePanel = new JPanel();
-            messagePanel.setLayout(new BoxLayout(messagePanel, BoxLayout.Y_AXIS));
-            messagePanel.setBackground(AppColors.WHITE);
-
-            JLabel lblWarning = new JLabel("Không có ca làm việc đang mở");
-            lblWarning.setFont(new Font("Segoe UI", Font.BOLD, 24));
-            lblWarning.setForeground(AppColors.DANGER); // Red color
-            lblWarning.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            JLabel lblMessage = new JLabel("Vui lòng mở ca làm việc trước khi bán hàng");
-            lblMessage.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-            lblMessage.setForeground(AppColors.TEXT);
-            lblMessage.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-            messagePanel.add(Box.createVerticalGlue());
-            messagePanel.add(lblWarning);
-            messagePanel.add(Box.createRigidArea(new Dimension(0, 20)));
-            messagePanel.add(lblMessage);
-            messagePanel.add(Box.createVerticalGlue());
-
-            pnlNoShift.add(messagePanel, BorderLayout.CENTER);
-            pnlContent.add(pnlNoShift, "noshift");
-            cardLayout.show(pnlContent, "noshift");
-            return pnlContent;
-        }
+        // Note: we still build the full content even if there is no active shift.
+        // Selling/exchange/return will be disabled when !hasActiveShift, but managers
+        // should still be able to access the Invoice List with filters.
 
         // Create placeholder panels - actual tabs will be initialized on demand
         JPanel pnlSalesPlaceholder = new JPanel(new BorderLayout());
@@ -147,7 +121,7 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
         JPanel pnlReturn = new JPanel();
         pnlReturn.setBackground(AppColors.WHITE);
         pnlContent.add(pnlReturn, "return");
-        tabInvoiceList = new TAB_InvoiceList();
+        tabInvoiceList = new TAB_InvoiceList(currentStaff);
         pnlContent.add(tabInvoiceList.pnlInvoiceList, "invoicelist");
         cardLayout.show(pnlContent, "selling");
         setActiveButton(btnSalesInvoice);
@@ -220,7 +194,16 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        // Don't allow any action if no active shift
+        Object src = e.getSource();
+        // If user requested invoice list, allow it even when no active shift (managers rely on it).
+        if (src == btnInvoiceList) {
+            setActiveButton(btnInvoiceList);
+            tabInvoiceList.refreshData();
+            cardLayout.show(pnlContent, "invoicelist");
+            return;
+        }
+
+        // For other actions, require an active shift
         if (!hasActiveShift) {
             JOptionPane.showMessageDialog(this,
                 "Vui lòng mở ca làm việc trước khi bán hàng",
@@ -229,7 +212,6 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
             return;
         }
 
-        Object src = e.getSource();
         if (src == btnSalesInvoice) {
             initializeSalesInvoice();
             if (salesInvoiceInitialized) {
@@ -245,10 +227,6 @@ public class GUI_InvoiceMenu extends JFrame implements ActionListener, ShiftChan
         } else if (src == btnReturnInvoice) {
             setActiveButton(btnReturnInvoice);
             cardLayout.show(pnlContent, "return");
-        } else if (src == btnInvoiceList) {
-            setActiveButton(btnInvoiceList);
-            tabInvoiceList.refreshData();
-            cardLayout.show(pnlContent, "invoicelist");
         }
     }
 
