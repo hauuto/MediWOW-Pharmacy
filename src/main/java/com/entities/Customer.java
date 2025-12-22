@@ -2,7 +2,6 @@ package com.entities;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -15,8 +14,7 @@ import java.util.Objects;
 @Table(name = "Customer")
 public class Customer {
     @Id
-    @UuidGenerator
-    @Column(name = "id", insertable = false, updatable = false, nullable = false, length = 50)
+    @Column(name = "id", updatable = false, nullable = false, length = 50)
     private String id;
 
     @Column(name = "name", nullable = false, length = 255)
@@ -119,4 +117,3 @@ public class Customer {
                 '}';
     }
 }
-
