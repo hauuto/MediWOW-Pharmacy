@@ -511,6 +511,24 @@ public class TAB_InvoiceList extends JPanel {
             dateFrom.addPropertyChangeListener(dateListener);
             dateTo.addPropertyChangeListener(dateListener);
 
+            // Add validation listener to ensure dateTo >= dateFrom
+            java.beans.PropertyChangeListener validationListener = evt -> {
+                if ("date".equals(evt.getPropertyName())) {
+                    try {
+                        java.util.Date from = dateFrom.getDate();
+                        java.util.Date to = dateTo.getDate();
+                        if (from != null) {
+                            dateTo.setMinDate(from);
+                            if (to != null && to.before(from)) {
+                                dateTo.setDate(from);
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+            };
+            dateFrom.addPropertyChangeListener(validationListener);
+            dateTo.addPropertyChangeListener(validationListener);
+
             // Shift dropdown on top row
             pnlFilterTop.add(new JLabel("Ca:"));
             cmbShiftFilter = new JComboBox<>();
