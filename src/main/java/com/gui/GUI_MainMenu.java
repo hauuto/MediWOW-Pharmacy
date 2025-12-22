@@ -1,19 +1,16 @@
 package com.gui;
 
+import com.entities.*;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.interfaces.DataChangeListener;
 import com.utils.AppColors;
-import com.entities.Staff;
-import com.entities.Shift;
 import com.bus.BUS_Shift;
 import com.interfaces.ShiftChangeListener;
 import com.bus.BUS_Product;
 import com.bus.BUS_Customer;
 import com.bus.BUS_Invoice;
-import com.entities.Product;
-import com.entities.Customer;
-import com.entities.Invoice;
+import com.enums.Role;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.util.List;
@@ -59,6 +56,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     private GUI_InvoiceMenu invoiceMenu;
     private ShiftChangeListener shiftChangeListener;
     private TAB_Dashboard dashboard;
+    private TAB_Product productTab;
     // Buses for omni-search
     private final BUS_Product productBUS = new BUS_Product();
     private final BUS_Customer customerBUS = new BUS_Customer();
@@ -68,6 +66,8 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
     private volatile long lastSearchAt = 0L;
     private static final Pattern PHONE_PATTERN = Pattern.compile("^\\d{10,11}$");
     private static final Pattern INVOICE_PREFIX = Pattern.compile("^(HD|INV).*", Pattern.CASE_INSENSITIVE);
+    // Batch number pattern: letters/digits and optional dashes, length >=4
+    private static final Pattern BATCH_PATTERN = Pattern.compile("^[A-Za-z0-9-]{4,}$");
 
 
     /**
@@ -131,6 +131,12 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         btnLogout.addActionListener(this);
         btnCustomer.addActionListener(this);
 
+        // Hide manager-only buttons for pharmacist accounts
+        if (currentStaff != null && currentStaff.getRole() == Role.PHARMACIST) {
+            btnStaff.setVisible(false);
+            btnPromotion.setVisible(false);
+        }
+
         // Check and update shift status
 
         //testing rules
@@ -150,7 +156,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
 
         TAB_Promotion promotion = new TAB_Promotion();
         TAB_Statistics statistic = new TAB_Statistics(currentStaff);
-        TAB_Product product = new TAB_Product();
+        productTab = new TAB_Product();
         TAB_Staff staffTab = new TAB_Staff();
         TAB_Customer customer = new TAB_Customer();
 
@@ -158,7 +164,7 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         pnlMain.add(invoiceMenu.pnlInvoiceMenu, "invoiceMenu");
         pnlMain.add(promotion, "promotion");
         pnlMain.add(statistic, "statistic"); // Fixed: statistic extends JPanel, add directly
-        pnlMain.add(product.pProduct, "product");
+        pnlMain.add(productTab, "product");
         pnlMain.add(staffTab.pnlStaff, "staff");
         pnlMain.add(customer.pCustomer, "customer");
 
@@ -496,6 +502,31 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                 }
             }
 
+            // Also search lots by batch number if it looks like a batch
+            if (BATCH_PATTERN.matcher(searchText).matches()) {
+                List<Lot> lots = productBUS.searchTop5LotsByBatchNumber(searchText);
+                if (lots != null && !lots.isEmpty()) {
+                    for (Lot lot : lots) {
+                        String prodName = (lot.getProduct() != null) ? lot.getProduct().getName() : "";
+                        String label = String.format("Lô: %s - %s", lot.getBatchNumber(), prodName);
+                        JMenuItem item = new JMenuItem(label, productIcon);
+                        item.addActionListener(e -> {
+                            SwingUtilities.invokeLater(() -> {
+                                try {
+                                    setActiveButton(btnProduct);
+                                    cardLayout.show(pnlMain, "product");
+                                } catch (Exception ex) { /* ignore */ }
+                                String info = "Lô: " + lot.getBatchNumber() + (prodName != null && !prodName.isEmpty() ? "\nSản phẩm: " + prodName : "")
+                                        + "\nSố lượng: " + lot.getQuantity();
+                                JOptionPane.showMessageDialog(pnlMainMenu, info, "Lô hàng", JOptionPane.INFORMATION_MESSAGE);
+                            });
+                        });
+                        searchPopup.add(item);
+                        totalAdded++;
+                    }
+                }
+            }
+
         } else if (isInvoiceCode) {
             // Only query invoices
             List<Invoice> invoices = invoiceBUS.searchTop5ById(searchText);
@@ -560,6 +591,31 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
                     });
                     searchPopup.add(item);
                     totalAdded++;
+                }
+            }
+
+            // Also allow searching lots by batch number in default mode
+            if (BATCH_PATTERN.matcher(searchText).matches()) {
+                List<Lot> lots = productBUS.searchTop5LotsByBatchNumber(searchText);
+                if (lots != null && !lots.isEmpty()) {
+                    for (Lot lot : lots) {
+                        String prodName = (lot.getProduct() != null) ? lot.getProduct().getName() : "";
+                        String label = String.format("Lô: %s - %s", lot.getBatchNumber(), prodName);
+                        JMenuItem item = new JMenuItem(label, productIcon);
+                        item.addActionListener(e -> {
+                            SwingUtilities.invokeLater(() -> {
+                                try {
+                                    setActiveButton(btnProduct);
+                                    cardLayout.show(pnlMain, "product");
+                                    if (productTab != null && lot.getProduct() != null && lot.getProduct().getId() != null) {
+                                        productTab.selectProductByIdAndBatch(lot.getProduct().getId(), lot.getBatchNumber());
+                                    }
+                                } catch (Exception ex) { /* ignore */ }
+                            });
+                        });
+                        searchPopup.add(item);
+                        totalAdded++;
+                    }
                 }
             }
         }

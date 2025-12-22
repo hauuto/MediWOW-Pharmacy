@@ -13,6 +13,11 @@ public interface IProduct {
 
     Lot getLotByBatchNumber(String batchNumber);
 
+    /**
+     * Search top 5 lots by batch number (contains, case-insensitive) for omni-search.
+     */
+    List<Lot> searchTop5LotsByBatchNumber(String keyword);
+
     UnitOfMeasure getUnitOfMeasureById(String productId, Integer measurementId);
 
     Lot getLotById(String id);

@@ -339,6 +339,109 @@ public class DAO_Invoice implements IInvoice {
     }
 
     @Override
+    public List<Invoice> getInvoicesByShiftId(String shiftId) {
+        if (shiftId == null || shiftId.trim().isEmpty()) return java.util.Collections.emptyList();
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            List<Invoice> invoices = session.createQuery(
+                "SELECT DISTINCT i FROM Invoice i " +
+                "LEFT JOIN FETCH i.invoiceLineList " +
+                "LEFT JOIN FETCH i.creator " +
+                "LEFT JOIN FETCH i.promotion " +
+                "WHERE i.shift.id = :shiftId " +
+                "ORDER BY i.creationDate DESC",
+                Invoice.class
+            ).setParameter("shiftId", shiftId).list();
+
+            if (!invoices.isEmpty()) {
+                // Fetch invoice lines with unitOfMeasure for these invoices
+                List<InvoiceLine> allLines = session.createQuery(
+                    "SELECT DISTINCT il FROM InvoiceLine il " +
+                    "JOIN FETCH il.unitOfMeasure " +
+                    "WHERE il.invoice IN :invoices",
+                    InvoiceLine.class
+                ).setParameter("invoices", invoices).list();
+
+                for (InvoiceLine line : allLines) {
+                    if (line.getUnitOfMeasure() != null) {
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct());
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getMeasurement());
+                        if (line.getUnitOfMeasure().getProduct() != null) {
+                            org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct().getLotSet());
+                        }
+                    }
+                }
+
+                session.createQuery(
+                    "SELECT DISTINCT il FROM InvoiceLine il " +
+                    "LEFT JOIN FETCH il.lotAllocations " +
+                    "WHERE il.invoice IN :invoices",
+                    InvoiceLine.class
+                ).setParameter("invoices", invoices).list();
+            }
+
+            return invoices;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
+    }
+
+    @Override
+    public List<Invoice> getInvoicesByDateRange(java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        if (from == null || to == null) return java.util.Collections.emptyList();
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            List<Invoice> invoices = session.createQuery(
+                "SELECT DISTINCT i FROM Invoice i " +
+                "LEFT JOIN FETCH i.invoiceLineList " +
+                "LEFT JOIN FETCH i.creator " +
+                "LEFT JOIN FETCH i.promotion " +
+                "WHERE i.creationDate BETWEEN :from AND :to " +
+                "ORDER BY i.creationDate DESC",
+                Invoice.class
+            ).setParameter("from", from).setParameter("to", to).list();
+
+            if (!invoices.isEmpty()) {
+                List<InvoiceLine> allLines = session.createQuery(
+                    "SELECT DISTINCT il FROM InvoiceLine il " +
+                    "JOIN FETCH il.unitOfMeasure " +
+                    "WHERE il.invoice IN :invoices",
+                    InvoiceLine.class
+                ).setParameter("invoices", invoices).list();
+
+                for (InvoiceLine line : allLines) {
+                    if (line.getUnitOfMeasure() != null) {
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct());
+                        org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getMeasurement());
+                        if (line.getUnitOfMeasure().getProduct() != null) {
+                            org.hibernate.Hibernate.initialize(line.getUnitOfMeasure().getProduct().getLotSet());
+                        }
+                    }
+                }
+
+                session.createQuery(
+                    "SELECT DISTINCT il FROM InvoiceLine il " +
+                    "LEFT JOIN FETCH il.lotAllocations " +
+                    "WHERE il.invoice IN :invoices",
+                    InvoiceLine.class
+                ).setParameter("invoices", invoices).list();
+            }
+
+            return invoices;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        } finally {
+            if (session != null && session.isOpen()) session.close();
+        }
+    }
+
+    @Override
     public List<InvoiceLine> getInvoiceLinesByInvoiceId(String invoiceId) {
         Session session = null;
         try {

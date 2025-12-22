@@ -3,6 +3,7 @@ package com.interfaces;
 import com.entities.Invoice;
 import com.entities.InvoiceLine;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -28,6 +29,23 @@ public interface IInvoice {
      * @return List of invoices.
      */
     List<Invoice> getAllInvoices();
+
+    /**
+     * Retrieves invoices created within the specified date/time range.
+     * Useful for manager "today" view.
+     * @param from start datetime (inclusive)
+     * @param to end datetime (inclusive)
+     * @return list of invoices in the range
+     */
+    List<Invoice> getInvoicesByDateRange(LocalDateTime from, LocalDateTime to);
+
+    /**
+     * Retrieves invoices associated with a specific shift.
+     * Useful for cashier view (current shift).
+     * @param shiftId the shift id
+     * @return list of invoices for the shift
+     */
+    List<Invoice> getInvoicesByShiftId(String shiftId);
 
     /**
      * Retrieves all invoice lines associated with a specific invoice ID.
