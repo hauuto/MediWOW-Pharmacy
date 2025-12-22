@@ -129,6 +129,14 @@ public class BUS_Shift implements IShift {
         return daoShift.calculateSystemCashForShift(shift.getId());
     }
 
+    /**
+     * List shifts opened on a specific date. Delegates to DAO_Shift.
+     */
+    public java.util.List<Shift> listShiftsOpenedOn(java.time.LocalDate day) {
+        if (day == null) return java.util.Collections.emptyList();
+        return daoShift.listShiftsOpenedOn(day);
+    }
+
     // ===== DAO-level methods are not supported by BUS_Shift =====
 
     @Override

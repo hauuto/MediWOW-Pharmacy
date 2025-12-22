@@ -171,6 +171,6 @@ public class Staff {
 
     @Override
     public String toString() {
-        return super.toString();
+        return this.fullName != null ? this.fullName : "(Unknown)";
     }
 }
