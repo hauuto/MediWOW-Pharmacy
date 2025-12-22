@@ -1,6 +1,8 @@
 package com.entities;
 
+import com.dao.DAO_UnitOfMeasure;
 import com.enums.InvoiceType;
+import com.enums.LineType;
 import com.enums.PaymentMethod;
 import com.enums.PromotionEnum;
 import com.enums.PromotionEnum.ConditionType;
@@ -8,8 +10,10 @@ import com.enums.PromotionEnum.Target;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import javax.swing.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -62,32 +66,34 @@ public class Invoice {
     @JoinColumn(name = "referencedInvoice")
     private Invoice referencedInvoice;
 
-    // --- UPDATE: QUẢN LÝ CA (SHIFT MANAGEMENT) ---
+    // --- QUẢN LÝ CA (SHIFT MANAGEMENT) ---
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shift", nullable = true) // Có thể null nếu là data cũ, nhưng logic mới nên bắt buộc
+    @JoinColumn(name = "shift", nullable = true)
     private Shift shift;
-    // ---------------------------------------------
+    // -------------------------------------
 
     protected Invoice() {}
 
-    /**
-     * Updated Constructor to include Shift
-     * @author Bùi Quốc Trụ
-     */
     public Invoice(InvoiceType type, Staff creator, Shift shift) {
-        // Don't set id manually - let Hibernate's @UuidGenerator handle it
         this.type = type;
         this.creationDate = LocalDateTime.now();
         this.creator = creator;
-        this.shift = shift; // Gán ca làm việc hiện tại
+        this.shift = shift;
         this.invoiceLineList = new ArrayList<>();
     }
 
-    // Full constructor updated
-    public Invoice(String id, InvoiceType type, LocalDateTime creationDate, Staff creator,
-                   Customer customer, String notes, String prescriptionCode,
-                   List<InvoiceLine> invoiceLineList, Promotion promotion,
-                   PaymentMethod paymentMethod, Invoice referencedInvoice, Shift shift) {
+    public Invoice(String id,
+                   InvoiceType type,
+                   LocalDateTime creationDate,
+                   Staff creator,
+                   Customer customer,
+                   String notes,
+                   String prescriptionCode,
+                   List<InvoiceLine> invoiceLineList,
+                   Promotion promotion,
+                   PaymentMethod paymentMethod,
+                   Invoice referencedInvoice,
+                   Shift shift) {
         this.id = id;
         this.type = type;
         this.creationDate = creationDate;
@@ -102,7 +108,8 @@ public class Invoice {
         this.shift = shift;
     }
 
-    // --- Getters and Setters for Shift ---
+    // --- Getters / Setters cơ bản ---
+
     public Shift getShift() {
         return shift;
     }
@@ -110,7 +117,6 @@ public class Invoice {
     public void setShift(Shift shift) {
         this.shift = shift;
     }
-    // -------------------------------------
 
     public String getId() {
         return id;
@@ -188,11 +194,10 @@ public class Invoice {
         this.referencedInvoice = referencedInvoice;
     }
 
-    // ... (Giữ nguyên toàn bộ các phương thức xử lý nghiệp vụ bên dưới của bạn: addInvoiceLine, calculateSubtotal, v.v...)
+    // =====================================================
+    // Invoice lines helpers
+    // =====================================================
 
-    /**
-     * Adds an InvoiceLine to the invoice if it does not already exist.
-     */
     public boolean addInvoiceLine(InvoiceLine invoiceLine) {
         if (invoiceLine == null)
             return false;
@@ -205,9 +210,6 @@ public class Invoice {
         return true;
     }
 
-    /**
-     * Updates an existing InvoiceLine in the invoice.
-     */
     public boolean updateInvoiceLine(String oldProductId, String oldUomName, InvoiceLine newInvoiceLine) {
         if (newInvoiceLine == null)
             return false;
@@ -240,9 +242,6 @@ public class Invoice {
         return false;
     }
 
-    /**
-     * Removes an InvoiceLine from the invoice.
-     */
     public boolean removeInvoiceLine(String productId, String unitOfMeasureName) {
         return invoiceLineList.removeIf(line ->
                 line.getProduct().getId().equals(productId) &&
@@ -251,10 +250,9 @@ public class Invoice {
     }
 
     // =====================================================
-    // Money calculations (BigDecimal is the source of truth)
+    // Money calculations (BigDecimal là source of truth)
     // =====================================================
 
-    /** Preferred BigDecimal subtotal. */
     public BigDecimal calculateSubtotal() {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (InvoiceLine line : invoiceLineList) {
@@ -263,9 +261,6 @@ public class Invoice {
         return subtotal;
     }
 
-
-
-    /** Preferred BigDecimal VAT. */
     public BigDecimal calculateVatAmount() {
         BigDecimal vatAmount = BigDecimal.ZERO;
         for (InvoiceLine line : invoiceLineList) {
@@ -274,9 +269,6 @@ public class Invoice {
         return vatAmount;
     }
 
-
-
-    /** Preferred BigDecimal subtotal including VAT. */
     public BigDecimal calculateSubtotalWithVat() {
         return calculateSubtotal().add(calculateVatAmount());
     }
@@ -317,14 +309,19 @@ public class Invoice {
 
 
     // =====================================================
-    // Promotion checks & discounts
+    // Promotion checks & discounts (đÃ SỬA CHO PRODUCT_UOM)
     // =====================================================
 
-    /** Check if the invoice satisfies all promotion conditions */
+    /** Check if the invoice satisfies all promotion conditions (using current this.promotion). */
     public boolean checkPromotionConditions() {
         if (promotion == null) return false;
+        return checkPromotionConditions(promotion);
+    }
 
-        List<PromotionCondition> conditions = promotion.getConditions();
+    /** Check if the invoice satisfies all conditions for a given promotion (no mutate). */
+    private boolean checkPromotionConditions(Promotion promo) {
+        if (promo == null) return false;
+        List<PromotionCondition> conditions = promo.getConditions();
         if (conditions == null || conditions.isEmpty()) return true;
 
         for (PromotionCondition condition : conditions) {
@@ -333,43 +330,78 @@ public class Invoice {
         return true;
     }
 
-    /** Check if a single promotion condition is satisfied */
+    /** Check a single promotion condition (route by target). */
     private boolean checkSingleCondition(PromotionCondition condition) {
         if (condition == null) return false;
-        if (condition.getTarget() == Target.PRODUCT) {
+
+        Target target = condition.getTarget();
+        if (target == Target.PRODUCT) {
             return checkProductCondition(condition);
-        } else if (condition.getTarget() == Target.ORDER_SUBTOTAL) {
+        } else if (target == Target.ORDER_SUBTOTAL) {
             return checkOrderCondition(condition);
         }
+        // TODO: other targets (ORDER_TOTAL, CATEGORY, etc.) if you add them
         return false;
     }
 
-    /** Check product-targeted condition (e.g., buy X quantity of product Y) */
+    /**
+     * Check PRODUCT-targeted condition.
+     * Ưu tiên productUOM (UnitOfMeasure) -> chính xác theo Product + Measurement.
+     * Nếu productUOM null nhưng getProduct() != null -> áp dụng cho mọi UOM của Product đó.
+     */
     private boolean checkProductCondition(PromotionCondition condition) {
-        Product targetProduct = condition.getProduct();
-        if (targetProduct == null) return false;
+        ConditionType type = condition.getConditionType();
+        if (type != ConditionType.PRODUCT_QTY) {
+            return false; // hiện tại mới handle PRODUCT_QTY
+        }
 
-        int totalQuantity = 0;
+        UnitOfMeasure targetUOM = condition.getProductUOM();
+        Product targetProduct = condition.getProduct(); // helper: productUOM != null ? productUOM.getProduct() : null
+
+        if (targetUOM == null && targetProduct == null) {
+            // không có product / productUOM thì condition không hợp lệ
+            return false;
+        }
+
+        BigDecimal totalQty = BigDecimal.ZERO;
+
         for (InvoiceLine line : invoiceLineList) {
-            if (line != null && line.getProduct() != null && line.getProduct().getId().equals(targetProduct.getId())) {
-                totalQuantity += line.getQuantity();
+            if (line == null) continue;
+
+            Product lineProduct = line.getProduct();
+            UnitOfMeasure lineUOM = line.getUnitOfMeasure();
+            if (lineProduct == null) continue;
+
+            // 1) Nếu condition có product cụ thể, phải match product
+            if (targetProduct != null) {
+                String tgtId = targetProduct.getId();
+                String lineId = lineProduct.getId();
+                if (tgtId == null || lineId == null || !tgtId.equals(lineId)) {
+                    continue;
+                }
             }
+
+            // 2) Nếu condition có productUOM cụ thể, phải match cả product + measurement
+            if (targetUOM != null) {
+                if (lineUOM == null) continue;
+                if (!targetUOM.equals(lineUOM)) continue; // equals() đã so sánh theo productId + measurementId
+            }
+
+            // Nếu qua được tất cả filter ở trên, cộng quantity
+            totalQty = totalQty.add(BigDecimal.valueOf(line.getQuantity()));
         }
 
-        if (condition.getConditionType() == ConditionType.PRODUCT_QTY) {
-            // For quantity, compare using BigDecimal value.
-            return compareValues(totalQuantity, condition.getPrimaryValue(), condition.getComparator());
-        }
-        return false;
+        return compareValues(totalQty, condition.getPrimaryValue(), condition.getComparator());
     }
 
-    /** Check order subtotal condition (e.g., order total >= X) */
+    /** Check ORDER_SUBTOTAL condition (e.g., order total >= X). */
     private boolean checkOrderCondition(PromotionCondition condition) {
-        if (condition.getConditionType() == ConditionType.ORDER_SUBTOTAL) {
-            BigDecimal subtotalWithVat = calculateSubtotalWithVat();
-            return compareValues(subtotalWithVat, condition.getPrimaryValue(), condition.getComparator());
+        if (condition.getConditionType() != ConditionType.ORDER_SUBTOTAL) {
+            return false;
         }
-        return false;
+
+        BigDecimal subtotalWithVat = calculateSubtotalWithVat();
+        return compareValues(subtotalWithVat, condition.getPrimaryValue(), condition.getComparator());
     }
 
     // =====================================================
@@ -378,49 +410,77 @@ public class Invoice {
 
     /**
      * Calculate discount for PRODUCT-targeted action.
-     * Supports percentage/fixed discounts and buy-x-get-y (if configured).
+     * Ưu tiên productUOM (UnitOfMeasure). Nếu null thì áp dụng theo Product.
      */
     private BigDecimal calculateProductDiscount(PromotionAction action) {
         if (action == null) return BigDecimal.ZERO;
-        Product targetProduct = action.getProduct();
-        if (targetProduct == null) return BigDecimal.ZERO;
+
+        UnitOfMeasure targetUOM = action.getProductUOM();
+        Product targetProduct = action.getProduct(); // helper: productUOM != null ? productUOM.getProduct() : null
+
+        if (targetUOM == null && targetProduct == null) {
+            return BigDecimal.ZERO;
+        }
 
         BigDecimal discount = BigDecimal.ZERO;
-        for (InvoiceLine line : invoiceLineList) {
-            if (line == null || line.getProduct() == null) continue;
-            if (!line.getProduct().getId().equals(targetProduct.getId())) continue;
 
+        for (InvoiceLine line : invoiceLineList) {
+            if (line == null) continue;
+
+            Product lineProduct = line.getProduct();
+            UnitOfMeasure lineUOM = line.getUnitOfMeasure();
+            if (lineProduct == null) continue;
+
+            // 1) filter theo Product nếu có
+            if (targetProduct != null) {
+                String tgtId = targetProduct.getId();
+                String lineId = lineProduct.getId();
+                if (tgtId == null || lineId == null || !tgtId.equals(lineId)) {
+                    continue;
+                }
+            }
+
+            // 2) filter thêm theo ProductUOM nếu có
+            if (targetUOM != null) {
+                if (lineUOM == null) continue;
+                if (!targetUOM.equals(lineUOM)) continue;
+            }
+
+            // Lúc này line chính xác là line cần discount
             BigDecimal lineSubtotalWithVat = line.calculateTotalAmount();
 
-            // Discount value semantics depend on action type
             switch (action.getType()) {
                 case PERCENT_DISCOUNT -> {
-                    BigDecimal rate = action.getValue().divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
-                    discount = discount.add(lineSubtotalWithVat.multiply(rate));
+                    if (action.getValue() != null) {
+                        BigDecimal rate = action.getValue()
+                                .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+                        discount = discount.add(lineSubtotalWithVat.multiply(rate));
+                    }
                 }
                 case FIXED_DISCOUNT -> {
-                    // Fixed discount amount for this product line
-                    discount = discount.add(action.getValue());
+                    if (action.getValue() != null) {
+                        discount = discount.add(action.getValue());
+                    }
                 }
-                default -> {
-                    // Other types can be implemented later
-                }
+                // TODO: implement other action types if needed
+                default -> { /* no-op */ }
             }
         }
 
         return discount;
     }
 
-    /**
-     * Calculate discount for ORDER_SUBTOTAL-targeted action.
-     */
+    /** Calculate discount for ORDER_SUBTOTAL-targeted action. */
     private BigDecimal calculateOrderDiscount(PromotionAction action) {
         if (action == null) return BigDecimal.ZERO;
 
         BigDecimal subtotalWithVat = calculateSubtotalWithVat();
+
         return switch (action.getType()) {
             case PERCENT_DISCOUNT -> {
-                BigDecimal rate = action.getValue().divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+                if (action.getValue() == null) yield BigDecimal.ZERO;
+                BigDecimal rate = action.getValue()
+                        .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
                 yield subtotalWithVat.multiply(rate);
             }
             case FIXED_DISCOUNT -> action.getValue() != null ? action.getValue() : BigDecimal.ZERO;
@@ -428,10 +488,15 @@ public class Invoice {
         };
     }
 
-    /** Compare two values based on comparator */
-    private boolean compareValues(BigDecimal actualValue, BigDecimal requiredValue, PromotionEnum.Comp comparator) {
+    /** Compare two BigDecimal values using comparator. */
+    private boolean compareValues(BigDecimal actualValue,
+                                  BigDecimal requiredValue,
+                                  PromotionEnum.Comp comparator) {
+        if (comparator == null) return false;
+
         if (actualValue == null) actualValue = BigDecimal.ZERO;
         if (requiredValue == null) requiredValue = BigDecimal.ZERO;
+
         int cmp = actualValue.compareTo(requiredValue);
 
         return switch (comparator) {
@@ -440,28 +505,38 @@ public class Invoice {
             case GREATER_EQUAL -> cmp >= 0;
             case LESS -> cmp < 0;
             case LESS_EQUAL -> cmp <= 0;
-            case BETWEEN -> false; // BETWEEN requires secondaryValue - not implemented yet
+            case BETWEEN -> false; // TODO: cần secondaryValue trong PromotionCondition để implement BETWEEN
         };
     }
 
-    /** Compare int (e.g., qty) to a BigDecimal required value. */
-    private boolean compareValues(int actualValue, BigDecimal requiredValue, PromotionEnum.Comp comparator) {
-        if (comparator == null) return false;
+    /** Int overload (nếu sau này còn dùng). */
+    private boolean compareValues(int actualValue,
+                                  BigDecimal requiredValue,
+                                  PromotionEnum.Comp comparator) {
         return compareValues(BigDecimal.valueOf(actualValue), requiredValue, comparator);
     }
 
-    /** Preferred BigDecimal promotion discount. */
+    /** Calculate discount for the currently attached promotion. */
     public BigDecimal calculatePromotion() {
-        if (promotion == null) return BigDecimal.ZERO;
-        if (!checkPromotionConditions()) return BigDecimal.ZERO;
+        return calculatePromotion(this.promotion);
+    }
+
+    /** Calculate discount for a specific promotion (không mutate state). */
+    private BigDecimal calculatePromotion(Promotion promo) {
+        if (promo == null) return BigDecimal.ZERO;
+        if (!checkPromotionConditions(promo)) return BigDecimal.ZERO;
 
         BigDecimal totalDiscount = BigDecimal.ZERO;
-        List<PromotionAction> sortedActionOrderList = promotion.getActions().stream()
+
+        List<PromotionAction> sortedActionOrderList = promo.getActions() == null
+                ? List.of()
+                : promo.getActions().stream()
                 .sorted(Comparator.comparingInt(PromotionAction::getActionOrder))
                 .toList();
 
         for (PromotionAction action : sortedActionOrderList) {
             if (action == null) continue;
+
             if (action.getTarget() == Target.PRODUCT) {
                 totalDiscount = totalDiscount.add(calculateProductDiscount(action));
             } else if (action.getTarget() == Target.ORDER_SUBTOTAL) {
@@ -472,11 +547,113 @@ public class Invoice {
         return totalDiscount;
     }
 
+    private List<InvoiceLine> calculateGifts(Promotion promotion) {
+        List<InvoiceLine> giftLines = new ArrayList<>();
+        if (promotion == null) return giftLines;
 
-    /** Preferred BigDecimal total. */
+        List<PromotionAction> sortedActionOrderList = promotion.getActions() == null
+                ? List.of()
+                : promotion.getActions().stream()
+                .sorted(Comparator.comparingInt(PromotionAction::getActionOrder))
+                .toList();
+
+        for (PromotionAction action : sortedActionOrderList) {
+            if (action == null) continue;
+
+            Product prod = action.getProduct();
+            UnitOfMeasure uom = action.getProductUOM();
+            int quantity = action.getValue() != null ? action.getValue().intValue() : 0;
+
+            if (action.getType() == PromotionEnum.ActionType.PRODUCT_GIFT && prod != null && uom != null && quantity > 0) {
+                // Gift line has 0 price and uses action quantity.
+                InvoiceLine giftLine = new InvoiceLine(this, uom, quantity, BigDecimal.ZERO, LineType.SALE, new ArrayList<>());
+                if (!giftLine.allocateLots()) {
+                    // Not enough inventory for the gift -> skip.
+                    continue;
+                }
+                giftLines.add(giftLine);
+            }
+        }
+        return giftLines;
+    }
+
+    /**
+     * Calculate gift lines for a promotion (does not mutate invoice state).
+     * The UI layer can add/remove these lines to the invoice based on user selection.
+     */
+    public List<InvoiceLine> getGiftLinesForPromotion(Promotion promotion) {
+        return calculateGifts(promotion);
+    }
+
+    // --- Result holder for applyPromotion ---
+    public static class ApplyPromotionResult {
+        private final BigDecimal totalDiscount;
+        private final List<Promotion> validPromotions;
+
+        public ApplyPromotionResult(BigDecimal totalDiscount, List<Promotion> validPromotions) {
+            this.totalDiscount = totalDiscount == null
+                    ? BigDecimal.ZERO
+                    : totalDiscount.setScale(2, RoundingMode.HALF_UP);
+            this.validPromotions = validPromotions == null
+                    ? List.of()
+                    : List.copyOf(validPromotions);
+        }
+
+        public BigDecimal getTotalDiscount() { return totalDiscount; }
+        public List<Promotion> getValidPromotions() { return validPromotions; }
+    }
+
+    /**
+     * Apply all active promotions to this invoice at its creation date.
+     * - Lọc theo isActive + effectiveDate / endDate.
+     * - Check điều kiện theo ProductUOM / Order subtotal.
+     * - Cộng dồn discount theo thứ tự actionOrder.
+     */
+    public ApplyPromotionResult applyPromotion(List<Promotion> promotions) {
+        if (promotions == null || promotions.isEmpty()) {
+            return new ApplyPromotionResult(BigDecimal.ZERO, List.of());
+        }
+
+        LocalDate invoiceDate = this.creationDate != null
+                ? this.creationDate.toLocalDate()
+                : LocalDate.now();
+
+        BigDecimal total = BigDecimal.ZERO;
+        List<Promotion> valid = new ArrayList<>();
+
+        for (Promotion promo : promotions) {
+            if (promo == null) continue;
+
+            // 1) Active flag
+            if (!promo.getIsActive()) continue;
+
+            // 2) Date window
+            LocalDate start = promo.getEffectiveDate();
+            LocalDate end = promo.getEndDate();
+            boolean withinStart = (start == null) || !invoiceDate.isBefore(start);
+            boolean withinEnd = (end == null) || !invoiceDate.isAfter(end);
+            if (!(withinStart && withinEnd)) continue;
+
+            // 3) Check conditions
+            if (!checkPromotionConditions(promo)) continue;
+
+            // 4) Calculate discount
+            BigDecimal discount = calculatePromotion(promo);
+            if (discount.compareTo(BigDecimal.ZERO) > 0) {
+                total = total.add(discount);
+                valid.add(promo);
+            }
+        }
+
+        total = total.setScale(2, RoundingMode.HALF_UP);
+        return new ApplyPromotionResult(total, valid);
+    }
+
+
+
+    /** Preferred BigDecimal total (subtotal + VAT - promotion). */
     public BigDecimal calculateTotal() {
         BigDecimal total = calculateSubtotalWithVat().subtract(calculatePromotion());
-        // Money scale = 2 for tax/discount; round half-up.
         return total.setScale(2, RoundingMode.HALF_UP);
     }
 

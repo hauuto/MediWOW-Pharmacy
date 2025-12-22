@@ -763,15 +763,47 @@ public class TAB_Product extends JPanel {
     private BigDecimal parseNonNegativeBigDecimal(Object v) {
         try { String s = String.valueOf(v).trim(); if (s.isEmpty()) return null; if (s.contains(",") && !s.contains(".")) s = s.replace(",", "."); s = s.replaceAll("(?<=\\d)[,\\.](?=\\d{3}(\\D|$))", ""); BigDecimal bd = new BigDecimal(s); return bd.compareTo(BigDecimal.ZERO) >= 0 ? bd.setScale(2, java.math.RoundingMode.HALF_UP) : null; } catch (Exception e) { return null; }
     }
+
     private boolean isValidDateDMY(String s) {
-        if (s == null || (s = s.trim()).isEmpty()) return false; String[] ps = {"dd/MM/yy","d/M/yy","dd/MM/yyyy","d/M/yyyy"};
-        for (String p : ps) try { SimpleDateFormat f = new SimpleDateFormat(p); f.setLenient(false); f.parse(s); return true; } catch (ParseException ignore) {}
+        if (s == null || (s = s.trim()).isEmpty()) return false;
+        String[] ps = {"dd/MM/yy", "d/M/yy", "dd/MM/yyyy", "d/M/yyyy"};
+        for (String p : ps) {
+            try {
+                SimpleDateFormat f = new SimpleDateFormat(p);
+                f.setLenient(false);
+                f.parse(s);
+                return true;
+            } catch (ParseException ignore) {}
+        }
         return false;
     }
+
     private LocalDate parseDMYToLocalDate(String s) {
-        String[] ps = {"dd/MM/yy","d/M/yy","dd/MM/yyyy","d/M/yyyy"};
-        for (String p : ps) { try { return LocalDate.parse(s, DateTimeFormatter.ofPattern(p)); } catch (DateTimeParseException ignore) {} }
+        String[] ps = {"dd/MM/yy", "d/M/yy", "dd/MM/yyyy", "d/M/yyyy"};
+        for (String p : ps) {
+            try {
+                return LocalDate.parse(s, DateTimeFormatter.ofPattern(p));
+            } catch (DateTimeParseException ignore) {}
+        }
         throw new IllegalArgumentException("Ngày (HSD) không hợp lệ: " + s);
+    }
+
+    /**
+     * Parse a BigDecimal from UI input without enforcing non-negative.
+     * Returns null when the cell is empty.
+     * Throws IllegalArgumentException when the cell is non-empty but cannot be parsed.
+     */
+    private BigDecimal parseBigDecimal(Object v) {
+        String raw = (v == null) ? "" : String.valueOf(v).trim();
+        if (raw.isEmpty()) return null;
+        try {
+            String s = raw;
+            if (s.contains(",") && !s.contains(".")) s = s.replace(",", ".");
+            s = s.replaceAll("(?<=\\d)[,\\.](?=\\d{3}(\\D|$))", "");
+            return new BigDecimal(s).setScale(2, java.math.RoundingMode.HALF_UP);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Giá (ĐV gốc) không hợp lệ: '" + raw + "'");
+        }
     }
 
     private void selectComboItem(JComboBox<String> cb, String value) { if (cb == null || value == null) return; for (int i = 0; i < cb.getItemCount(); i++) if (String.valueOf(cb.getItemAt(i)).equalsIgnoreCase(value)) { cb.setSelectedIndex(i); return; } }
@@ -849,69 +881,100 @@ public class TAB_Product extends JPanel {
     private Product buildProductFromForm(boolean isNew) {
         // Commit edits first
         stopEditingOnTables();
-        // Basic required fields
-        String name = txtName.getText().trim(); if (name.isEmpty()) { warn("Vui lòng nhập Tên sản phẩm."); txtName.requestFocusInWindow(); return null; }
-        String barcode = txtBarcode.getText().trim(); if (barcode.isEmpty()) { warn("Vui lòng nhập Mã vạch."); txtBarcode.requestFocusInWindow(); return null; }
-        if (!barcode.matches("\\d{8,20}")) { warn("Mã vạch chỉ gồm 8–20 chữ số."); txtBarcode.requestFocusInWindow(); return null; }
-        if (cbBaseUom.getSelectedItem() == null) { warn("Vui lòng chọn ĐVT gốc."); cbBaseUom.requestFocusInWindow(); return null; }
 
-        Object baseSel = cbBaseUom.getSelectedItem();
-        String baseUomName = (baseSel instanceof MeasurementName mn) ? mn.getName() : (baseSel != null ? baseSel.toString().trim() : "");
+        try {
+            // Construct product using constructor (id required for update)
+            String id = isNew ? null : safe(txtId.getText());
 
-        // Construct product using constructor (id required for update)
-        String id = isNew ? null : safe(txtId.getText());
-        Product p = new Product(
-                id,
-                barcode,
-                mapCategoryVNToEnum(String.valueOf(cbCategoryDetail.getSelectedItem())),
-                mapFormVNToEnum(String.valueOf(cbFormDetail.getSelectedItem())),
-                name,
-                (txtShortName == null) ? null : txtShortName.getText().trim(),
-                txtManufacturer.getText().trim(),
-                txtActiveIngredient.getText().trim(),
-                ((Number) spVat.getValue()).doubleValue(),
-                txtStrength.getText().trim(),
-                txtDescription.getText().trim(),
-                baseUomName,
-                null,
-                null,
-                null
-        );
+            Object baseSel = cbBaseUom.getSelectedItem();
+            String baseUomName = (baseSel instanceof MeasurementName mn) ? mn.getName() : (baseSel != null ? baseSel.toString().trim() : null);
 
-        // UOM set: collect all non-empty rows
-        Set<UnitOfMeasure> uoms = new HashSet<>();
-        Set<String> seenUomNames = new HashSet<>();
-        for (int r = 0; r < uomModel.getRowCount(); r++) {
-            Object nm = uomModel.getValueAt(r, UOM_COL_NAME);
-            Integer rate = parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE));
-            if (!(nm instanceof MeasurementName mn) || rate == null) continue; // skip empty rows only
-            if (!seenUomNames.add(mn.getName().toLowerCase())) continue; // enforce uniqueness
-            UnitOfMeasure u = new UnitOfMeasure(p, mn, BigDecimal.valueOf(0.0), BigDecimal.valueOf(rate));
-            u.setProduct(p);
-            uoms.add(u);
+            Product p = new Product(
+                    id,
+                    safe(txtBarcode.getText()),
+                    mapCategoryVNToEnum(String.valueOf(cbCategoryDetail.getSelectedItem())),
+                    mapFormVNToEnum(String.valueOf(cbFormDetail.getSelectedItem())),
+                    safe(txtName.getText()),
+                    (txtShortName == null) ? null : txtShortName.getText().trim(),
+                    safe(txtManufacturer.getText()),
+                    safe(txtActiveIngredient.getText()),
+                    ((Number) spVat.getValue()).doubleValue(),
+                    safe(txtStrength.getText()),
+                    safe(txtDescription.getText()),
+                    baseUomName,
+                    null,
+                    null,
+                    null
+            );
+
+            // UOM set: collect all non-empty rows
+            Set<UnitOfMeasure> uoms = new HashSet<>();
+            Set<String> seenUomNames = new HashSet<>();
+            for (int r = 0; r < uomModel.getRowCount(); r++) {
+                Object nm = uomModel.getValueAt(r, UOM_COL_NAME);
+                Integer rate = parsePositiveInt(uomModel.getValueAt(r, UOM_COL_RATE));
+                if (!(nm instanceof MeasurementName mn) || rate == null) continue; // skip empty rows only
+                if (!seenUomNames.add(mn.getName().toLowerCase())) continue; // enforce uniqueness
+                UnitOfMeasure u = new UnitOfMeasure(p, mn, BigDecimal.valueOf(0.0), BigDecimal.valueOf(rate));
+                u.setProduct(p);
+                uoms.add(u);
+            }
+            p.setUnitOfMeasureSet(uoms);
+
+            // LOT set: collect all rows with batch number
+            Set<Lot> lots = new HashSet<>();
+            for (int r = 0; r < lotModel.getRowCount(); r++) {
+                String lotId = safe(lotModel.getValueAt(r, LOT_COL_HIDDEN_ID));
+                String batch = safe(lotModel.getValueAt(r, LOT_COL_ID));
+                if (batch.isEmpty()) continue;
+
+                Integer qty = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY));
+                if (qty == null) qty = 0;
+
+                Object rawPriceCell = lotModel.getValueAt(r, LOT_COL_PRICE);
+                String rawPriceText = safe(rawPriceCell);
+                BigDecimal price;
+                if (rawPriceText.isEmpty()) {
+                    price = BigDecimal.ZERO;
+                } else {
+                    try {
+                        price = parseBigDecimal(rawPriceCell); // may be negative; format errors throw
+                    } catch (IllegalArgumentException ex) {
+                        throw new IllegalArgumentException(ex.getMessage() + " ở dòng Lô: " + (r + 1));
+                    }
+                }
+
+                String exp = safe(lotModel.getValueAt(r, LOT_COL_HSD));
+                LocalDateTime expiry;
+                if (exp.isEmpty()) {
+                    expiry = null; // let BUS decide if required
+                } else {
+                    if (!isValidDateDMY(exp)) {
+                        throw new IllegalArgumentException("HSD không hợp lệ ở dòng Lô: " + (r + 1));
+                    }
+                    expiry = parseDMYToLocalDate(exp).atStartOfDay();
+                }
+
+                LotStatus status = mapLotStatusVN(safe(lotModel.getValueAt(r, LOT_COL_STAT)));
+                // Assign ID: preserve existing on update, generate for new
+                String idToUse = (!lotId.isEmpty()) ? lotId : java.util.UUID.randomUUID().toString();
+                Lot lot = new Lot(idToUse, batch, p, qty, price, expiry, status);
+                lots.add(lot);
+            }
+            p.setLotSet(lots);
+
+            // Delegate validation (and duplicates) to BUS, use BUS messages as-is
+            productBUS.validateForUi(p, isNew);
+
+            return p;
+        } catch (IllegalArgumentException ex) {
+            warn(ex.getMessage());
+            return null;
+        } catch (Exception ex) {
+            // Safety net: don't crash UI on unexpected parsing/format issues
+            warn("Dữ liệu sản phẩm không hợp lệ: " + ex.getMessage());
+            return null;
         }
-        p.setUnitOfMeasureSet(uoms);
-
-        // LOT set: collect all rows with batch number
-        Set<Lot> lots = new HashSet<>();
-        for (int r = 0; r < lotModel.getRowCount(); r++) {
-            String lotId = safe(lotModel.getValueAt(r, LOT_COL_HIDDEN_ID));
-            String batch = safe(lotModel.getValueAt(r, LOT_COL_ID));
-            if (batch.isEmpty()) continue;
-            Integer qty = parseNonNegativeInt(lotModel.getValueAt(r, LOT_COL_QTY)); if (qty == null) qty = 0;
-            BigDecimal price = parseNonNegativeBigDecimal(lotModel.getValueAt(r, LOT_COL_PRICE)); if (price == null) price = BigDecimal.ZERO;
-            String exp = safe(lotModel.getValueAt(r, LOT_COL_HSD));
-            if (!exp.isEmpty() && !isValidDateDMY(exp)) { warn("HSD không hợp lệ ở dòng Lô: " + (r + 1)); return null; }
-            LocalDateTime expiry = exp.isEmpty() ? null : parseDMYToLocalDate(exp).atStartOfDay();
-            LotStatus status = mapLotStatusVN(safe(lotModel.getValueAt(r, LOT_COL_STAT)));
-            // Assign ID: preserve existing on update, generate for new
-            String idToUse = (lotId != null && !lotId.isEmpty()) ? lotId : java.util.UUID.randomUUID().toString();
-            Lot lot = new Lot(idToUse, batch, p, qty, price, expiry, status);
-            lots.add(lot);
-        }
-        if (isNew && lots.isEmpty()) { warn("Bảng Lô & hạn sử dụng phải có ít nhất 1 dòng."); return null; }
-        p.setLotSet(lots);
-        return p;
     }
 
     // ===================== Missing actions/helpers implementations =====================
@@ -988,21 +1051,59 @@ public class TAB_Product extends JPanel {
         });
     }
 
+    // Guard to prevent item/state changes while in read-only/view mode
+    private boolean suppressReadOnlyEvents = false;
+
     private void setFormEditable(boolean editable) {
-        boolean enable = editable;
-        txtName.setEnabled(enable);
-        txtShortName.setEnabled(enable);
-        txtBarcode.setEnabled(enable);
-        cbCategoryDetail.setEnabled(enable);
-        cbFormDetail.setEnabled(enable);
-        txtActiveIngredient.setEnabled(enable);
-        txtManufacturer.setEnabled(enable);
-        txtStrength.setEnabled(enable);
-        spVat.setEnabled(enable);
-        cbBaseUom.setEnabled(enable);
-        txtDescription.setEnabled(enable);
-        if (uomModel != null) uomModel.setEditable(enable);
-        if (lotModel != null) lotModel.setEditable(enable);
+        // In view mode, keep components visually enabled but prevent edits.
+        suppressReadOnlyEvents = !editable;
+
+        cbBaseUom.setEnabled(editable);
+        cbCategoryDetail.setEnabled(editable);
+        cbFormDetail.setEnabled(editable);
+
+        // Text inputs: use editable flag instead of enabled
+        txtName.setEditable(editable);
+        if (txtShortName != null) txtShortName.setEditable(editable);
+        txtBarcode.setEditable(editable);
+        txtActiveIngredient.setEditable(editable);
+        txtManufacturer.setEditable(editable);
+        txtStrength.setEditable(editable);
+        txtDescription.setEditable(editable);
+
+        // Keep them enabled for consistent UI look
+        txtName.setEnabled(true);
+        if (txtShortName != null) txtShortName.setEnabled(true);
+        txtBarcode.setEnabled(true);
+        txtActiveIngredient.setEnabled(true);
+        txtManufacturer.setEnabled(true);
+        txtStrength.setEnabled(true);
+        txtDescription.setEnabled(true);
+
+        // Spinner: keep enabled but lock typing/change
+        if (spVat != null) {
+            spVat.setEnabled(true);
+            JComponent editor = spVat.getEditor();
+            if (editor instanceof JSpinner.DefaultEditor de) {
+                de.getTextField().setEditable(editable);
+                de.getTextField().setEnabled(true);
+            }
+        }
+
+        // Combo boxes: keep enabled; block selection changes when read-only
+        if (cbCategoryDetail != null) cbCategoryDetail.setEnabled(true);
+        if (cbFormDetail != null) cbFormDetail.setEnabled(true);
+        if (cbBaseUom != null) cbBaseUom.setEnabled(true);
+
+        // Tables: keep enabled but toggle cell-editability via model flags
+        if (uomModel != null) uomModel.setEditable(editable);
+        if (lotModel != null) lotModel.setEditable(editable);
+        if (tblUom != null) tblUom.setEnabled(true);
+        if (tblLot != null) tblLot.setEnabled(true);
+
+        // Visual refresh
+        if (tblUom != null) tblUom.repaint();
+        if (tblLot != null) tblLot.repaint();
     }
 
     private void startAddMode() {
