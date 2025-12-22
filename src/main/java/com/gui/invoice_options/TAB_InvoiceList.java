@@ -219,6 +219,12 @@ public class TAB_InvoiceList extends JPanel {
                 stream = stream.filter(inv -> inv.getPaymentMethod() != null && inv.getPaymentMethod() == pm);
             }
             invoices = stream.toList();
+            if (invoices == null || invoices.isEmpty()) {
+                invoices = new ArrayList<>();
+                populateInvoiceTable(invoices);
+                if (lblFilterInfo != null) lblFilterInfo.setText("Không tìm thấy hóa đơn nào cho ca được chọn");
+                return;
+            }
             populateInvoiceTable(invoices);
             if (lblFilterInfo != null) lblFilterInfo.setText("Hiển thị ca: " + (sh.getStartTime() != null ? sh.getStartTime().toString() : sh.getId()) + " => " + invoices.size() + " hóa đơn");
             return;
@@ -246,6 +252,12 @@ public class TAB_InvoiceList extends JPanel {
         }
 
         invoices = stream.toList();
+        if (invoices == null || invoices.isEmpty()) {
+            invoices = new ArrayList<>();
+            populateInvoiceTable(invoices);
+            if (lblFilterInfo != null) lblFilterInfo.setText("Không tìm thấy hóa đơn nào");
+            return;
+        }
         populateInvoiceTable(invoices);
         if (lblFilterInfo != null) lblFilterInfo.setText("Hiển thị: " + invoices.size() + " hóa đơn (" + fromDate + " - " + toDate + ")");
     }
