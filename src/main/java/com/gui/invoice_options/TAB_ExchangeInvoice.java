@@ -71,9 +71,10 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
     private JWindow barcodeScanOverlay;
     private boolean barcodeScanningEnabled = false;
     private boolean isUpdatingInvoiceLine = false;
-    private JTextField txtOriginalTotal, txtExchangeTotal, txtVat, txtTotal, txtShiftId, txtCustomerName, txtInvoiceSearch, txtProductSearch;
+    private JTextField txtOriginalTotal, txtExchangeTotal, txtVat, txtTotal, txtShiftId, txtPhoneNumber, txtInvoiceSearch, txtProductSearch;
     private JFormattedTextField txtCustomerPayment;
     private Window parentWindow;
+    private static final String PHONE_NUMBER_PATTERN = "^0\\d{9}$";
 
     public TAB_ExchangeInvoice(Staff creator, ShiftChangeListener shiftChangeListener) {
         this(creator, shiftChangeListener, null);
@@ -130,7 +131,7 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         if (btnBarcodeScan != null) btnBarcodeScan.setEnabled(enabled);
 
         // Invoice panel fields
-        if (txtCustomerName != null) { txtCustomerName.setEnabled(enabled); txtCustomerName.setFocusable(enabled); }
+        if (txtPhoneNumber != null) { txtPhoneNumber.setEnabled(enabled); txtPhoneNumber.setFocusable(enabled); }
         if (txtCustomerPayment != null) { txtCustomerPayment.setEnabled(enabled); txtCustomerPayment.setFocusable(enabled); }
         if (rdoCash != null) rdoCash.setEnabled(enabled);
         if (rdoBank != null) rdoBank.setEnabled(enabled);
@@ -800,8 +801,8 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         pv.add(generateLabelAndTextField(new JLabel("Mã ca:"), txtShiftId, "", "Mã ca làm việc", 112));
         pv.add(Box.createVerticalStrut(10));
 
-        txtCustomerName = new JTextField(); txtCustomerName.setName("txtCustomerName");
-        pv.add(generateLabelAndTextField(new JLabel("Tên khách hàng:"), txtCustomerName, "Điền tên khách hàng (nếu có)...", "Điền tên khách hàng", 46));
+        txtPhoneNumber = new JTextField(); txtPhoneNumber.setName("txtPhoneNumber");
+        pv.add(generateLabelAndTextField(new JLabel("SĐT khách hàng:"), txtPhoneNumber, "Nhập SĐT (VD: 0912345678)...", "Nhập số điện thoại khách hàng", 40));
         pv.add(Box.createVerticalStrut(10));
 
         Box pay = Box.createHorizontalBox();
@@ -813,28 +814,28 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
 
         // Total of original invoice lines (Subtotal + VAT)
         txtOriginalTotal = new JTextField(); txtOriginalTotal.setEditable(false); txtOriginalTotal.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ gốc:"), txtOriginalTotal, "", "Tổng tiền hóa đơn gốc (bao gồm VAT)", 54));
+        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ gốc:"), txtOriginalTotal, "", "Tổng tiền hóa đơn gốc (bao gồm VAT)", 62));
         payv.add(Box.createVerticalStrut(10));
 
         // Total of exchange invoice lines (Subtotal + VAT)
         txtExchangeTotal = new JTextField(); txtExchangeTotal.setEditable(false); txtExchangeTotal.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ đổi:"), txtExchangeTotal, "", "Tổng tiền hóa đơn đổi (bao gồm VAT)", 56));
+        payv.add(generateLabelAndTextField(new JLabel("Tổng HĐ đổi:"), txtExchangeTotal, "", "Tổng tiền hóa đơn đổi (bao gồm VAT)", 64));
         payv.add(Box.createVerticalStrut(10));
 
         // VAT for exchange invoice only
         txtVat = new JTextField(); txtVat.setEditable(false); txtVat.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("VAT (hàng đổi):"), txtVat, "", "Thuế VAT của hàng đổi", 35));
+        payv.add(generateLabelAndTextField(new JLabel("VAT (hàng đổi):"), txtVat, "", "Thuế VAT của hàng đổi", 48));
         payv.add(Box.createVerticalStrut(10));
 
         // Difference = Exchange Total - Original Total
         txtTotal = new JTextField(); txtTotal.setEditable(false); txtTotal.setFocusable(false);
-        payv.add(generateLabelAndTextField(new JLabel("Chênh lệch:"), txtTotal, "", "Tiền chênh lệch (phải trả thêm hoặc hoàn lại)", 63));
+        payv.add(generateLabelAndTextField(new JLabel("Chênh lệch:"), txtTotal, "", "Tiền chênh lệch (phải trả thêm hoặc hoàn lại)", 76));
         payv.add(Box.createVerticalStrut(10));
 
         NumberFormatter fmt = new NumberFormatter(createCurrencyFormat());
         fmt.setValueClass(Long.class); fmt.setMinimum(0L); fmt.setAllowsInvalid(false); fmt.setCommitsOnValidEdit(true);
         txtCustomerPayment = new JFormattedTextField(fmt);
-        payv.add(generateLabelAndTextField(new JLabel("Tiền khách đưa:"), txtCustomerPayment, "Nhập số tiền...", "Nhập số tiền", 47));
+        payv.add(generateLabelAndTextField(new JLabel("Tiền khách đưa:"), txtCustomerPayment, "Nhập số tiền...", "Nhập số tiền", 45));
         txtCustomerPayment.setValue(0L);
         payv.add(Box.createVerticalStrut(10));
 
@@ -1134,17 +1135,37 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         }
     }
 
-    private String getCustomerNameValue() {
-        if (txtCustomerName == null) return null;
-        String text = txtCustomerName.getText().trim();
-        if (text.isEmpty() || text.equals("Điền tên khách hàng (nếu có)...") ||
-            txtCustomerName.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
+    private String getPhoneNumberValue() {
+        if (txtPhoneNumber == null) return null;
+        String text = txtPhoneNumber.getText().trim();
+        if (text.isEmpty() || text.equals("Nhập SĐT (VD: 0912345678)...") ||
+            txtPhoneNumber.getForeground().equals(AppColors.PLACEHOLDER_TEXT)) {
             return null;
         }
         return text;
     }
 
+    /**
+     * Validate phone number format: 0XXXXXXXXX (10 digits starting with 0)
+     */
+    private boolean validatePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isEmpty()) {
+            return true; // Empty is valid (optional)
+        }
+        return phoneNumber.matches(PHONE_NUMBER_PATTERN);
+    }
+
     private void processPayment() {
+        // Validate phone number format first
+        String phoneNumber = getPhoneNumberValue();
+        if (phoneNumber != null && !validatePhoneNumber(phoneNumber)) {
+            JOptionPane.showMessageDialog(parentWindow,
+                "Số điện thoại không hợp lệ!\n\nĐịnh dạng đúng: 0XXXXXXXXX\n(10 chữ số, bắt đầu bằng 0)",
+                "Lỗi định dạng", JOptionPane.WARNING_MESSAGE);
+            txtPhoneNumber.requestFocusInWindow();
+            return;
+        }
+
         // Remove original invoice lines with quantity 0 before processing
         if (selectedOriginalInvoice != null && selectedOriginalInvoice.getInvoiceLineList() != null) {
             selectedOriginalInvoice.getInvoiceLineList().removeIf(line -> line.getQuantity() == 0);
@@ -1244,13 +1265,14 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
                 }
             }
 
-            // Create customer if provided
-            String customerName = getCustomerNameValue();
-            if (customerName != null && !customerName.isEmpty()) {
+            // Create customer if phone number provided
+            String phoneNumber = getPhoneNumberValue();
+            if (phoneNumber != null && !phoneNumber.isEmpty()) {
                 try {
-                    Customer customer = new Customer(customerName);
-                    busCustomer.addCustomer(customer);
-                    exchangeInvoice.setCustomer(customer);
+                    Customer customer = busCustomer.getOrCreateCustomerByPhone(phoneNumber);
+                    if (customer != null) {
+                        exchangeInvoice.setCustomer(customer);
+                    }
                 } catch (Exception e) {
                     System.err.println("Warning: Could not save customer: " + e.getMessage());
                 }
@@ -1326,9 +1348,9 @@ public class TAB_ExchangeInvoice extends JFrame implements ActionListener, Mouse
         exchangeInvoice = null;
 
         // Reset text fields
-        if (txtCustomerName != null) {
-            txtCustomerName.setText("Điền tên khách hàng (nếu có)...");
-            txtCustomerName.setForeground(AppColors.PLACEHOLDER_TEXT);
+        if (txtPhoneNumber != null) {
+            txtPhoneNumber.setText("Nhập SĐT (VD: 0912345678)...");
+            txtPhoneNumber.setForeground(AppColors.PLACEHOLDER_TEXT);
         }
         if (txtCustomerPayment != null) txtCustomerPayment.setValue(0L);
         if (txtOriginalTotal != null) txtOriginalTotal.setText("");

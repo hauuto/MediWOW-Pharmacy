@@ -33,16 +33,28 @@ public class Customer {
     protected Customer() {}
 
     /**
-     * Quick constructor for creating customer with just a name
-     * @param name Customer name (required)
+     * Constructor for creating customer with phone number only
+     * Name will be set to "Khách hàng" by default
+     * @param phoneNumber Customer phone number (required)
+     * @param isPhoneNumber Flag to distinguish from name-only constructor (must be true)
      */
-    public Customer(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Tên khách hàng không được để trống");
+    public Customer(String phoneNumber, boolean isPhoneNumber) {
+        if (isPhoneNumber) {
+            if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+                throw new IllegalArgumentException("Số điện thoại không được để trống");
+            }
+            this.phoneNumber = phoneNumber.trim();
+            this.name = "Khách hàng"; // Default name
+            this.address = null;
+        } else {
+            // Treat as name constructor
+            if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+                throw new IllegalArgumentException("Tên khách hàng không được để trống");
+            }
+            this.name = phoneNumber.trim();
+            this.phoneNumber = null;
+            this.address = null;
         }
-        this.name = name.trim();
-        this.phoneNumber = null;
-        this.address = null;
     }
 
     public Customer(String id, String name, String phoneNumber, String address) {
