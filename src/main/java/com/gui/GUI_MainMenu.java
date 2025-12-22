@@ -14,6 +14,7 @@ import com.bus.BUS_Invoice;
 import com.entities.Product;
 import com.entities.Customer;
 import com.entities.Invoice;
+import com.enums.Role;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.util.List;
@@ -130,6 +131,12 @@ public class GUI_MainMenu implements ActionListener, ShiftChangeListener {
         btnGuideLine.addActionListener(this);
         btnLogout.addActionListener(this);
         btnCustomer.addActionListener(this);
+
+        // Hide manager-only buttons for pharmacist accounts
+        if (currentStaff != null && currentStaff.getRole() == Role.PHARMACIST) {
+            btnStaff.setVisible(false);
+            btnPromotion.setVisible(false);
+        }
 
         // Check and update shift status
 
