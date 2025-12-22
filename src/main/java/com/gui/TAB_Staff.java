@@ -22,9 +22,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.text.SimpleDateFormat;
+import java.text.ParseException;
 
 public class TAB_Staff extends JFrame implements ActionListener {
     JPanel pnlStaff;
+
+    // Layout constants
+    private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
+    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 500;
 
     private JTextField txtSearch;
     private JTextField txtStaffId;
@@ -36,7 +42,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
     private JComboBox<RoleItem> cboRole; // Đổi từ Role sang RoleItem
     private JComboBox<String> cboFilterRole;
     private JComboBox<String> cboFilterStatus;
-    private JSpinner spnHireDate;
+    private DIALOG_DatePicker dpHireDate;
     private JCheckBox chkIsActive;
     private JTable tblStaff;
     private DefaultTableModel tableModel;
@@ -66,9 +72,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
     private FormMode formMode = FormMode.NONE;
 
     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-    private static final int LEFT_PANEL_MINIMAL_WIDTH = 750;
-    private static final int RIGHT_PANEL_MINIMAL_WIDTH = 500;
+    private static final SimpleDateFormat HIRE_DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy");
 
 
     private final BUS_Staff BUSStaff = new BUS_Staff();
@@ -489,12 +493,8 @@ public class TAB_Staff extends JFrame implements ActionListener {
         gbc.gridy = 7;
         formContent.add(createLabel("Ngày vào làm:"), gbc);
         gbc.gridx = 1;
-        SpinnerDateModel dateModel = new SpinnerDateModel();
-        spnHireDate = new JSpinner(dateModel);
-        JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(spnHireDate, "dd/MM/yyyy");
-        spnHireDate.setEditor(dateEditor);
-        spnHireDate.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        formContent.add(spnHireDate, gbc);
+        dpHireDate = new DIALOG_DatePicker(new Date());
+        formContent.add(dpHireDate, gbc);
 
         // Trạng thái
         gbc.gridx = 0;
@@ -557,7 +557,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
         if (txtPhoneNumber != null) txtPhoneNumber.setEditable(editable);
         if (txtEmail != null) txtEmail.setEditable(editable);
         if (txtLicenseNumber != null) txtLicenseNumber.setEditable(editable);
-        if (spnHireDate != null) spnHireDate.setEnabled(editable);
+        if (dpHireDate != null) dpHireDate.setEnabled(editable);
         if (chkIsActive != null) chkIsActive.setEnabled(editable);
 
         Color bg = editable ? Color.WHITE : AppColors.BACKGROUND;
@@ -610,9 +610,13 @@ public class TAB_Staff extends JFrame implements ActionListener {
         }
 
         // hire date
-        if (staff.getHireDate() != null) {
-            Date date = Date.from(staff.getHireDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
-            spnHireDate.setValue(date);
+        if (dpHireDate != null) {
+            if (staff.getHireDate() != null) {
+                String text = staff.getHireDate().format(dtf);
+                dpHireDate.setTextValue(text);
+            } else {
+                dpHireDate.setTextValue("");
+            }
         }
 
         chkIsActive.setSelected(staff.isActive());
@@ -897,7 +901,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
             staff.setEmail(txtEmail.getText().trim());
             staff.setLicenseNumber(txtLicenseNumber.getText().trim());
 
-            Date hireDate = (Date) spnHireDate.getValue();
+            Date hireDate = parseHireDateOrThrow();
             LocalDate localHireDate = LocalDate.ofInstant(hireDate.toInstant(), ZoneId.systemDefault());
             staff.setHireDate(localHireDate);
 
@@ -943,7 +947,7 @@ public class TAB_Staff extends JFrame implements ActionListener {
             staff.setEmail(txtEmail.getText().trim());
             staff.setLicenseNumber(txtLicenseNumber.getText().trim());
 
-            Date hireDate = (Date) spnHireDate.getValue();
+            Date hireDate = parseHireDateOrThrow();
             LocalDate localHireDate = LocalDate.ofInstant(hireDate.toInstant(), ZoneId.systemDefault());
             staff.setHireDate(localHireDate);
 
@@ -983,11 +987,10 @@ public class TAB_Staff extends JFrame implements ActionListener {
         txtPhoneNumber.setText("");
         txtEmail.setText("");
         txtLicenseNumber.setText("");
-        spnHireDate.setValue(new Date());
+        if (dpHireDate != null) dpHireDate.setTextValue(HIRE_DATE_FORMAT.format(new Date()));
         chkIsActive.setSelected(true);
 
     }
-
 
     private void fillFormRow(int row) {
         if (row < 0 || staffCache == null || staffCache.isEmpty()) return;
@@ -1015,12 +1018,29 @@ public class TAB_Staff extends JFrame implements ActionListener {
         txtEmail.setText(s.getEmail() != null ? s.getEmail() : "");
         txtLicenseNumber.setText(s.getLicenseNumber() != null ? s.getLicenseNumber() : "");
 
-        if (s.getHireDate() != null) {
-            Date utilDate = Date.from(s.getHireDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
-            spnHireDate.setValue(utilDate);
+        if (dpHireDate != null) {
+            if (s.getHireDate() != null) {
+                dpHireDate.setTextValue(s.getHireDate().format(dtf));
+            } else {
+                dpHireDate.setTextValue("");
+            }
         }
 
         chkIsActive.setSelected(s.isActive());
+    }
+
+    private Date parseHireDateOrThrow() {
+        if (dpHireDate == null) return new Date();
+        String text = dpHireDate.getTextValue();
+        if (text == null || text.trim().isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng chọn Ngày vào làm.");
+        }
+        try {
+            HIRE_DATE_FORMAT.setLenient(false);
+            return HIRE_DATE_FORMAT.parse(text.trim());
+        } catch (ParseException e) {
+            throw new IllegalArgumentException("Ngày vào làm không hợp lệ. Định dạng: dd/MM/yyyy.");
+        }
     }
 
 
