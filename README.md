@@ -49,8 +49,6 @@ Dự án MediWOW được xây dựng nhằm mục đích hỗ trợ công tác 
 
 ## Giảng viên hướng dẫn
 
-- Họ và tên: Trần Thị Anh Thi
-- Email: tranthianhthi.fit@gmail.com
-## Liên hệ
+- ThS. Trần Thị Anh Thi
 
 Mọi thắc mắc hoặc góp ý vui lòng liên hệ nhóm sinh viên hoặc giảng viên hướng dẫn.
